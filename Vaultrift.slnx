@@ -1,0 +1,10 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/Vaultrift.Api/Vaultrift.Api.csproj" />
+    <Project Path="src/Vaultrift.Engine/Vaultrift.Engine.csproj" />
+    <Project Path="src/Vaultrift.Infrastructure/Vaultrift.Infrastructure.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/Vaultrift.Engine.Tests/Vaultrift.Engine.Tests.csproj" />
+  </Folder>
+</Solution>
