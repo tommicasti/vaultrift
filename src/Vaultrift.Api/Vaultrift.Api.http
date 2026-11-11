@@ -1,0 +1,30 @@
+@baseUrl = https://localhost:7129
+
+# @name create
+POST {{baseUrl}}/api/games
+
+###
+
+GET {{baseUrl}}/api/games/{{create.response.body.$.id}}
+
+###
+
+POST {{baseUrl}}/api/games/{{create.response.body.$.id}}/move
+Content-Type: application/json
+
+{
+  "direction": "Right"
+}
+
+###
+
+POST {{baseUrl}}/api/games/{{create.response.body.$.id}}/attack
+
+###
+
+POST {{baseUrl}}/api/games/{{create.response.body.$.id}}/move
+Content-Type: application/json
+
+{
+  "direction": "Diagonal"
+}
