@@ -12,4 +12,6 @@ public sealed class Enemy : Creature
     }
 
     public int Id { get; }
+
+    public bool IsAwake { get; internal set; }
 }

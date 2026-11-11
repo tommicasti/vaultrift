@@ -6,6 +6,8 @@ namespace Vaultrift.Engine.Gameplay;
 
 public sealed class Game
 {
+    public const int EnemyWakeDistance = 5;
+
     private readonly List<Enemy> _enemies;
     private readonly DamageCalculator _damageCalculator;
 
@@ -49,7 +51,7 @@ public sealed class Game
 
         var target = Player.Position.Move(direction);
 
-        if (!Map.IsWalkable(target) || FindLivingEnemyAt(target) is not null)
+        if (!IsFree(target))
         {
             events.Add(new PlayerTurned(direction));
             return new TurnResult(TurnPassed: false, events);
@@ -92,18 +94,80 @@ public sealed class Game
             if (Player.IsDead)
                 break;
 
-            if (enemy.IsDead || !IsAdjacent(enemy.Position, Player.Position))
+            if (enemy.IsDead)
                 continue;
 
-            var result = _damageCalculator.Calculate(enemy.Stats, Player.Stats);
-            Player.TakeDamage(result.Damage);
-            events.Add(new EnemyAttackedPlayer(enemy.Id, result));
+            if (!enemy.IsAwake)
+            {
+                if (Distance(enemy.Position, Player.Position) > EnemyWakeDistance)
+                    continue;
+
+                enemy.IsAwake = true;
+                events.Add(new EnemyWokeUp(enemy.Id));
+            }
+
+            if (Distance(enemy.Position, Player.Position) == 1)
+                AttackPlayer(enemy, events);
+            else
+                MoveTowardPlayer(enemy, events);
         }
     }
+
+    private void AttackPlayer(Enemy enemy, List<GameEvent> events)
+    {
+        var result = _damageCalculator.Calculate(enemy.Stats, Player.Stats);
+        Player.TakeDamage(result.Damage);
+        events.Add(new EnemyAttackedPlayer(enemy.Id, result));
+    }
+
+    private void MoveTowardPlayer(Enemy enemy, List<GameEvent> events)
+    {
+        foreach (var direction in ApproachDirections(enemy.Position, Player.Position))
+        {
+            var target = enemy.Position.Move(direction);
+
+            if (!IsFree(target))
+                continue;
+
+            enemy.Position = target;
+            events.Add(new EnemyMoved(enemy.Id, target));
+            return;
+        }
+    }
+
+    private static IEnumerable<Direction> ApproachDirections(Position from, Position to)
+    {
+        var dx = to.X - from.X;
+        var dy = to.Y - from.Y;
+
+        var horizontal = dx > 0 ? Direction.Right : Direction.Left;
+        var vertical = dy > 0 ? Direction.Down : Direction.Up;
+
+        if (Math.Abs(dx) >= Math.Abs(dy))
+        {
+            if (dx != 0)
+                yield return horizontal;
+
+            if (dy != 0)
+                yield return vertical;
+        }
+        else
+        {
+            yield return vertical;
+
+            if (dx != 0)
+                yield return horizontal;
+        }
+    }
+
+    private bool IsFree(Position position) =>
+        Map.IsWalkable(position) &&
+        position != Player.Position &&
+        FindLivingEnemyAt(position) is null;
 
     private Enemy? FindLivingEnemyAt(Position position) =>
         _enemies.FirstOrDefault(enemy => !enemy.IsDead && enemy.Position == position);
 
-    private static bool IsAdjacent(Position a, Position b) =>
-        Math.Abs(a.X - b.X) + Math.Abs(a.Y - b.Y) == 1;
+    private static int Distance(Position a, Position b) =>
+        Math.Abs(a.X - b.X) + Math.Abs(a.Y - b.Y);
 }

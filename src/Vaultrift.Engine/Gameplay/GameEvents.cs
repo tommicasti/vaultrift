@@ -16,3 +16,7 @@ public sealed record PlayerAttackedNothing : GameEvent;
 public sealed record EnemyDefeated(int EnemyId) : GameEvent;
 
 public sealed record EnemyAttackedPlayer(int EnemyId, AttackResult Result) : GameEvent;
+
+public sealed record EnemyWokeUp(int EnemyId) : GameEvent;
+
+public sealed record EnemyMoved(int EnemyId, Position To) : GameEvent;
