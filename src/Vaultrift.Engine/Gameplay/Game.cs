@@ -10,6 +10,7 @@ public sealed class Game
 
     private readonly List<Enemy> _enemies;
     private readonly DamageCalculator _damageCalculator;
+    private readonly Position _playerStart;
 
     public Game(DungeonMap map, Player player, IEnumerable<Enemy> enemies, IRandom random)
     {
@@ -35,6 +36,7 @@ public sealed class Game
 
         Map = map;
         Player = player;
+        _playerStart = player.Position;
         _damageCalculator = new DamageCalculator(random);
     }
 
@@ -43,6 +45,8 @@ public sealed class Game
     public Player Player { get; }
 
     public IReadOnlyList<Enemy> Enemies => _enemies;
+
+    public int Deaths { get; private set; }
 
     public TurnResult MovePlayer(Direction direction)
     {
@@ -111,6 +115,9 @@ public sealed class Game
             else
                 MoveTowardPlayer(enemy, events);
         }
+
+        if (Player.IsDead)
+            RespawnPlayer(events);
     }
 
     private void AttackPlayer(Enemy enemy, List<GameEvent> events)
@@ -118,6 +125,24 @@ public sealed class Game
         var result = _damageCalculator.Calculate(enemy.Stats, Player.Stats);
         Player.TakeDamage(result.Damage);
         events.Add(new EnemyAttackedPlayer(enemy.Id, result));
+    }
+
+    private void RespawnPlayer(List<GameEvent> events)
+    {
+        Deaths++;
+        events.Add(new PlayerDefeated());
+
+        foreach (var enemy in _enemies.Where(enemy => !enemy.IsDead))
+        {
+            enemy.Position = enemy.StartPosition;
+            enemy.IsAwake = false;
+            enemy.RestoreFullHealth();
+        }
+
+        Player.Position = _playerStart;
+        Player.Facing = Direction.Down;
+        Player.RestoreFullHealth();
+        events.Add(new PlayerRespawned(_playerStart));
     }
 
     private void MoveTowardPlayer(Enemy enemy, List<GameEvent> events)

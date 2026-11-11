@@ -29,4 +29,6 @@ public abstract class Creature
 
         Health = Math.Max(0, Health - amount);
     }
+
+    internal void RestoreFullHealth() => Health = Stats.MaxHealth;
 }

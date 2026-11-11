@@ -9,9 +9,12 @@ public sealed class Enemy : Creature
         : base(position, stats)
     {
         Id = id;
+        StartPosition = position;
     }
 
     public int Id { get; }
+
+    public Position StartPosition { get; }
 
     public bool IsAwake { get; internal set; }
 }

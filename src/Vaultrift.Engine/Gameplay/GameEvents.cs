@@ -20,3 +20,7 @@ public sealed record EnemyAttackedPlayer(int EnemyId, AttackResult Result) : Gam
 public sealed record EnemyWokeUp(int EnemyId) : GameEvent;
 
 public sealed record EnemyMoved(int EnemyId, Position To) : GameEvent;
+
+public sealed record PlayerDefeated : GameEvent;
+
+public sealed record PlayerRespawned(Position At) : GameEvent;
