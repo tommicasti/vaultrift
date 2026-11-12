@@ -2,6 +2,7 @@
 using Vaultrift.Engine.Gameplay;
 using Vaultrift.Engine.Randomness;
 using Vaultrift.Engine.World;
+using Vaultrift.Infrastructure.Content;
 
 namespace Vaultrift.Infrastructure.Levels;
 
@@ -39,6 +40,19 @@ public static class StarterLevel
             new(5, new Position(9, 8), WeakEnemy)
         ];
 
-        return new Game(map, player, enemies, random);
+        FloorItem[] items =
+        [
+            Item(3, 3, "potion-healing"),
+            Item(12, 6, "potion-healing"),
+            Item(9, 1, "sword-rare"),
+            Item(2, 7, "armor-common"),
+            Item(17, 4, "potion-strength"),
+            Item(18, 8, "sword-legendary")
+        ];
+
+        return new Game(map, player, enemies, random, items);
     }
+
+    private static FloorItem Item(int x, int y, string itemId) =>
+        new(new Position(x, y), ItemCatalog.Get(itemId));
 }

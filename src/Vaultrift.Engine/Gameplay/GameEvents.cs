@@ -1,4 +1,5 @@
 ﻿using Vaultrift.Engine.Combat;
+using Vaultrift.Engine.Items;
 using Vaultrift.Engine.World;
 
 namespace Vaultrift.Engine.Gameplay;
@@ -24,3 +25,7 @@ public sealed record EnemyMoved(int EnemyId, Position To) : GameEvent;
 public sealed record PlayerDefeated : GameEvent;
 
 public sealed record PlayerRespawned(Position At) : GameEvent;
+
+public sealed record ItemPickedUp(ItemDefinition Item) : GameEvent;
+
+public sealed record InventoryFull(ItemDefinition Item) : GameEvent;

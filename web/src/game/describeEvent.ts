@@ -26,5 +26,9 @@ export function describeEvent(event: GameEvent): string | null {
       return 'You have fallen...'
     case 'PlayerRespawned':
       return 'You wake up at the entrance of the floor.'
+    case 'ItemPickedUp':
+      return `You pick up ${event.item?.name}.`
+    case 'InventoryFull':
+      return `Your backpack is full. ${event.item?.name} stays on the floor.`
   }
 }

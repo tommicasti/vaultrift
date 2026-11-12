@@ -1,5 +1,6 @@
 ﻿using Vaultrift.Api.Contracts;
 using Vaultrift.Engine.Gameplay;
+using Vaultrift.Engine.Items;
 using Vaultrift.Engine.World;
 
 namespace Vaultrift.Api.Mapping;
@@ -26,6 +27,13 @@ public static class GameMapper
                     enemy.Stats.MaxHealth,
                     enemy.IsAwake))
                 .ToList(),
+            game.FloorItems
+                .Select(pair => new FloorItemResponse(pair.Key.X, pair.Key.Y, ToItemResponse(pair.Value)))
+                .ToList(),
+            game.Player.Inventory.Entries
+                .Select(entry => new InventoryEntryResponse(entry.Id, ToItemResponse(entry.Item), entry.Quantity))
+                .ToList(),
+            game.Player.Inventory.Capacity,
             game.Deaths);
 
     public static TurnResponse ToResponse(Guid id, Game game, TurnResult result) =>
@@ -46,7 +54,20 @@ public static class GameMapper
         EnemyMoved e => new("EnemyMoved", EnemyId: e.EnemyId, X: e.To.X, Y: e.To.Y),
         PlayerDefeated => new("PlayerDefeated"),
         PlayerRespawned e => new("PlayerRespawned", X: e.At.X, Y: e.At.Y),
+        ItemPickedUp e => new("ItemPickedUp", Item: ToItemResponse(e.Item)),
+        InventoryFull e => new("InventoryFull", Item: ToItemResponse(e.Item)),
         _ => throw new ArgumentOutOfRangeException(nameof(gameEvent), gameEvent.GetType().Name, "Unknown game event.")
+    };
+
+    private static ItemResponse ToItemResponse(ItemDefinition item) =>
+        new(item.Id, item.Name, item.Rarity, CategoryOf(item));
+
+    private static string CategoryOf(ItemDefinition item) => item switch
+    {
+        WeaponDefinition weapon => weapon.WeaponType.ToString(),
+        ArmorDefinition => "Armor",
+        PotionDefinition => "Potion",
+        _ => throw new ArgumentOutOfRangeException(nameof(item), item.GetType().Name, "Unknown item type.")
     };
 
     private static IReadOnlyList<string> ToRows(DungeonMap map)

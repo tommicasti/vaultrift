@@ -1,5 +1,16 @@
 export type Direction = 'Up' | 'Down' | 'Left' | 'Right'
 
+export type Rarity = 'Common' | 'Rare' | 'Epic' | 'Legendary'
+
+export type ItemCategory = 'Sword' | 'Axe' | 'Bow' | 'Armor' | 'Potion'
+
+export interface ItemInfo {
+  id: string
+  name: string
+  rarity: Rarity
+  category: ItemCategory
+}
+
 export interface PlayerState {
   x: number
   y: number
@@ -17,11 +28,26 @@ export interface EnemyState {
   isAwake: boolean
 }
 
+export interface FloorItemState {
+  x: number
+  y: number
+  item: ItemInfo
+}
+
+export interface InventoryEntryState {
+  id: number
+  item: ItemInfo
+  quantity: number
+}
+
 export interface GameState {
   id: string
   map: string[]
   player: PlayerState
   enemies: EnemyState[]
+  floorItems: FloorItemState[]
+  inventory: InventoryEntryState[]
+  inventoryCapacity: number
   deaths: number
 }
 
@@ -36,6 +62,8 @@ export type GameEventType =
   | 'EnemyMoved'
   | 'PlayerDefeated'
   | 'PlayerRespawned'
+  | 'ItemPickedUp'
+  | 'InventoryFull'
 
 export interface GameEvent {
   type: GameEventType
@@ -45,6 +73,7 @@ export interface GameEvent {
   isDodged?: boolean
   x?: number
   y?: number
+  item?: ItemInfo
 }
 
 export interface TurnResponse {

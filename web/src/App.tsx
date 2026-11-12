@@ -4,6 +4,7 @@ import type { Direction, GameState, TurnResponse } from './api/types'
 import { Board } from './components/Board'
 import { Controls } from './components/Controls'
 import { EventLog } from './components/EventLog'
+import { Inventory } from './components/Inventory'
 import { StatusBar } from './components/StatusBar'
 import { describeEvent } from './game/describeEvent'
 import { useCompactLandscape } from './game/useCompactLandscape'
@@ -120,6 +121,7 @@ function App() {
       <Controls disabled={busy} onMove={handleMove} onAttack={handleAttack} />
       {error && <p className="error">{error}</p>}
       <EventLog entries={log} />
+      <Inventory entries={game.inventory} capacity={game.inventoryCapacity} />
     </main>
   )
 }

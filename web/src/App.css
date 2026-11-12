@@ -117,6 +117,27 @@
   background: var(--danger);
 }
 
+.rarity-common {
+  --rarity: #2e9d4f;
+}
+
+.rarity-rare {
+  --rarity: #2f6fd6;
+}
+
+.rarity-epic {
+  --rarity: #8a3fd1;
+}
+
+.rarity-legendary {
+  --rarity: #d4a017;
+}
+
+.item-icon {
+  line-height: 1;
+  filter: drop-shadow(0 0 3px var(--rarity));
+}
+
 .keyboard-hint {
   margin: 0;
   text-align: center;
@@ -187,6 +208,41 @@
 }
 
 .event-log p:first-child {
+  font-weight: 600;
+}
+
+.inventory {
+  padding: 0.5rem 0.8rem;
+  border-radius: 8px;
+  background: var(--surface);
+}
+
+.inventory h2 {
+  margin: 0 0 0.4rem;
+  font-weight: 600;
+}
+
+.inventory p {
+  margin: 0;
+}
+
+.inventory ul {
+  display: grid;
+  gap: 0.3rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.inventory li {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.9rem;
+}
+
+.item-name {
+  color: var(--rarity);
   font-weight: 600;
 }
 
@@ -304,7 +360,8 @@
     display: none;
   }
 
-  .keyboard-hint {
+  .keyboard-hint,
+  .inventory {
     display: none;
   }
 

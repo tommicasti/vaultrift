@@ -1,4 +1,5 @@
 ﻿using Vaultrift.Engine.Combat;
+using Vaultrift.Engine.Items;
 using Vaultrift.Engine.Randomness;
 using Vaultrift.Engine.World;
 
@@ -11,10 +12,16 @@ public sealed class Game
     public const int HealthRegenAmount = 1;
 
     private readonly List<Enemy> _enemies;
+    private readonly Dictionary<Position, ItemDefinition> _floorItems = [];
     private readonly DamageCalculator _damageCalculator;
     private readonly Position _playerStart;
 
-    public Game(DungeonMap map, Player player, IEnumerable<Enemy> enemies, IRandom random)
+    public Game(
+        DungeonMap map,
+        Player player,
+        IEnumerable<Enemy> enemies,
+        IRandom random,
+        IEnumerable<FloorItem>? floorItems = null)
     {
         ArgumentNullException.ThrowIfNull(map);
         ArgumentNullException.ThrowIfNull(player);
@@ -36,6 +43,15 @@ public sealed class Game
         if (_enemies.Select(enemy => enemy.Id).Distinct().Count() != _enemies.Count)
             throw new ArgumentException("Enemy ids must be unique.", nameof(enemies));
 
+        foreach (var floorItem in floorItems ?? Enumerable.Empty<FloorItem>())
+        {
+            if (!map.IsWalkable(floorItem.Position))
+                throw new ArgumentException("Every item must lie on a floor tile.", nameof(floorItems));
+
+            if (!_floorItems.TryAdd(floorItem.Position, floorItem.Item))
+                throw new ArgumentException("Two items cannot lie on the same tile.", nameof(floorItems));
+        }
+
         Map = map;
         Player = player;
         _playerStart = player.Position;
@@ -47,6 +63,8 @@ public sealed class Game
     public Player Player { get; }
 
     public IReadOnlyList<Enemy> Enemies => _enemies;
+
+    public IReadOnlyDictionary<Position, ItemDefinition> FloorItems => _floorItems;
 
     public int Deaths { get; private set; }
 
@@ -67,6 +85,7 @@ public sealed class Game
 
         Player.Position = target;
         events.Add(new PlayerMoved(target));
+        PickUpItemAt(target, events);
 
         EndTurn(events);
         return new TurnResult(TurnPassed: true, events);
@@ -93,6 +112,22 @@ public sealed class Game
 
         EndTurn(events);
         return new TurnResult(TurnPassed: true, events);
+    }
+
+    private void PickUpItemAt(Position position, List<GameEvent> events)
+    {
+        if (!_floorItems.TryGetValue(position, out var item))
+            return;
+
+        if (Player.Inventory.TryAdd(item))
+        {
+            _floorItems.Remove(position);
+            events.Add(new ItemPickedUp(item));
+        }
+        else
+        {
+            events.Add(new InventoryFull(item));
+        }
     }
 
     private void EndTurn(List<GameEvent> events)
