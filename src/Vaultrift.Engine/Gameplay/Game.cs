@@ -7,6 +7,8 @@ namespace Vaultrift.Engine.Gameplay;
 public sealed class Game
 {
     public const int EnemyWakeDistance = 5;
+    public const int HealthRegenInterval = 3;
+    public const int HealthRegenAmount = 1;
 
     private readonly List<Enemy> _enemies;
     private readonly DamageCalculator _damageCalculator;
@@ -48,6 +50,8 @@ public sealed class Game
 
     public int Deaths { get; private set; }
 
+    public int TurnNumber { get; private set; }
+
     public TurnResult MovePlayer(Direction direction)
     {
         var events = new List<GameEvent>();
@@ -64,7 +68,7 @@ public sealed class Game
         Player.Position = target;
         events.Add(new PlayerMoved(target));
 
-        EnemiesAct(events);
+        EndTurn(events);
         return new TurnResult(TurnPassed: true, events);
     }
 
@@ -87,8 +91,19 @@ public sealed class Game
                 events.Add(new EnemyDefeated(target.Id));
         }
 
-        EnemiesAct(events);
+        EndTurn(events);
         return new TurnResult(TurnPassed: true, events);
+    }
+
+    private void EndTurn(List<GameEvent> events)
+    {
+        EnemiesAct(events);
+        TurnNumber++;
+
+        if (Player.IsDead)
+            RespawnPlayer(events);
+        else if (TurnNumber % HealthRegenInterval == 0)
+            Player.Heal(HealthRegenAmount);
     }
 
     private void EnemiesAct(List<GameEvent> events)
@@ -115,9 +130,6 @@ public sealed class Game
             else
                 MoveTowardPlayer(enemy, events);
         }
-
-        if (Player.IsDead)
-            RespawnPlayer(events);
     }
 
     private void AttackPlayer(Enemy enemy, List<GameEvent> events)
