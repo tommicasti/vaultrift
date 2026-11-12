@@ -30,5 +30,13 @@ public abstract class Creature
         Health = Math.Max(0, Health - amount);
     }
 
+    internal void Heal(int amount)
+    {
+        if (amount < 0)
+            throw new ArgumentOutOfRangeException(nameof(amount), amount, "Healing cannot be negative.");
+
+        Health = Math.Min(Stats.MaxHealth, Health + amount);
+    }
+
     internal void RestoreFullHealth() => Health = Stats.MaxHealth;
 }
