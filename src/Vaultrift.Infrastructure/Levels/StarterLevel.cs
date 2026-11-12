@@ -21,9 +21,9 @@ public static class StarterLevel
         "####################"
     ];
 
-    private static readonly Stats PlayerStats = new(maxHealth: 30, attack: 5, defense: 2);
-    private static readonly Stats WeakEnemy = new(maxHealth: 8, attack: 3, defense: 0);
-    private static readonly Stats StrongEnemy = new(maxHealth: 12, attack: 5, defense: 1);
+    private static readonly Stats PlayerStats = new(maxHealth: 30, attack: 5, defense: 2, evasion: 5);
+    private static readonly Stats WeakEnemy = new(maxHealth: 8, attack: 3, defense: 0, evasion: 5);
+    private static readonly Stats StrongEnemy = new(maxHealth: 12, attack: 5, defense: 1, evasion: 0);
 
     public static Game CreateGame(IRandom random)
     {

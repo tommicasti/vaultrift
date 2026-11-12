@@ -42,6 +42,7 @@ export interface GameEvent {
   enemyId?: number
   damage?: number
   isCritical?: boolean
+  isDodged?: boolean
   x?: number
   y?: number
 }

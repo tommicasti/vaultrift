@@ -20,5 +20,6 @@ public sealed record EventResponse(
     int? EnemyId = null,
     int? Damage = null,
     bool? IsCritical = null,
+    bool? IsDodged = null,
     int? X = null,
     int? Y = null);

@@ -10,7 +10,8 @@ public class DamageCalculatorTests
 
     private static Stats Attacker(int attack) => new(maxHealth: 30, attack: attack, defense: 0);
 
-    private static Stats Defender(int defense) => new(maxHealth: 30, attack: 0, defense: defense);
+    private static Stats Defender(int defense, int evasion = 0) =>
+        new(maxHealth: 30, attack: 0, defense: defense, evasion: evasion);
 
     [Theory]
     [InlineData(8, 3, 5)]
@@ -51,6 +52,54 @@ public class DamageCalculatorTests
 
         Assert.Equal(2, result.Damage);
         Assert.True(result.IsCritical);
+    }
+
+    [Fact]
+    public void Calculate_DefenderWithoutEvasion_DoesNotRollForDodge()
+    {
+        var calculator = new DamageCalculator(new FixedRandom(NoCritical));
+
+        var result = calculator.Calculate(Attacker(8), Defender(3, evasion: 0));
+
+        Assert.False(result.IsDodged);
+        Assert.Equal(5, result.Damage);
+    }
+
+    [Theory]
+    [InlineData(0.0, true, 0)]
+    [InlineData(0.199, true, 0)]
+    [InlineData(0.20, false, 5)]
+    [InlineData(0.99, false, 5)]
+    public void Calculate_DodgeDependsOnRandomValue(double roll, bool expectedDodged, int expectedDamage)
+    {
+        var calculator = new DamageCalculator(new FixedRandom(roll, NoCritical));
+
+        var result = calculator.Calculate(Attacker(8), Defender(3, evasion: 20));
+
+        Assert.Equal(expectedDodged, result.IsDodged);
+        Assert.Equal(expectedDamage, result.Damage);
+    }
+
+    [Fact]
+    public void Calculate_DodgedAttack_IsNeverCritical()
+    {
+        var calculator = new DamageCalculator(new FixedRandom(0.0, Critical));
+
+        var result = calculator.Calculate(Attacker(8), Defender(3, evasion: 20));
+
+        Assert.True(result.IsDodged);
+        Assert.False(result.IsCritical);
+    }
+
+    [Fact]
+    public void Calculate_EvasionAboveCap_CountsAsFifty()
+    {
+        var calculator = new DamageCalculator(new FixedRandom(0.6, NoCritical));
+
+        var result = calculator.Calculate(Attacker(8), Defender(3, evasion: 90));
+
+        Assert.False(result.IsDodged);
+        Assert.Equal(5, result.Damage);
     }
 
     [Fact]

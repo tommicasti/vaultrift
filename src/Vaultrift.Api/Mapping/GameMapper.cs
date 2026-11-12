@@ -38,10 +38,10 @@ public static class GameMapper
     {
         PlayerMoved e => new("PlayerMoved", X: e.To.X, Y: e.To.Y),
         PlayerTurned => new("PlayerTurned"),
-        PlayerAttackedEnemy e => new("PlayerAttackedEnemy", EnemyId: e.EnemyId, Damage: e.Result.Damage, IsCritical: e.Result.IsCritical),
+        PlayerAttackedEnemy e => new("PlayerAttackedEnemy", EnemyId: e.EnemyId, Damage: e.Result.Damage, IsCritical: e.Result.IsCritical, IsDodged: e.Result.IsDodged),
         PlayerAttackedNothing => new("PlayerAttackedNothing"),
         EnemyDefeated e => new("EnemyDefeated", EnemyId: e.EnemyId),
-        EnemyAttackedPlayer e => new("EnemyAttackedPlayer", EnemyId: e.EnemyId, Damage: e.Result.Damage, IsCritical: e.Result.IsCritical),
+        EnemyAttackedPlayer e => new("EnemyAttackedPlayer", EnemyId: e.EnemyId, Damage: e.Result.Damage, IsCritical: e.Result.IsCritical, IsDodged: e.Result.IsDodged),
         EnemyWokeUp e => new("EnemyWokeUp", EnemyId: e.EnemyId),
         EnemyMoved e => new("EnemyMoved", EnemyId: e.EnemyId, X: e.To.X, Y: e.To.Y),
         PlayerDefeated => new("PlayerDefeated"),
