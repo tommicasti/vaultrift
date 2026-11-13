@@ -15,6 +15,14 @@ public sealed class Player : Creature
         Facing = Direction.Down;
     }
 
+    public Player(Position position, CharacterClass characterClass)
+        : this(position, characterClass?.BaseStats ?? throw new ArgumentNullException(nameof(characterClass)))
+    {
+        Class = characterClass;
+    }
+
+    public CharacterClass? Class { get; }
+
     public Direction Facing { get; internal set; }
 
     public Inventory Inventory { get; } = new();
@@ -26,7 +34,7 @@ public sealed class Player : Creature
     public PotionDefinition? QuickSlot { get; private set; }
 
     public override Stats CombatStats =>
-        Stats.Apply(EquippedModifiers().Concat(_boosts.Values.Select(boost => boost.Modifier)));
+        Stats.Apply(EquippedModifiers().Concat(BoostModifiers()).Concat(MasteryModifiers()));
 
     public EquipResult Equip(int entryId)
     {
@@ -133,4 +141,16 @@ public sealed class Player : Creature
             .Select(entry => entry.Item)
             .OfType<EquipmentDefinition>()
             .SelectMany(item => item.Modifiers);
+
+    private IEnumerable<StatModifier> BoostModifiers() =>
+        _boosts.Values.Select(boost => boost.Modifier);
+
+    private IEnumerable<StatModifier> MasteryModifiers()
+    {
+        if (Class is null || !_equipment.TryGetValue(EquipmentSlot.Weapon, out var entry))
+            yield break;
+
+        if (entry.Item is WeaponDefinition weapon && weapon.WeaponType == Class.Mastery.WeaponType)
+            yield return Class.Mastery.Bonus;
+    }
 }

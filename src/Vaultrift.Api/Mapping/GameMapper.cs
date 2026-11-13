@@ -44,6 +44,7 @@ public static class GameMapper
         var quickSlot = player.QuickSlot;
 
         return new PlayerResponse(
+            player.Class?.Id,
             player.Position.X,
             player.Position.Y,
             player.Facing,

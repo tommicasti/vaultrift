@@ -1,5 +1,6 @@
 ﻿using Vaultrift.Engine.Combat;
 using Vaultrift.Engine.Gameplay;
+using Vaultrift.Engine.Items;
 using Vaultrift.Engine.Randomness;
 using Vaultrift.Engine.World;
 using Vaultrift.Infrastructure.Content;
@@ -22,15 +23,16 @@ public static class StarterLevel
         "####################"
     ];
 
-    private static readonly Stats PlayerStats = new(maxHealth: 30, attack: 2, defense: 2, evasion: 5);
     private static readonly Stats WeakEnemy = new(maxHealth: 8, attack: 3, defense: 0, evasion: 5);
     private static readonly Stats StrongEnemy = new(maxHealth: 12, attack: 5, defense: 1, evasion: 0);
 
-    public static Game CreateGame(IRandom random)
+    public static Game CreateGame(IRandom random, ClassDefinition playerClass)
     {
+        ArgumentNullException.ThrowIfNull(playerClass);
+
         var map = DungeonMap.Parse(Rows);
-        var player = new Player(new Position(1, 1), PlayerStats);
-        GiveStartingKit(player);
+        var player = new Player(new Position(1, 1), playerClass.Class);
+        GiveStartingKit(player, playerClass.StartingItemIds);
 
         Enemy[] enemies =
         [
@@ -54,14 +56,18 @@ public static class StarterLevel
         return new Game(map, player, enemies, random, items);
     }
 
-    private static void GiveStartingKit(Player player)
+    private static void GiveStartingKit(Player player, IReadOnlyList<string> itemIds)
     {
-        player.Inventory.TryAdd(ItemCatalog.Get("sword-common"));
-        player.Equip(player.Inventory.Entries[0].Id);
+        foreach (var itemId in itemIds)
+            player.Inventory.TryAdd(ItemCatalog.Get(itemId));
 
-        player.Inventory.TryAdd(ItemCatalog.Get("potion-healing"));
-        player.Inventory.TryAdd(ItemCatalog.Get("potion-healing"));
-        player.AssignQuickSlot(player.Inventory.Entries[1].Id);
+        foreach (var entry in player.Inventory.Entries)
+        {
+            if (entry.Item is EquipmentDefinition)
+                player.Equip(entry.Id);
+            else if (entry.Item is PotionDefinition && player.QuickSlot is null)
+                player.AssignQuickSlot(entry.Id);
+        }
     }
 
     private static FloorItem Item(int x, int y, string itemId) =>

@@ -15,6 +15,7 @@ public sealed record GameStateResponse(
     int Deaths);
 
 public sealed record PlayerResponse(
+    string? ClassId,
     int X,
     int Y,
     Direction Facing,
@@ -27,6 +28,17 @@ public sealed record PlayerResponse(
     ItemResponse? QuickSlot,
     int QuickSlotQuantity,
     IReadOnlyList<ActiveBoostResponse> Boosts);
+
+public sealed record ClassResponse(
+    string Id,
+    string Name,
+    string Description,
+    int MaxHealth,
+    int Attack,
+    int Defense,
+    int Evasion,
+    WeaponType MasteryWeapon,
+    ModifierResponse MasteryBonus);
 
 public sealed record EquippedItemResponse(EquipmentSlot Slot, int EntryId);
 

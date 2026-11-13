@@ -3,6 +3,7 @@ using Vaultrift.Api.Contracts;
 using Vaultrift.Api.Mapping;
 using Vaultrift.Engine.Gameplay;
 using Vaultrift.Engine.Randomness;
+using Vaultrift.Infrastructure.Content;
 using Vaultrift.Infrastructure.Levels;
 using Vaultrift.Infrastructure.Persistence;
 
@@ -22,9 +23,17 @@ public sealed class GamesController : ControllerBase
     }
 
     [HttpPost]
-    public ActionResult<GameStateResponse> Create()
+    public ActionResult<GameStateResponse> Create(CreateGameRequest request)
     {
-        var game = StarterLevel.CreateGame(_random);
+        var playerClass = ClassCatalog.Find(request.ClassId);
+
+        if (playerClass is null)
+        {
+            ModelState.AddModelError(nameof(request.ClassId), $"Unknown class '{request.ClassId}'.");
+            return ValidationProblem(ModelState);
+        }
+
+        var game = StarterLevel.CreateGame(_random, playerClass);
         var id = _store.Add(game);
 
         return CreatedAtAction(nameof(Get), new { id }, GameMapper.ToResponse(id, game));
