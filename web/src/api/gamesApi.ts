@@ -29,3 +29,15 @@ export function attack(gameId: string): Promise<TurnResponse> {
 export function equip(gameId: string, entryId: number): Promise<TurnResponse> {
   return post<TurnResponse>(`/${gameId}/equip`, { entryId })
 }
+
+export function consumeItem(gameId: string, entryId: number): Promise<TurnResponse> {
+  return post<TurnResponse>(`/${gameId}/use`, { entryId })
+}
+
+export function setQuickSlot(gameId: string, entryId: number): Promise<TurnResponse> {
+  return post<TurnResponse>(`/${gameId}/quick-slot`, { entryId })
+}
+
+export function consumeQuickSlot(gameId: string): Promise<TurnResponse> {
+  return post<TurnResponse>(`/${gameId}/quick-slot/use`)
+}

@@ -52,10 +52,21 @@ public sealed class GamesController : ControllerBase
     public ActionResult<TurnResponse> Attack(Guid id) =>
         Play(id, game => game.Attack());
 
-
     [HttpPost("{id:guid}/equip")]
-    public ActionResult<TurnResponse> Equip(Guid id, EquipRequest request) =>
-    Play(id, game => game.Equip(request.EntryId));
+    public ActionResult<TurnResponse> Equip(Guid id, EntryRequest request) =>
+        Play(id, game => game.Equip(request.EntryId));
+
+    [HttpPost("{id:guid}/use")]
+    public ActionResult<TurnResponse> Use(Guid id, EntryRequest request) =>
+        Play(id, game => game.UseItem(request.EntryId));
+
+    [HttpPost("{id:guid}/quick-slot")]
+    public ActionResult<TurnResponse> AssignQuickSlot(Guid id, EntryRequest request) =>
+        Play(id, game => game.AssignQuickSlot(request.EntryId));
+
+    [HttpPost("{id:guid}/quick-slot/use")]
+    public ActionResult<TurnResponse> UseQuickSlot(Guid id) =>
+        Play(id, game => game.UseQuickSlot());
 
     private ActionResult<TurnResponse> Play(Guid id, Func<Game, TurnResult> action)
     {

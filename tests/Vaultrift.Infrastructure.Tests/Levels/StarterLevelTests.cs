@@ -13,6 +13,7 @@ public class StarterLevelTests
 
         Assert.True(game.Player.Equipment.ContainsKey(EquipmentSlot.Weapon));
         Assert.Equal(5, game.Player.CombatStats.Attack);
+        Assert.Equal("potion-healing", game.Player.QuickSlot?.Id);
         Assert.NotEmpty(game.FloorItems);
     }
 }

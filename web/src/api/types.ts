@@ -6,18 +6,38 @@ export type ItemCategory = 'Sword' | 'Axe' | 'Bow' | 'Head' | 'Body' | 'Feet' | 
 
 export type EquipmentSlot = 'Weapon' | 'Head' | 'Body' | 'Feet' | 'Ring1' | 'Ring2'
 
+export type StatType = 'Attack' | 'Defense' | 'Evasion'
+
 export type EquipRejectReason = 'ItemNotFound' | 'NotEquippable' | 'AlreadyEquipped'
+
+export type UseRejectReason = 'ItemNotFound' | 'NotUsable' | 'AlreadyAtFullHealth' | 'QuickSlotEmpty'
+
+export interface StatModifierInfo {
+  stat: StatType
+  amount: number
+}
 
 export interface ItemInfo {
   id: string
   name: string
   rarity: Rarity
   category: ItemCategory
+  description?: string
+  modifiers: StatModifierInfo[]
+  healing?: number
+  boost?: StatModifierInfo
+  boostTurns?: number
 }
 
 export interface EquippedItem {
   slot: EquipmentSlot
   entryId: number
+}
+
+export interface ActiveBoostInfo {
+  item: ItemInfo
+  modifier: StatModifierInfo
+  remainingTurns: number
 }
 
 export interface PlayerState {
@@ -30,6 +50,9 @@ export interface PlayerState {
   defense: number
   evasion: number
   equipment: EquippedItem[]
+  quickSlot?: ItemInfo
+  quickSlotQuantity: number
+  boosts: ActiveBoostInfo[]
 }
 
 export interface EnemyState {
@@ -79,6 +102,10 @@ export type GameEventType =
   | 'InventoryFull'
   | 'ItemEquipped'
   | 'EquipRejected'
+  | 'ItemUsed'
+  | 'UseRejected'
+  | 'QuickSlotAssigned'
+  | 'BoostExpired'
 
 export interface GameEvent {
   type: GameEventType
@@ -89,7 +116,7 @@ export interface GameEvent {
   x?: number
   y?: number
   item?: ItemInfo
-  reason?: EquipRejectReason
+  reason?: string
 }
 
 export interface TurnResponse {

@@ -41,6 +41,7 @@ public static class GameMapper
     private static PlayerResponse ToPlayerResponse(Player player)
     {
         var combat = player.CombatStats;
+        var quickSlot = player.QuickSlot;
 
         return new PlayerResponse(
             player.Position.X,
@@ -53,6 +54,16 @@ public static class GameMapper
             Math.Min(combat.Evasion, DamageCalculator.MaxEvasion),
             player.Equipment
                 .Select(pair => new EquippedItemResponse(pair.Key, pair.Value.Id))
+                .ToList(),
+            quickSlot is null ? null : ToItemResponse(quickSlot),
+            quickSlot is null ? 0 : player.Inventory.Entries
+                .Where(entry => entry.Item.Id == quickSlot.Id)
+                .Sum(entry => entry.Quantity),
+            player.Boosts
+                .Select(boost => new ActiveBoostResponse(
+                    ToItemResponse(boost.Source),
+                    ToModifierResponse(boost.Modifier),
+                    boost.RemainingTurns))
                 .ToList());
     }
 
@@ -72,11 +83,36 @@ public static class GameMapper
         InventoryFull e => new("InventoryFull", Item: ToItemResponse(e.Item)),
         ItemEquipped e => new("ItemEquipped", Item: ToItemResponse(e.Item)),
         EquipRejected e => new("EquipRejected", Reason: e.Reason.ToString()),
+        ItemUsed e => new("ItemUsed", Item: ToItemResponse(e.Item)),
+        UseRejected e => new("UseRejected", Reason: e.Reason.ToString()),
+        QuickSlotAssigned e => new("QuickSlotAssigned", Item: ToItemResponse(e.Item)),
+        BoostExpired e => new("BoostExpired", Item: ToItemResponse(e.Item)),
         _ => throw new ArgumentOutOfRangeException(nameof(gameEvent), gameEvent.GetType().Name, "Unknown game event.")
     };
 
-    private static ItemResponse ToItemResponse(ItemDefinition item) =>
-        new(item.Id, item.Name, item.Rarity, CategoryOf(item));
+    private static ItemResponse ToItemResponse(ItemDefinition item)
+    {
+        var potion = item as PotionDefinition;
+
+        return new ItemResponse(
+            item.Id,
+            item.Name,
+            item.Rarity,
+            CategoryOf(item),
+            item.Description,
+            ModifiersOf(item),
+            potion is { Healing: > 0 } ? potion.Healing : null,
+            potion?.Boost is { } boost ? ToModifierResponse(boost) : null,
+            potion?.Boost is not null ? potion.BoostTurns : null);
+    }
+
+    private static IReadOnlyList<ModifierResponse> ModifiersOf(ItemDefinition item) =>
+        item is EquipmentDefinition equipment
+            ? equipment.Modifiers.Select(ToModifierResponse).ToList()
+            : [];
+
+    private static ModifierResponse ToModifierResponse(StatModifier modifier) =>
+        new(modifier.Stat, modifier.Amount);
 
     private static string CategoryOf(ItemDefinition item) => item switch
     {

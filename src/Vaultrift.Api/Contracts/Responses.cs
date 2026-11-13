@@ -23,13 +23,29 @@ public sealed record PlayerResponse(
     int Attack,
     int Defense,
     int Evasion,
-    IReadOnlyList<EquippedItemResponse> Equipment);
+    IReadOnlyList<EquippedItemResponse> Equipment,
+    ItemResponse? QuickSlot,
+    int QuickSlotQuantity,
+    IReadOnlyList<ActiveBoostResponse> Boosts);
 
 public sealed record EquippedItemResponse(EquipmentSlot Slot, int EntryId);
 
+public sealed record ActiveBoostResponse(ItemResponse Item, ModifierResponse Modifier, int RemainingTurns);
+
 public sealed record EnemyResponse(int Id, int X, int Y, int Health, int MaxHealth, bool IsAwake);
 
-public sealed record ItemResponse(string Id, string Name, Rarity Rarity, string Category);
+public sealed record ModifierResponse(StatType Stat, int Amount);
+
+public sealed record ItemResponse(
+    string Id,
+    string Name,
+    Rarity Rarity,
+    string Category,
+    string? Description,
+    IReadOnlyList<ModifierResponse> Modifiers,
+    int? Healing,
+    ModifierResponse? Boost,
+    int? BoostTurns);
 
 public sealed record FloorItemResponse(int X, int Y, ItemResponse Item);
 

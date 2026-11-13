@@ -61,6 +61,7 @@ public static class StarterLevel
 
         player.Inventory.TryAdd(ItemCatalog.Get("potion-healing"));
         player.Inventory.TryAdd(ItemCatalog.Get("potion-healing"));
+        player.AssignQuickSlot(player.Inventory.Entries[1].Id);
     }
 
     private static FloorItem Item(int x, int y, string itemId) =>
