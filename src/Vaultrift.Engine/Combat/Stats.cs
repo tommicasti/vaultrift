@@ -1,4 +1,6 @@
-﻿namespace Vaultrift.Engine.Combat;
+﻿using Vaultrift.Engine.Items;
+
+namespace Vaultrift.Engine.Combat;
 
 public sealed record Stats
 {
@@ -29,4 +31,33 @@ public sealed record Stats
     public int Defense { get; }
 
     public int Evasion { get; }
+
+    public Stats Apply(IEnumerable<StatModifier> modifiers)
+    {
+        ArgumentNullException.ThrowIfNull(modifiers);
+
+        var attack = Attack;
+        var defense = Defense;
+        var evasion = Evasion;
+
+        foreach (var modifier in modifiers)
+        {
+            switch (modifier.Stat)
+            {
+                case StatType.Attack:
+                    attack += modifier.Amount;
+                    break;
+                case StatType.Defense:
+                    defense += modifier.Amount;
+                    break;
+                case StatType.Evasion:
+                    evasion += modifier.Amount;
+                    break;
+                default:
+                    throw new ArgumentOutOfRangeException(nameof(modifiers), modifier.Stat, "Unknown stat type.");
+            }
+        }
+
+        return new Stats(MaxHealth, Math.Max(0, attack), Math.Max(0, defense), Math.Clamp(evasion, 0, 100));
+    }
 }

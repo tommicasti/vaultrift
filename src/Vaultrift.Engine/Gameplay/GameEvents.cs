@@ -29,3 +29,7 @@ public sealed record PlayerRespawned(Position At) : GameEvent;
 public sealed record ItemPickedUp(ItemDefinition Item) : GameEvent;
 
 public sealed record InventoryFull(ItemDefinition Item) : GameEvent;
+
+public sealed record ItemEquipped(ItemDefinition Item) : GameEvent;
+
+public sealed record EquipRejected(EquipResult Reason) : GameEvent;

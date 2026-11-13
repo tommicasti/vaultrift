@@ -102,13 +102,30 @@ public sealed class Game
         }
         else
         {
-            var result = _damageCalculator.Calculate(Player.Stats, target.Stats);
+            var result = _damageCalculator.Calculate(Player.CombatStats, target.CombatStats);
             target.TakeDamage(result.Damage);
             events.Add(new PlayerAttackedEnemy(target.Id, result));
 
             if (target.IsDead)
                 events.Add(new EnemyDefeated(target.Id));
         }
+
+        EndTurn(events);
+        return new TurnResult(TurnPassed: true, events);
+    }
+
+    public TurnResult Equip(int entryId)
+    {
+        var events = new List<GameEvent>();
+        var result = Player.Equip(entryId);
+
+        if (result != EquipResult.Equipped)
+        {
+            events.Add(new EquipRejected(result));
+            return new TurnResult(TurnPassed: false, events);
+        }
+
+        events.Add(new ItemEquipped(Player.Inventory.Find(entryId)!.Item));
 
         EndTurn(events);
         return new TurnResult(TurnPassed: true, events);
@@ -169,7 +186,7 @@ public sealed class Game
 
     private void AttackPlayer(Enemy enemy, List<GameEvent> events)
     {
-        var result = _damageCalculator.Calculate(enemy.Stats, Player.Stats);
+        var result = _damageCalculator.Calculate(enemy.CombatStats, Player.CombatStats);
         Player.TakeDamage(result.Damage);
         events.Add(new EnemyAttackedPlayer(enemy.Id, result));
     }

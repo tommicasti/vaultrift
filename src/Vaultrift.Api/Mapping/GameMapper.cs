@@ -1,4 +1,5 @@
 ﻿using Vaultrift.Api.Contracts;
+using Vaultrift.Engine.Combat;
 using Vaultrift.Engine.Gameplay;
 using Vaultrift.Engine.Items;
 using Vaultrift.Engine.World;
@@ -11,12 +12,7 @@ public static class GameMapper
         new(
             id,
             ToRows(game.Map),
-            new PlayerResponse(
-                game.Player.Position.X,
-                game.Player.Position.Y,
-                game.Player.Facing,
-                game.Player.Health,
-                game.Player.Stats.MaxHealth),
+            ToPlayerResponse(game.Player),
             game.Enemies
                 .Where(enemy => !enemy.IsDead)
                 .Select(enemy => new EnemyResponse(
@@ -42,6 +38,24 @@ public static class GameMapper
             result.Events.Select(ToResponse).ToList(),
             ToResponse(id, game));
 
+    private static PlayerResponse ToPlayerResponse(Player player)
+    {
+        var combat = player.CombatStats;
+
+        return new PlayerResponse(
+            player.Position.X,
+            player.Position.Y,
+            player.Facing,
+            player.Health,
+            player.Stats.MaxHealth,
+            combat.Attack,
+            combat.Defense,
+            Math.Min(combat.Evasion, DamageCalculator.MaxEvasion),
+            player.Equipment
+                .Select(pair => new EquippedItemResponse(pair.Key, pair.Value.Id))
+                .ToList());
+    }
+
     private static EventResponse ToResponse(GameEvent gameEvent) => gameEvent switch
     {
         PlayerMoved e => new("PlayerMoved", X: e.To.X, Y: e.To.Y),
@@ -56,6 +70,8 @@ public static class GameMapper
         PlayerRespawned e => new("PlayerRespawned", X: e.At.X, Y: e.At.Y),
         ItemPickedUp e => new("ItemPickedUp", Item: ToItemResponse(e.Item)),
         InventoryFull e => new("InventoryFull", Item: ToItemResponse(e.Item)),
+        ItemEquipped e => new("ItemEquipped", Item: ToItemResponse(e.Item)),
+        EquipRejected e => new("EquipRejected", Reason: e.Reason.ToString()),
         _ => throw new ArgumentOutOfRangeException(nameof(gameEvent), gameEvent.GetType().Name, "Unknown game event.")
     };
 
@@ -65,7 +81,7 @@ public static class GameMapper
     private static string CategoryOf(ItemDefinition item) => item switch
     {
         WeaponDefinition weapon => weapon.WeaponType.ToString(),
-        ArmorDefinition => "Armor",
+        GearDefinition gear => gear.Kind.ToString(),
         PotionDefinition => "Potion",
         _ => throw new ArgumentOutOfRangeException(nameof(item), item.GetType().Name, "Unknown item type.")
     };

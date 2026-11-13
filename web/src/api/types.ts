@@ -2,7 +2,11 @@ export type Direction = 'Up' | 'Down' | 'Left' | 'Right'
 
 export type Rarity = 'Common' | 'Rare' | 'Epic' | 'Legendary'
 
-export type ItemCategory = 'Sword' | 'Axe' | 'Bow' | 'Armor' | 'Potion'
+export type ItemCategory = 'Sword' | 'Axe' | 'Bow' | 'Head' | 'Body' | 'Feet' | 'Ring' | 'Potion'
+
+export type EquipmentSlot = 'Weapon' | 'Head' | 'Body' | 'Feet' | 'Ring1' | 'Ring2'
+
+export type EquipRejectReason = 'ItemNotFound' | 'NotEquippable' | 'AlreadyEquipped'
 
 export interface ItemInfo {
   id: string
@@ -11,12 +15,21 @@ export interface ItemInfo {
   category: ItemCategory
 }
 
+export interface EquippedItem {
+  slot: EquipmentSlot
+  entryId: number
+}
+
 export interface PlayerState {
   x: number
   y: number
   facing: Direction
   health: number
   maxHealth: number
+  attack: number
+  defense: number
+  evasion: number
+  equipment: EquippedItem[]
 }
 
 export interface EnemyState {
@@ -64,6 +77,8 @@ export type GameEventType =
   | 'PlayerRespawned'
   | 'ItemPickedUp'
   | 'InventoryFull'
+  | 'ItemEquipped'
+  | 'EquipRejected'
 
 export interface GameEvent {
   type: GameEventType
@@ -74,6 +89,7 @@ export interface GameEvent {
   x?: number
   y?: number
   item?: ItemInfo
+  reason?: EquipRejectReason
 }
 
 export interface TurnResponse {

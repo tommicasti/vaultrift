@@ -1,4 +1,5 @@
-﻿using Vaultrift.Engine.Items;
+﻿using Vaultrift.Engine.Gameplay;
+using Vaultrift.Engine.Items;
 using Vaultrift.Engine.World;
 
 namespace Vaultrift.Api.Contracts;
@@ -13,7 +14,18 @@ public sealed record GameStateResponse(
     int InventoryCapacity,
     int Deaths);
 
-public sealed record PlayerResponse(int X, int Y, Direction Facing, int Health, int MaxHealth);
+public sealed record PlayerResponse(
+    int X,
+    int Y,
+    Direction Facing,
+    int Health,
+    int MaxHealth,
+    int Attack,
+    int Defense,
+    int Evasion,
+    IReadOnlyList<EquippedItemResponse> Equipment);
+
+public sealed record EquippedItemResponse(EquipmentSlot Slot, int EntryId);
 
 public sealed record EnemyResponse(int Id, int X, int Y, int Health, int MaxHealth, bool IsAwake);
 
@@ -33,4 +45,5 @@ public sealed record EventResponse(
     bool? IsDodged = null,
     int? X = null,
     int? Y = null,
-    ItemResponse? Item = null);
+    ItemResponse? Item = null,
+    string? Reason = null);

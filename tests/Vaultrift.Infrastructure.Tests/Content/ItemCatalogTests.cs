@@ -5,9 +5,14 @@ namespace Vaultrift.Infrastructure.Tests.Content;
 
 public class ItemCatalogTests
 {
+    private static readonly EquipmentKind[] GearKinds =
+        [EquipmentKind.Head, EquipmentKind.Body, EquipmentKind.Feet, EquipmentKind.Ring];
+
     private static IEnumerable<EquipmentDefinition> Equipment => ItemCatalog.All.OfType<EquipmentDefinition>();
 
     private static IEnumerable<WeaponDefinition> Weapons => ItemCatalog.All.OfType<WeaponDefinition>();
+
+    private static IEnumerable<GearDefinition> Gear => ItemCatalog.All.OfType<GearDefinition>();
 
     private static IEnumerable<PotionDefinition> Potions => ItemCatalog.All.OfType<PotionDefinition>();
 
@@ -41,11 +46,20 @@ public class ItemCatalogTests
     }
 
     [Fact]
-    public void Armors_GiveDefense()
+    public void Gear_IsNeverAWeapon()
+    {
+        Assert.All(Gear, item => Assert.NotEqual(EquipmentKind.Weapon, item.Kind));
+    }
+
+    [Theory]
+    [InlineData(EquipmentKind.Head, StatType.Defense)]
+    [InlineData(EquipmentKind.Body, StatType.Defense)]
+    [InlineData(EquipmentKind.Feet, StatType.Evasion)]
+    public void Gear_GivesThePrincipalBonusOfItsKind(EquipmentKind kind, StatType principal)
     {
         Assert.All(
-            ItemCatalog.All.OfType<ArmorDefinition>(),
-            armor => Assert.Contains(armor.Modifiers, modifier => modifier.Stat == StatType.Defense));
+            Gear.Where(item => item.Kind == kind),
+            item => Assert.Contains(item.Modifiers, modifier => modifier.Stat == principal));
     }
 
     [Fact]
@@ -54,6 +68,32 @@ public class ItemCatalogTests
         foreach (var type in Enum.GetValues<WeaponType>())
             foreach (var rarity in Enum.GetValues<Rarity>())
                 Assert.Contains(Weapons, weapon => weapon.WeaponType == type && weapon.Rarity == rarity);
+    }
+
+    [Fact]
+    public void EveryGearKind_ExistsInEveryRarity()
+    {
+        foreach (var kind in GearKinds)
+            foreach (var rarity in Enum.GetValues<Rarity>())
+                Assert.Contains(Gear, item => item.Kind == kind && item.Rarity == rarity);
+    }
+
+    [Fact]
+    public void EveryEquipmentType_HasThreeLegendaries()
+    {
+        foreach (var type in Enum.GetValues<WeaponType>())
+            Assert.Equal(3, Weapons.Count(weapon => weapon.WeaponType == type && weapon.Rarity == Rarity.Legendary));
+
+        foreach (var kind in GearKinds)
+            Assert.Equal(3, Gear.Count(item => item.Kind == kind && item.Rarity == Rarity.Legendary));
+    }
+
+    [Fact]
+    public void Legendaries_HaveADescription()
+    {
+        Assert.All(
+            ItemCatalog.All.Where(item => item.Rarity == Rarity.Legendary),
+            item => Assert.False(string.IsNullOrWhiteSpace(item.Description)));
     }
 
     [Fact]
@@ -71,7 +111,7 @@ public class ItemCatalogTests
     [Fact]
     public void Get_KnownId_ReturnsTheItem()
     {
-        var item = ItemCatalog.Get("sword-legendary");
+        var item = ItemCatalog.Get("sword-vaultbreaker");
 
         Assert.Equal("Vaultbreaker", item.Name);
         Assert.Equal(Rarity.Legendary, item.Rarity);

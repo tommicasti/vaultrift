@@ -52,6 +52,11 @@ public sealed class GamesController : ControllerBase
     public ActionResult<TurnResponse> Attack(Guid id) =>
         Play(id, game => game.Attack());
 
+
+    [HttpPost("{id:guid}/equip")]
+    public ActionResult<TurnResponse> Equip(Guid id, EquipRequest request) =>
+    Play(id, game => game.Equip(request.EntryId));
+
     private ActionResult<TurnResponse> Play(Guid id, Func<Game, TurnResult> action)
     {
         var game = _store.Find(id);

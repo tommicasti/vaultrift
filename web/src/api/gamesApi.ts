@@ -25,3 +25,7 @@ export function move(gameId: string, direction: Direction): Promise<TurnResponse
 export function attack(gameId: string): Promise<TurnResponse> {
   return post<TurnResponse>(`/${gameId}/attack`)
 }
+
+export function equip(gameId: string, entryId: number): Promise<TurnResponse> {
+  return post<TurnResponse>(`/${gameId}/equip`, { entryId })
+}

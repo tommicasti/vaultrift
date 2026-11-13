@@ -4,6 +4,9 @@ export const categoryIcons: Record<ItemCategory, string> = {
   Sword: '🗡️',
   Axe: '🪓',
   Bow: '🏹',
-  Armor: '🛡️',
+  Head: '🪖',
+  Body: '🛡️',
+  Feet: '🥾',
+  Ring: '💍',
   Potion: '🧪',
 }

@@ -1,4 +1,10 @@
-import type { GameEvent } from '../api/types'
+import type { EquipRejectReason, GameEvent } from '../api/types'
+
+const equipRejectMessages: Record<EquipRejectReason, string> = {
+  ItemNotFound: 'That item is no longer in your backpack.',
+  NotEquippable: "You can't equip that.",
+  AlreadyEquipped: 'That item is already equipped.',
+}
 
 export function describeEvent(event: GameEvent): string | null {
   const critical = event.isCritical ? ' Critical hit!' : ''
@@ -30,5 +36,9 @@ export function describeEvent(event: GameEvent): string | null {
       return `You pick up ${event.item?.name}.`
     case 'InventoryFull':
       return `Your backpack is full. ${event.item?.name} stays on the floor.`
+    case 'ItemEquipped':
+      return `You equip ${event.item?.name}.`
+    case 'EquipRejected':
+      return equipRejectMessages[event.reason ?? 'NotEquippable']
   }
 }

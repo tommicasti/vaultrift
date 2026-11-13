@@ -18,6 +18,9 @@ export function StatusBar({ player, deaths }: StatusBarProps) {
           <div className="health-fill" style={{ width: `${healthPercent}%` }} />
         </div>
       </div>
+      <div className="label stats">
+        ATK {player.attack} · DEF {player.defense} · EVA {player.evasion}%
+      </div>
       <div className="label">Deaths: {deaths}</div>
     </section>
   )

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
-import { attack, createGame, move } from './api/gamesApi'
+import { attack, createGame, equip, move } from './api/gamesApi'
 import type { Direction, GameState, TurnResponse } from './api/types'
 import { Board } from './components/Board'
 import { Controls } from './components/Controls'
@@ -74,6 +74,11 @@ function App() {
 
   const handleAttack = useCallback(() => void play(attack), [play])
 
+  const handleEquip = useCallback(
+    (entryId: number) => void play(gameId => equip(gameId, entryId)),
+    [play],
+  )
+
   useEffect(() => {
     function handleKeyDown(event: KeyboardEvent) {
       const direction = keyDirections[event.code]
@@ -107,6 +112,8 @@ function App() {
     )
   }
 
+  const equippedIds = game.player.equipment.map(item => item.entryId)
+
   return (
     <main className="app">
       <header className="app-header">
@@ -121,7 +128,13 @@ function App() {
       <Controls disabled={busy} onMove={handleMove} onAttack={handleAttack} />
       {error && <p className="error">{error}</p>}
       <EventLog entries={log} />
-      <Inventory entries={game.inventory} capacity={game.inventoryCapacity} />
+      <Inventory
+        entries={game.inventory}
+        capacity={game.inventoryCapacity}
+        equippedIds={equippedIds}
+        disabled={busy}
+        onEquip={handleEquip}
+      />
     </main>
   )
 }

@@ -18,6 +18,8 @@ public abstract class Creature
 
     public Stats Stats { get; }
 
+    public virtual Stats CombatStats => Stats;
+
     public int Health { get; private set; }
 
     public bool IsDead => Health == 0;

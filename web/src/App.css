@@ -246,6 +246,19 @@
   font-weight: 600;
 }
 
+.inventory li button {
+  margin-left: auto;
+  padding: 0.15rem 0.6rem;
+  font-size: 0.8rem;
+}
+
+.equipped-tag {
+  margin-left: auto;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--accent);
+}
+
 @media (hover: none) and (pointer: coarse) {
   .controls {
     display: flex;
@@ -314,6 +327,10 @@
 
   .status-bar .label {
     font-size: 0.75rem;
+  }
+
+  .status-bar .stats {
+    display: none;
   }
 
   .controls {

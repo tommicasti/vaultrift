@@ -22,7 +22,7 @@ public static class StarterLevel
         "####################"
     ];
 
-    private static readonly Stats PlayerStats = new(maxHealth: 30, attack: 5, defense: 2, evasion: 5);
+    private static readonly Stats PlayerStats = new(maxHealth: 30, attack: 2, defense: 2, evasion: 5);
     private static readonly Stats WeakEnemy = new(maxHealth: 8, attack: 3, defense: 0, evasion: 5);
     private static readonly Stats StrongEnemy = new(maxHealth: 12, attack: 5, defense: 1, evasion: 0);
 
@@ -30,6 +30,7 @@ public static class StarterLevel
     {
         var map = DungeonMap.Parse(Rows);
         var player = new Player(new Position(1, 1), PlayerStats);
+        GiveStartingKit(player);
 
         Enemy[] enemies =
         [
@@ -45,12 +46,21 @@ public static class StarterLevel
             Item(3, 3, "potion-healing"),
             Item(12, 6, "potion-healing"),
             Item(9, 1, "sword-rare"),
-            Item(2, 7, "armor-common"),
+            Item(2, 7, "body-common"),
             Item(17, 4, "potion-strength"),
-            Item(18, 8, "sword-legendary")
+            Item(18, 8, "sword-vaultbreaker")
         ];
 
         return new Game(map, player, enemies, random, items);
+    }
+
+    private static void GiveStartingKit(Player player)
+    {
+        player.Inventory.TryAdd(ItemCatalog.Get("sword-common"));
+        player.Equip(player.Inventory.Entries[0].Id);
+
+        player.Inventory.TryAdd(ItemCatalog.Get("potion-healing"));
+        player.Inventory.TryAdd(ItemCatalog.Get("potion-healing"));
     }
 
     private static FloorItem Item(int x, int y, string itemId) =>
