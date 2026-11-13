@@ -131,6 +131,45 @@ public sealed class Game
         return new TurnResult(TurnPassed: true, events);
     }
 
+    public TurnResult UseItem(int entryId)
+    {
+        var item = Player.Inventory.Find(entryId)?.Item;
+        return ResolveUse(item, Player.Use(entryId));
+    }
+
+    public TurnResult UseQuickSlot()
+    {
+        var item = Player.QuickSlot;
+        return ResolveUse(item, Player.UseQuickSlot());
+    }
+
+    public TurnResult AssignQuickSlot(int entryId)
+    {
+        var item = Player.Inventory.Find(entryId)?.Item;
+
+        GameEvent outcome = Player.AssignQuickSlot(entryId)
+            ? new QuickSlotAssigned(item!)
+            : new UseRejected(item is null ? UseResult.ItemNotFound : UseResult.NotUsable);
+
+        return new TurnResult(TurnPassed: false, [outcome]);
+    }
+
+    private TurnResult ResolveUse(ItemDefinition? item, UseResult result)
+    {
+        var events = new List<GameEvent>();
+
+        if (result != UseResult.Used)
+        {
+            events.Add(new UseRejected(result));
+            return new TurnResult(TurnPassed: false, events);
+        }
+
+        events.Add(new ItemUsed(item!));
+
+        EndTurn(events);
+        return new TurnResult(TurnPassed: true, events);
+    }
+
     private void PickUpItemAt(Position position, List<GameEvent> events)
     {
         if (!_floorItems.TryGetValue(position, out var item))
@@ -153,8 +192,15 @@ public sealed class Game
         TurnNumber++;
 
         if (Player.IsDead)
+        {
             RespawnPlayer(events);
-        else if (TurnNumber % HealthRegenInterval == 0)
+            return;
+        }
+
+        foreach (var boost in Player.AdvanceBoosts())
+            events.Add(new BoostExpired(boost.Source));
+
+        if (TurnNumber % HealthRegenInterval == 0)
             Player.Heal(HealthRegenAmount);
     }
 
@@ -206,6 +252,7 @@ public sealed class Game
         Player.Position = _playerStart;
         Player.Facing = Direction.Down;
         Player.RestoreFullHealth();
+        Player.ClearBoosts();
         events.Add(new PlayerRespawned(_playerStart));
     }
 

@@ -33,3 +33,11 @@ public sealed record InventoryFull(ItemDefinition Item) : GameEvent;
 public sealed record ItemEquipped(ItemDefinition Item) : GameEvent;
 
 public sealed record EquipRejected(EquipResult Reason) : GameEvent;
+
+public sealed record ItemUsed(ItemDefinition Item) : GameEvent;
+
+public sealed record UseRejected(UseResult Reason) : GameEvent;
+
+public sealed record QuickSlotAssigned(ItemDefinition Item) : GameEvent;
+
+public sealed record BoostExpired(ItemDefinition Item) : GameEvent;

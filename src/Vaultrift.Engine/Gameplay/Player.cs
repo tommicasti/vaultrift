@@ -7,6 +7,7 @@ namespace Vaultrift.Engine.Gameplay;
 public sealed class Player : Creature
 {
     private readonly Dictionary<EquipmentSlot, InventoryEntry> _equipment = [];
+    private readonly Dictionary<string, ActiveBoost> _boosts = [];
 
     public Player(Position position, Stats stats)
         : base(position, stats)
@@ -20,7 +21,12 @@ public sealed class Player : Creature
 
     public IReadOnlyDictionary<EquipmentSlot, InventoryEntry> Equipment => _equipment;
 
-    public override Stats CombatStats => Stats.Apply(EquippedModifiers());
+    public IReadOnlyCollection<ActiveBoost> Boosts => _boosts.Values;
+
+    public PotionDefinition? QuickSlot { get; private set; }
+
+    public override Stats CombatStats =>
+        Stats.Apply(EquippedModifiers().Concat(_boosts.Values.Select(boost => boost.Modifier)));
 
     public EquipResult Equip(int entryId)
     {
@@ -38,6 +44,68 @@ public sealed class Player : Creature
         _equipment[SlotFor(equipment.Kind)] = entry;
         return EquipResult.Equipped;
     }
+
+    public UseResult Use(int entryId)
+    {
+        var entry = Inventory.Find(entryId);
+
+        if (entry is null)
+            return UseResult.ItemNotFound;
+
+        if (entry.Item is not PotionDefinition potion)
+            return UseResult.NotUsable;
+
+        if (potion.Healing > 0 && Health == Stats.MaxHealth)
+            return UseResult.AlreadyAtFullHealth;
+
+        if (potion.Healing > 0)
+            Heal(potion.Healing);
+
+        if (potion.Boost is { } boost)
+            _boosts[potion.Id] = new ActiveBoost(potion, boost, potion.BoostTurns);
+
+        Inventory.RemoveOne(entry.Id);
+        return UseResult.Used;
+    }
+
+    public UseResult UseQuickSlot()
+    {
+        if (QuickSlot is null)
+            return UseResult.QuickSlotEmpty;
+
+        var entry = Inventory.Entries.FirstOrDefault(candidate => candidate.Item.Id == QuickSlot.Id);
+
+        return entry is null ? UseResult.ItemNotFound : Use(entry.Id);
+    }
+
+    public bool AssignQuickSlot(int entryId)
+    {
+        if (Inventory.Find(entryId)?.Item is not PotionDefinition potion)
+            return false;
+
+        QuickSlot = potion;
+        return true;
+    }
+
+    internal IReadOnlyList<ActiveBoost> AdvanceBoosts()
+    {
+        var expired = new List<ActiveBoost>();
+
+        foreach (var boost in _boosts.Values.ToList())
+        {
+            boost.RemainingTurns--;
+
+            if (boost.RemainingTurns > 0)
+                continue;
+
+            _boosts.Remove(boost.Source.Id);
+            expired.Add(boost);
+        }
+
+        return expired;
+    }
+
+    internal void ClearBoosts() => _boosts.Clear();
 
     private EquipmentSlot SlotFor(EquipmentKind kind) => kind switch
     {
