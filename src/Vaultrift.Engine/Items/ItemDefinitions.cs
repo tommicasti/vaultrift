@@ -8,7 +8,8 @@ public abstract record EquipmentDefinition(
     Rarity Rarity,
     EquipmentKind Kind,
     IReadOnlyList<StatModifier> Modifiers,
-    string? Description)
+    string? Description,
+    Element? FixedElement)
     : ItemDefinition(Id, Name, Rarity, Description);
 
 public sealed record WeaponDefinition(
@@ -17,8 +18,9 @@ public sealed record WeaponDefinition(
     Rarity Rarity,
     WeaponType WeaponType,
     IReadOnlyList<StatModifier> Modifiers,
-    string? Description = null)
-    : EquipmentDefinition(Id, Name, Rarity, EquipmentKind.Weapon, Modifiers, Description);
+    string? Description = null,
+    Element? FixedElement = null)
+    : EquipmentDefinition(Id, Name, Rarity, EquipmentKind.Weapon, Modifiers, Description, FixedElement);
 
 public sealed record GearDefinition(
     string Id,
@@ -26,8 +28,9 @@ public sealed record GearDefinition(
     Rarity Rarity,
     EquipmentKind Kind,
     IReadOnlyList<StatModifier> Modifiers,
-    string? Description = null)
-    : EquipmentDefinition(Id, Name, Rarity, Kind, Modifiers, Description);
+    string? Description = null,
+    Element? FixedElement = null)
+    : EquipmentDefinition(Id, Name, Rarity, Kind, Modifiers, Description, FixedElement);
 
 public sealed record PotionDefinition(
     string Id,

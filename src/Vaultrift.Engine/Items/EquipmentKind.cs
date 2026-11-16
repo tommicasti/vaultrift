@@ -6,5 +6,6 @@ public enum EquipmentKind
     Head,
     Body,
     Feet,
-    Ring
+    Ring,
+    Cloak
 }

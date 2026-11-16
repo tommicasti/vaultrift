@@ -21,13 +21,13 @@ public sealed class Inventory
 
     public bool IsFull => _entries.Count >= Capacity;
 
-    public bool TryAdd(ItemDefinition item)
+    public bool TryAdd(ItemInstance item)
     {
         ArgumentNullException.ThrowIfNull(item);
 
         if (IsStackable(item))
         {
-            var stack = _entries.FirstOrDefault(entry => entry.Item.Id == item.Id);
+            var stack = _entries.FirstOrDefault(entry => entry.Item == item);
 
             if (stack is not null)
             {
@@ -57,5 +57,5 @@ public sealed class Inventory
             _entries.Remove(entry);
     }
 
-    private static bool IsStackable(ItemDefinition item) => item is PotionDefinition;
+    private static bool IsStackable(ItemInstance item) => item.Definition is PotionDefinition;
 }

@@ -42,12 +42,14 @@ public static class StarterLevel
 
         FloorItem[] items =
         [
-            Item(3, 3, "potion-healing"),
-            Item(12, 6, "potion-healing"),
-            Item(9, 1, "sword-rare"),
-            Item(2, 7, "body-common"),
-            Item(17, 4, "potion-strength"),
-            Item(18, 8, "sword-vaultbreaker")
+            Item(3, 3, "potion-healing", random),
+            Item(12, 6, "potion-healing", random),
+            Item(9, 1, "sword-rare", random),
+            Item(2, 7, "body-common", random),
+            Item(6, 1, "cloak-common", random),
+            Item(17, 4, "potion-strength", random),
+            Item(14, 3, "sword-ember-oath", random),
+            Item(18, 8, "sword-vaultbreaker", random)
         ];
 
         return new Game(map, player, enemies, random, items);
@@ -56,13 +58,13 @@ public static class StarterLevel
     private static void GiveStartingKit(Player player, IReadOnlyList<string> itemIds)
     {
         foreach (var itemId in itemIds)
-            player.Inventory.TryAdd(ItemCatalog.Get(itemId));
+            player.Inventory.TryAdd(new ItemInstance(ItemCatalog.Get(itemId)));
 
         foreach (var entry in player.Inventory.Entries)
         {
-            if (entry.Item is EquipmentDefinition)
+            if (entry.Item.Definition is EquipmentDefinition)
                 player.Equip(entry.Id);
-            else if (entry.Item is PotionDefinition && player.QuickSlot is null)
+            else if (entry.Item.Definition is PotionDefinition && player.QuickSlot is null)
                 player.AssignQuickSlot(entry.Id);
         }
     }
@@ -70,6 +72,6 @@ public static class StarterLevel
     private static Enemy Monster(int id, int x, int y, string kindId, Rarity rarity, int level = 1) =>
         new(id, new Position(x, y), BestiaryCatalog.Get(kindId), rarity, level);
 
-    private static FloorItem Item(int x, int y, string itemId) =>
-        new(new Position(x, y), ItemCatalog.Get(itemId));
+    private static FloorItem Item(int x, int y, string itemId, IRandom random) =>
+        new(new Position(x, y), ItemRoller.Roll(ItemCatalog.Get(itemId), random));
 }

@@ -5,15 +5,16 @@ using Vaultrift.Engine.World;
 
 namespace Vaultrift.Engine.Gameplay;
 
-public sealed class Game
+public sealed partial class Game
 {
     public const int EnemyWakeDistance = 5;
     public const int HealthRegenInterval = 3;
     public const int HealthRegenAmount = 1;
 
     private readonly List<Enemy> _enemies;
-    private readonly Dictionary<Position, ItemDefinition> _floorItems = [];
+    private readonly Dictionary<Position, ItemInstance> _floorItems = [];
     private readonly DamageCalculator _damageCalculator;
+    private readonly IRandom _random;
     private readonly Position _playerStart;
 
     public Game(
@@ -55,6 +56,7 @@ public sealed class Game
         Map = map;
         Player = player;
         _playerStart = player.Position;
+        _random = random;
         _damageCalculator = new DamageCalculator(random);
     }
 
@@ -64,7 +66,7 @@ public sealed class Game
 
     public IReadOnlyList<Enemy> Enemies => _enemies;
 
-    public IReadOnlyDictionary<Position, ItemDefinition> FloorItems => _floorItems;
+    public IReadOnlyDictionary<Position, ItemInstance> FloorItems => _floorItems;
 
     public int Deaths { get; private set; }
 
@@ -102,12 +104,22 @@ public sealed class Game
         }
         else
         {
-            var result = _damageCalculator.Calculate(Player.CombatStats, target.CombatStats);
+            var weapon = Player.Weapon;
+            var result = ElementRules.Apply(
+                _damageCalculator.Calculate(Player.CombatStats, target.CombatStats),
+                weapon?.Element,
+                target.Kind.Weakness,
+                target.Kind.Resistance,
+                weapon?.Rarity ?? Rarity.Common);
+
             target.TakeDamage(result.Damage);
             events.Add(new PlayerAttackedEnemy(target.Id, result));
 
             if (target.IsDead)
                 events.Add(new EnemyDefeated(target.Id));
+
+            if (!result.IsDodged && weapon?.Element is { } element)
+                TriggerElement(element, weapon.Rarity, target, result.Damage, events);
         }
 
         EndTurn(events);
@@ -139,13 +151,13 @@ public sealed class Game
 
     public TurnResult UseQuickSlot()
     {
-        var item = Player.QuickSlot;
+        var item = Player.QuickSlot is { } potion ? new ItemInstance(potion) : null;
         return ResolveUse(item, Player.UseQuickSlot());
     }
 
     public TurnResult AssignQuickSlot(int entryId)
     {
-        var item = Player.Inventory.Find(entryId)?.Item;
+        var item = Player.Inventory.Find(entryId)?.Item.Definition;
 
         GameEvent outcome = Player.AssignQuickSlot(entryId)
             ? new QuickSlotAssigned(item!)
@@ -154,7 +166,7 @@ public sealed class Game
         return new TurnResult(TurnPassed: false, [outcome]);
     }
 
-    private TurnResult ResolveUse(ItemDefinition? item, UseResult result)
+    private TurnResult ResolveUse(ItemInstance? item, UseResult result)
     {
         var events = new List<GameEvent>();
 
@@ -189,6 +201,7 @@ public sealed class Game
     private void EndTurn(List<GameEvent> events)
     {
         EnemiesAct(events);
+        BurnEnemies(events);
         TurnNumber++;
 
         if (Player.IsDead)
@@ -214,6 +227,9 @@ public sealed class Game
             if (enemy.IsDead)
                 continue;
 
+            if (enemy.FreezeImmunityTurnsLeft > 0)
+                enemy.FreezeImmunityTurnsLeft--;
+
             if (!enemy.IsAwake)
             {
                 if (Distance(enemy.Position, Player.Position) > EnemyWakeDistance)
@@ -221,6 +237,12 @@ public sealed class Game
 
                 enemy.IsAwake = true;
                 events.Add(new EnemyWokeUp(enemy.Id));
+            }
+
+            if (enemy.IsFrozen)
+            {
+                ThawOneTurn(enemy, events);
+                continue;
             }
 
             if (enemy.IsResting)
@@ -251,7 +273,13 @@ public sealed class Game
 
     private void AttackPlayer(Enemy enemy, List<GameEvent> events)
     {
-        var result = _damageCalculator.Calculate(enemy.CombatStats, Player.CombatStats);
+        var result = ElementRules.Apply(
+            _damageCalculator.Calculate(enemy.CombatStats, Player.CombatStats),
+            enemy.Kind.AttackElement,
+            weakness: null,
+            Player.Resistance,
+            enemy.Rarity);
+
         Player.TakeDamage(result.Damage);
         events.Add(new EnemyAttackedPlayer(enemy.Id, result));
     }
@@ -266,6 +294,7 @@ public sealed class Game
             enemy.Position = enemy.StartPosition;
             enemy.IsAwake = false;
             enemy.IsResting = false;
+            enemy.ClearStatuses();
             enemy.RestoreFullHealth();
         }
 

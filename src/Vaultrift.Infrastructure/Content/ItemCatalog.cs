@@ -17,7 +17,7 @@ public static class ItemCatalog
             Attack(11), Evasion(6), Defense(1)),
         LegendaryWeapon("sword-ember-oath", "Ember Oath", WeaponType.Sword,
             "Sworn in fire, kept in ash.",
-            Attack(13), Defense(1), Evasion(2)),
+            Element.Fire, Attack(13), Defense(1), Evasion(2)),
 
         Weapon("axe-common", "Hatchet", WeaponType.Axe, Rarity.Common, Attack(2)),
         Weapon("axe-rare", "Battle Axe", WeaponType.Axe, Rarity.Rare, Attack(3)),
@@ -30,7 +30,7 @@ public static class ItemCatalog
             Attack(7), Defense(4), Evasion(2)),
         LegendaryWeapon("axe-stormmaw", "Stormmaw", WeaponType.Axe,
             "Thunder doesn't ask permission.",
-            Attack(9), Defense(2), Evasion(2)),
+            Element.Lightning, Attack(9), Defense(2), Evasion(2)),
 
         Weapon("bow-common", "Short Bow", WeaponType.Bow, Rarity.Common, Attack(2)),
         Weapon("bow-rare", "Hunter's Bow", WeaponType.Bow, Rarity.Rare, Attack(3)),
@@ -40,10 +40,10 @@ public static class ItemCatalog
             Attack(8), Evasion(8), Defense(1)),
         LegendaryWeapon("bow-nightglass", "Nightglass", WeaponType.Bow,
             "Sleep is just a slower kind of surrender.",
-            Attack(9), Evasion(6), Defense(1)),
+            Element.Ice, Attack(9), Evasion(6), Defense(1)),
         LegendaryWeapon("bow-galecaller", "Galecaller", WeaponType.Bow,
             "Ask the wind nicely. Then pull.",
-            Attack(7), Evasion(10), Defense(1)),
+            Element.Wind, Attack(7), Evasion(10), Defense(1)),
 
         Gear("head-common", "Leather Cap", EquipmentKind.Head, Rarity.Common, Defense(1)),
         Gear("head-rare", "Iron Helm", EquipmentKind.Head, Rarity.Rare, Defense(2)),
@@ -97,6 +97,19 @@ public static class ItemCatalog
             "Greed is just ambition with better jewelry.",
             Attack(3), Defense(1), Evasion(2)),
 
+        Gear("cloak-common", "Traveler's Cloak", EquipmentKind.Cloak, Rarity.Common, Evasion(1)),
+        Gear("cloak-rare", "Hooded Cloak", EquipmentKind.Cloak, Rarity.Rare, Evasion(2)),
+        Gear("cloak-epic", "Shadow Mantle", EquipmentKind.Cloak, Rarity.Epic, Evasion(3), Defense(1)),
+        LegendaryGear("cloak-cinderweave", "Cinderweave", EquipmentKind.Cloak,
+            "Woven from embers that refused to go out.",
+            Element.Fire, Evasion(5), Defense(2), Attack(1)),
+        LegendaryGear("cloak-rimeveil", "Rimeveil", EquipmentKind.Cloak,
+            "Winter wears it to look warmer.",
+            Element.Ice, Evasion(5), Defense(2), Attack(1)),
+        LegendaryGear("cloak-stormshroud", "Stormshroud", EquipmentKind.Cloak,
+            "The sky lent it a storm and never asked for it back.",
+            Element.Lightning, Evasion(6), Defense(1), Attack(1)),
+
         new PotionDefinition("potion-healing", "Healing Potion", Rarity.Common, Healing: 10),
         new PotionDefinition("potion-greater-healing", "Greater Healing Potion", Rarity.Rare, Healing: 25),
         new PotionDefinition("potion-strength", "Strength Potion", Rarity.Rare, Boost: Attack(3), BoostTurns: 10),
@@ -119,9 +132,15 @@ public static class ItemCatalog
     private static WeaponDefinition LegendaryWeapon(string id, string name, WeaponType type, string description, params StatModifier[] modifiers) =>
         new(id, name, Rarity.Legendary, type, modifiers, description);
 
+    private static WeaponDefinition LegendaryWeapon(string id, string name, WeaponType type, string description, Element element, params StatModifier[] modifiers) =>
+        new(id, name, Rarity.Legendary, type, modifiers, description, element);
+
     private static GearDefinition Gear(string id, string name, EquipmentKind kind, Rarity rarity, params StatModifier[] modifiers) =>
         new(id, name, rarity, kind, modifiers);
 
     private static GearDefinition LegendaryGear(string id, string name, EquipmentKind kind, string description, params StatModifier[] modifiers) =>
         new(id, name, Rarity.Legendary, kind, modifiers, description);
+
+    private static GearDefinition LegendaryGear(string id, string name, EquipmentKind kind, string description, Element element, params StatModifier[] modifiers) =>
+        new(id, name, Rarity.Legendary, kind, modifiers, description, element);
 }

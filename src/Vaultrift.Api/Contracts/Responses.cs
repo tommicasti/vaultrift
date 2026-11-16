@@ -1,4 +1,5 @@
-﻿using Vaultrift.Engine.Gameplay;
+﻿using Vaultrift.Engine.Combat;
+using Vaultrift.Engine.Gameplay;
 using Vaultrift.Engine.Items;
 using Vaultrift.Engine.World;
 
@@ -28,7 +29,8 @@ public sealed record PlayerResponse(
     IReadOnlyList<EquippedItemResponse> Equipment,
     ItemResponse? QuickSlot,
     int QuickSlotQuantity,
-    IReadOnlyList<ActiveBoostResponse> Boosts);
+    IReadOnlyList<ActiveBoostResponse> Boosts,
+    Element? Resistance);
 
 public sealed record ClassResponse(
     string Id,
@@ -55,7 +57,13 @@ public sealed record EnemyResponse(
     int Y,
     int Health,
     int MaxHealth,
-    bool IsAwake);
+    bool IsAwake,
+    Element? Weakness,
+    Element? Resistance,
+    Element? AttackElement,
+    bool IsBurning,
+    bool IsFrozen);
+
 public sealed record ModifierResponse(StatType Stat, int Amount);
 
 public sealed record ItemResponse(
@@ -67,7 +75,9 @@ public sealed record ItemResponse(
     IReadOnlyList<ModifierResponse> Modifiers,
     int? Healing,
     ModifierResponse? Boost,
-    int? BoostTurns);
+    int? BoostTurns,
+    Element? Element,
+    int? EffectChance);
 
 public sealed record FloorItemResponse(int X, int Y, ItemResponse Item);
 
@@ -84,4 +94,6 @@ public sealed record EventResponse(
     int? X = null,
     int? Y = null,
     ItemResponse? Item = null,
-    string? Reason = null);
+    string? Reason = null,
+    Element? Element = null,
+    Effectiveness? Effectiveness = null);

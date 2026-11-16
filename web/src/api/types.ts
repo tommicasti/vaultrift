@@ -2,11 +2,15 @@ export type Direction = 'Up' | 'Down' | 'Left' | 'Right'
 
 export type Rarity = 'Common' | 'Rare' | 'Epic' | 'Legendary'
 
-export type ItemCategory = 'Sword' | 'Axe' | 'Bow' | 'Head' | 'Body' | 'Feet' | 'Ring' | 'Potion'
+export type ItemCategory = 'Sword' | 'Axe' | 'Bow' | 'Head' | 'Body' | 'Feet' | 'Ring' | 'Cloak' | 'Potion'
 
-export type EquipmentSlot = 'Weapon' | 'Head' | 'Body' | 'Feet' | 'Ring1' | 'Ring2'
+export type EquipmentSlot = 'Weapon' | 'Head' | 'Body' | 'Feet' | 'Ring1' | 'Ring2' | 'Cloak'
 
 export type StatType = 'Attack' | 'Defense' | 'Evasion'
+
+export type Element = 'Fire' | 'Ice' | 'Lightning' | 'Wind'
+
+export type Effectiveness = 'Neutral' | 'Effective' | 'Resisted'
 
 export type WeaponType = 'Sword' | 'Axe' | 'Bow'
 
@@ -29,6 +33,8 @@ export interface ItemInfo {
   healing?: number
   boost?: StatModifierInfo
   boostTurns?: number
+  element?: Element
+  effectChance?: number
 }
 
 export interface ClassInfo {
@@ -69,6 +75,7 @@ export interface PlayerState {
   quickSlot?: ItemInfo
   quickSlotQuantity: number
   boosts: ActiveBoostInfo[]
+  resistance?: Element
 }
 
 export interface EnemyState {
@@ -82,6 +89,11 @@ export interface EnemyState {
   health: number
   maxHealth: number
   isAwake: boolean
+  weakness?: Element
+  resistance?: Element
+  attackElement?: Element
+  isBurning: boolean
+  isFrozen: boolean
 }
 
 export interface FloorItemState {
@@ -126,6 +138,12 @@ export type GameEventType =
   | 'UseRejected'
   | 'QuickSlotAssigned'
   | 'BoostExpired'
+  | 'EnemyIgnited'
+  | 'EnemyBurned'
+  | 'EnemyFrozen'
+  | 'EnemyThawed'
+  | 'EnemyShocked'
+  | 'EnemyKnockedBack'
 
 export interface GameEvent {
   type: GameEventType
@@ -137,6 +155,8 @@ export interface GameEvent {
   y?: number
   item?: ItemInfo
   reason?: string
+  element?: Element
+  effectiveness?: Effectiveness
 }
 
 export interface TurnResponse {

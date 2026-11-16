@@ -1,11 +1,11 @@
 import { useState } from 'react'
 import type { EquipmentSlot, InventoryEntryState, PlayerState } from '../api/types'
-import { describeItem, slotLabels } from '../game/items'
+import { describeElement, describeItem, elementNames, slotLabels } from '../game/items'
 import { classSprite, sheets } from '../game/sprites'
 import { ItemIcon } from './ItemIcon'
 import { Sprite } from './Sprite'
 
-const slotOrder: EquipmentSlot[] = ['Head', 'Weapon', 'Body', 'Ring1', 'Feet', 'Ring2']
+const slotOrder: EquipmentSlot[] = ['Head', 'Weapon', 'Body', 'Ring1', 'Feet', 'Ring2', 'Cloak']
 
 interface InventoryScreenProps {
   player: PlayerState
@@ -61,7 +61,11 @@ export function InventoryScreen({
                 return (
                   <button
                     key={slot}
-                    className={entry ? `slot rarity-${entry.item.rarity.toLowerCase()}` : 'slot'}
+                    className={[
+                      'slot',
+                      `slot-${slot.toLowerCase()}`,
+                      entry ? `rarity-${entry.item.rarity.toLowerCase()}` : '',
+                    ].join(' ')}
                     disabled={!entry}
                     aria-label={entry ? `${slotLabels[slot]}: ${entry.item.name}` : `${slotLabels[slot]}: empty`}
                     onClick={() => entry && setSelectedId(entry.id)}
@@ -82,6 +86,8 @@ export function InventoryScreen({
               <dd>{player.defense}</dd>
               <dt>Evasion</dt>
               <dd>{player.evasion}%</dd>
+              <dt>Resists</dt>
+              <dd>{player.resistance ? elementNames[player.resistance] : '—'}</dd>
             </dl>
           </div>
 
@@ -148,6 +154,7 @@ function ItemDetails({ entry, equipped, inQuickSlot, disabled, onEquip, onUse, o
 
   const { item } = entry
   const isPotion = item.category === 'Potion'
+  const element = describeElement(item)
 
   return (
     <div className={`item-details rarity-${item.rarity.toLowerCase()}`}>
@@ -157,6 +164,7 @@ function ItemDetails({ entry, equipped, inQuickSlot, disabled, onEquip, onUse, o
         <div className="label">
           {item.rarity} · {describeItem(item)}
         </div>
+        {element && <div className={`item-element element-${item.element?.toLowerCase()}`}>{element}</div>}
         {item.description && <p className="item-description">{item.description}</p>}
       </div>
       <div className="item-actions">

@@ -1,16 +1,12 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Text;
+﻿namespace Vaultrift.Engine.Gameplay;
 
-namespace Vaultrift.Engine.Gameplay
+public enum EquipmentSlot
 {
-    public enum EquipmentSlot
-    {
-        Weapon,
-        Head,
-        Body,
-        Feet,
-        Ring1,
-        Ring2
-    }
+    Weapon,
+    Head,
+    Body,
+    Feet,
+    Ring1,
+    Ring2,
+    Cloak
 }

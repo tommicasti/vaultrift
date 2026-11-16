@@ -26,18 +26,30 @@ public sealed record PlayerDefeated : GameEvent;
 
 public sealed record PlayerRespawned(Position At) : GameEvent;
 
-public sealed record ItemPickedUp(ItemDefinition Item) : GameEvent;
+public sealed record ItemPickedUp(ItemInstance Item) : GameEvent;
 
-public sealed record InventoryFull(ItemDefinition Item) : GameEvent;
+public sealed record InventoryFull(ItemInstance Item) : GameEvent;
 
-public sealed record ItemEquipped(ItemDefinition Item) : GameEvent;
+public sealed record ItemEquipped(ItemInstance Item) : GameEvent;
 
 public sealed record EquipRejected(EquipResult Reason) : GameEvent;
 
-public sealed record ItemUsed(ItemDefinition Item) : GameEvent;
+public sealed record ItemUsed(ItemInstance Item) : GameEvent;
 
 public sealed record UseRejected(UseResult Reason) : GameEvent;
 
 public sealed record QuickSlotAssigned(ItemDefinition Item) : GameEvent;
 
 public sealed record BoostExpired(ItemDefinition Item) : GameEvent;
+
+public sealed record EnemyIgnited(int EnemyId) : GameEvent;
+
+public sealed record EnemyBurned(int EnemyId, int Damage) : GameEvent;
+
+public sealed record EnemyFrozen(int EnemyId) : GameEvent;
+
+public sealed record EnemyThawed(int EnemyId) : GameEvent;
+
+public sealed record EnemyShocked(int EnemyId, AttackResult Result) : GameEvent;
+
+public sealed record EnemyKnockedBack(int EnemyId, Position To) : GameEvent;

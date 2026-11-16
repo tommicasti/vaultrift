@@ -22,7 +22,9 @@ public sealed class Player : Creature
     }
 
     public CharacterClass? Class { get; }
+
     public int Level { get; internal set; } = 1;
+
     public Direction Facing { get; internal set; }
 
     public Inventory Inventory { get; } = new();
@@ -32,6 +34,10 @@ public sealed class Player : Creature
     public IReadOnlyCollection<ActiveBoost> Boosts => _boosts.Values;
 
     public PotionDefinition? QuickSlot { get; private set; }
+
+    public ItemInstance? Weapon => EquippedIn(EquipmentSlot.Weapon);
+
+    public Element? Resistance => EquippedIn(EquipmentSlot.Cloak)?.Element;
 
     public override Stats CombatStats =>
         Stats.Apply(EquippedModifiers().Concat(BoostModifiers()).Concat(MasteryModifiers()));
@@ -43,7 +49,7 @@ public sealed class Player : Creature
         if (entry is null)
             return EquipResult.ItemNotFound;
 
-        if (entry.Item is not EquipmentDefinition equipment)
+        if (entry.Item.Definition is not EquipmentDefinition equipment)
             return EquipResult.NotEquippable;
 
         if (_equipment.ContainsValue(entry))
@@ -60,7 +66,7 @@ public sealed class Player : Creature
         if (entry is null)
             return UseResult.ItemNotFound;
 
-        if (entry.Item is not PotionDefinition potion)
+        if (entry.Item.Definition is not PotionDefinition potion)
             return UseResult.NotUsable;
 
         if (potion.Healing > 0 && Health == Stats.MaxHealth)
@@ -88,7 +94,7 @@ public sealed class Player : Creature
 
     public bool AssignQuickSlot(int entryId)
     {
-        if (Inventory.Find(entryId)?.Item is not PotionDefinition potion)
+        if (Inventory.Find(entryId)?.Item.Definition is not PotionDefinition potion)
             return false;
 
         QuickSlot = potion;
@@ -115,6 +121,9 @@ public sealed class Player : Creature
 
     internal void ClearBoosts() => _boosts.Clear();
 
+    private ItemInstance? EquippedIn(EquipmentSlot slot) =>
+        _equipment.TryGetValue(slot, out var entry) ? entry.Item : null;
+
     private EquipmentSlot SlotFor(EquipmentKind kind) => kind switch
     {
         EquipmentKind.Weapon => EquipmentSlot.Weapon,
@@ -122,6 +131,7 @@ public sealed class Player : Creature
         EquipmentKind.Body => EquipmentSlot.Body,
         EquipmentKind.Feet => EquipmentSlot.Feet,
         EquipmentKind.Ring => FreeRingSlot(),
+        EquipmentKind.Cloak => EquipmentSlot.Cloak,
         _ => throw new ArgumentOutOfRangeException(nameof(kind), kind, "Unknown equipment kind.")
     };
 
@@ -138,7 +148,7 @@ public sealed class Player : Creature
 
     private IEnumerable<StatModifier> EquippedModifiers() =>
         _equipment.Values
-            .Select(entry => entry.Item)
+            .Select(entry => entry.Item.Definition)
             .OfType<EquipmentDefinition>()
             .SelectMany(item => item.Modifiers);
 
@@ -150,7 +160,7 @@ public sealed class Player : Creature
         if (Class is null || !_equipment.TryGetValue(EquipmentSlot.Weapon, out var entry))
             yield break;
 
-        if (entry.Item is WeaponDefinition weapon && weapon.WeaponType == Class.Mastery.WeaponType)
+        if (entry.Item.Definition is WeaponDefinition weapon && weapon.WeaponType == Class.Mastery.WeaponType)
             yield return Class.Mastery.Bonus;
     }
 }

@@ -37,6 +37,26 @@ public sealed class Enemy : Creature
 
     public int StepsPerTurn => Kind.Speed == Speed.Fast ? 2 : 1;
 
+    public int BurnTurnsLeft { get; internal set; }
+
+    public int BurnDamage { get; internal set; }
+
+    public int FrozenTurnsLeft { get; internal set; }
+
+    public int FreezeImmunityTurnsLeft { get; internal set; }
+
+    public bool IsBurning => BurnTurnsLeft > 0;
+
+    public bool IsFrozen => FrozenTurnsLeft > 0;
+
+    internal void ClearStatuses()
+    {
+        BurnTurnsLeft = 0;
+        BurnDamage = 0;
+        FrozenTurnsLeft = 0;
+        FreezeImmunityTurnsLeft = 0;
+    }
+
     private static Stats ScaledStats(EnemyKind kind, Rarity rarity, int level)
     {
         ArgumentNullException.ThrowIfNull(kind);
