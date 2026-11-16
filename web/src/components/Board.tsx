@@ -1,5 +1,10 @@
 import type { CSSProperties, PointerEvent, ReactElement } from 'react'
-import type { Direction, EnemyState, GameState } from '../api/types'
+import type { Direction, GameState } from '../api/types'
+import { classSprite, sheets } from '../game/sprites'
+import { EnemyMarker } from './EnemyMarker'
+import { ItemIcon } from './ItemIcon'
+import { LevelBadge } from './LevelBadge'
+import { Sprite } from './Sprite'
 
 const facingArrows: Record<Direction, string> = {
   Up: '▲',
@@ -19,6 +24,8 @@ export function Board({ game, viewColumns, viewRows, onAttack }: BoardProps) {
   const left = game.player.x - Math.floor(viewColumns / 2)
   const top = game.player.y - Math.floor(viewRows / 2)
   const enemiesByTile = new Map(game.enemies.map(enemy => [`${enemy.x},${enemy.y}`, enemy]))
+  const itemsByTile = new Map(game.floorItems.map(floorItem => [`${floorItem.x},${floorItem.y}`, floorItem.item]))
+  const playerSprite = classSprite(game.player.classId)
 
   function handlePointerDown(event: PointerEvent<HTMLDivElement>) {
     if (event.pointerType === 'mouse' && event.button === 0)
@@ -31,14 +38,25 @@ export function Board({ game, viewColumns, viewRows, onAttack }: BoardProps) {
     for (let column = 0; column < viewColumns; column++) {
       const x = left + column
       const y = top + row
+      const key = `${x},${y}`
       const symbol: string | undefined = game.map[y]?.[x]
       const isPlayer = game.player.x === x && game.player.y === y
-      const enemy = enemiesByTile.get(`${x},${y}`)
+      const enemy = enemiesByTile.get(key)
+      const floorItem = itemsByTile.get(key)
 
       tiles.push(
         <div key={`${column},${row}`} className={tileClass(symbol)}>
-          {isPlayer && <span className="player">{facingArrows[game.player.facing]}</span>}
+          {isPlayer && (
+            <>
+              <Sprite sheet={sheets.dungeon} index={playerSprite} className="actor" label="You" />
+              <span className={`facing facing-${game.player.facing.toLowerCase()}`} aria-hidden="true">
+                {facingArrows[game.player.facing]}
+              </span>
+              <LevelBadge level={game.player.level} />
+            </>
+          )}
           {enemy && <EnemyMarker enemy={enemy} />}
+          {!isPlayer && !enemy && floorItem && <ItemIcon item={floorItem} />}
         </div>,
       )
     }
@@ -60,15 +78,4 @@ function tileClass(symbol: string | undefined): string {
     return 'tile void'
 
   return symbol === '#' ? 'tile wall' : 'tile floor'
-}
-
-function EnemyMarker({ enemy }: { enemy: EnemyState }) {
-  const healthPercent = (enemy.health / enemy.maxHealth) * 100
-
-  return (
-    <span className={enemy.isAwake ? 'enemy' : 'enemy sleeping'}>
-      👾
-      <span className="enemy-health" style={{ width: `${healthPercent}%` }} />
-    </span>
-  )
 }

@@ -15,4 +15,12 @@ public class PlayerTests
         Assert.False(player.IsDead);
         Assert.Equal(Direction.Down, player.Facing);
     }
+
+    [Fact]
+    public void NewPlayer_HasAnEmptyInventory()
+    {
+        var player = new Player(new Position(1, 1), new Stats(maxHealth: 30, attack: 5, defense: 2));
+
+        Assert.Empty(player.Inventory.Entries);
+    }
 }

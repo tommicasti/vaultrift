@@ -1,4 +1,5 @@
 ﻿using Vaultrift.Engine.Combat;
+using Vaultrift.Engine.Items;
 using Vaultrift.Engine.Randomness;
 using Vaultrift.Engine.World;
 
@@ -11,10 +12,16 @@ public sealed class Game
     public const int HealthRegenAmount = 1;
 
     private readonly List<Enemy> _enemies;
+    private readonly Dictionary<Position, ItemDefinition> _floorItems = [];
     private readonly DamageCalculator _damageCalculator;
     private readonly Position _playerStart;
 
-    public Game(DungeonMap map, Player player, IEnumerable<Enemy> enemies, IRandom random)
+    public Game(
+        DungeonMap map,
+        Player player,
+        IEnumerable<Enemy> enemies,
+        IRandom random,
+        IEnumerable<FloorItem>? floorItems = null)
     {
         ArgumentNullException.ThrowIfNull(map);
         ArgumentNullException.ThrowIfNull(player);
@@ -36,6 +43,15 @@ public sealed class Game
         if (_enemies.Select(enemy => enemy.Id).Distinct().Count() != _enemies.Count)
             throw new ArgumentException("Enemy ids must be unique.", nameof(enemies));
 
+        foreach (var floorItem in floorItems ?? Enumerable.Empty<FloorItem>())
+        {
+            if (!map.IsWalkable(floorItem.Position))
+                throw new ArgumentException("Every item must lie on a floor tile.", nameof(floorItems));
+
+            if (!_floorItems.TryAdd(floorItem.Position, floorItem.Item))
+                throw new ArgumentException("Two items cannot lie on the same tile.", nameof(floorItems));
+        }
+
         Map = map;
         Player = player;
         _playerStart = player.Position;
@@ -47,6 +63,8 @@ public sealed class Game
     public Player Player { get; }
 
     public IReadOnlyList<Enemy> Enemies => _enemies;
+
+    public IReadOnlyDictionary<Position, ItemDefinition> FloorItems => _floorItems;
 
     public int Deaths { get; private set; }
 
@@ -67,6 +85,7 @@ public sealed class Game
 
         Player.Position = target;
         events.Add(new PlayerMoved(target));
+        PickUpItemAt(target, events);
 
         EndTurn(events);
         return new TurnResult(TurnPassed: true, events);
@@ -83,7 +102,7 @@ public sealed class Game
         }
         else
         {
-            var result = _damageCalculator.Calculate(Player.Stats, target.Stats);
+            var result = _damageCalculator.Calculate(Player.CombatStats, target.CombatStats);
             target.TakeDamage(result.Damage);
             events.Add(new PlayerAttackedEnemy(target.Id, result));
 
@@ -95,14 +114,93 @@ public sealed class Game
         return new TurnResult(TurnPassed: true, events);
     }
 
+    public TurnResult Equip(int entryId)
+    {
+        var events = new List<GameEvent>();
+        var result = Player.Equip(entryId);
+
+        if (result != EquipResult.Equipped)
+        {
+            events.Add(new EquipRejected(result));
+            return new TurnResult(TurnPassed: false, events);
+        }
+
+        events.Add(new ItemEquipped(Player.Inventory.Find(entryId)!.Item));
+
+        EndTurn(events);
+        return new TurnResult(TurnPassed: true, events);
+    }
+
+    public TurnResult UseItem(int entryId)
+    {
+        var item = Player.Inventory.Find(entryId)?.Item;
+        return ResolveUse(item, Player.Use(entryId));
+    }
+
+    public TurnResult UseQuickSlot()
+    {
+        var item = Player.QuickSlot;
+        return ResolveUse(item, Player.UseQuickSlot());
+    }
+
+    public TurnResult AssignQuickSlot(int entryId)
+    {
+        var item = Player.Inventory.Find(entryId)?.Item;
+
+        GameEvent outcome = Player.AssignQuickSlot(entryId)
+            ? new QuickSlotAssigned(item!)
+            : new UseRejected(item is null ? UseResult.ItemNotFound : UseResult.NotUsable);
+
+        return new TurnResult(TurnPassed: false, [outcome]);
+    }
+
+    private TurnResult ResolveUse(ItemDefinition? item, UseResult result)
+    {
+        var events = new List<GameEvent>();
+
+        if (result != UseResult.Used)
+        {
+            events.Add(new UseRejected(result));
+            return new TurnResult(TurnPassed: false, events);
+        }
+
+        events.Add(new ItemUsed(item!));
+
+        EndTurn(events);
+        return new TurnResult(TurnPassed: true, events);
+    }
+
+    private void PickUpItemAt(Position position, List<GameEvent> events)
+    {
+        if (!_floorItems.TryGetValue(position, out var item))
+            return;
+
+        if (Player.Inventory.TryAdd(item))
+        {
+            _floorItems.Remove(position);
+            events.Add(new ItemPickedUp(item));
+        }
+        else
+        {
+            events.Add(new InventoryFull(item));
+        }
+    }
+
     private void EndTurn(List<GameEvent> events)
     {
         EnemiesAct(events);
         TurnNumber++;
 
         if (Player.IsDead)
+        {
             RespawnPlayer(events);
-        else if (TurnNumber % HealthRegenInterval == 0)
+            return;
+        }
+
+        foreach (var boost in Player.AdvanceBoosts())
+            events.Add(new BoostExpired(boost.Source));
+
+        if (TurnNumber % HealthRegenInterval == 0)
             Player.Heal(HealthRegenAmount);
     }
 
@@ -125,16 +223,35 @@ public sealed class Game
                 events.Add(new EnemyWokeUp(enemy.Id));
             }
 
-            if (Distance(enemy.Position, Player.Position) == 1)
-                AttackPlayer(enemy, events);
-            else
-                MoveTowardPlayer(enemy, events);
+            if (enemy.IsResting)
+            {
+                enemy.IsResting = false;
+                continue;
+            }
+
+            TakeEnemyTurn(enemy, events);
+            enemy.IsResting = enemy.Kind.Speed == Speed.Slow;
+        }
+    }
+
+    private void TakeEnemyTurn(Enemy enemy, List<GameEvent> events)
+    {
+        if (IsNextToPlayer(enemy))
+        {
+            AttackPlayer(enemy, events);
+            return;
+        }
+
+        for (var step = 0; step < enemy.StepsPerTurn; step++)
+        {
+            if (!StepTowardPlayer(enemy, events) || IsNextToPlayer(enemy))
+                return;
         }
     }
 
     private void AttackPlayer(Enemy enemy, List<GameEvent> events)
     {
-        var result = _damageCalculator.Calculate(enemy.Stats, Player.Stats);
+        var result = _damageCalculator.Calculate(enemy.CombatStats, Player.CombatStats);
         Player.TakeDamage(result.Damage);
         events.Add(new EnemyAttackedPlayer(enemy.Id, result));
     }
@@ -148,28 +265,32 @@ public sealed class Game
         {
             enemy.Position = enemy.StartPosition;
             enemy.IsAwake = false;
+            enemy.IsResting = false;
             enemy.RestoreFullHealth();
         }
 
         Player.Position = _playerStart;
         Player.Facing = Direction.Down;
         Player.RestoreFullHealth();
+        Player.ClearBoosts();
         events.Add(new PlayerRespawned(_playerStart));
     }
 
-    private void MoveTowardPlayer(Enemy enemy, List<GameEvent> events)
+    private bool StepTowardPlayer(Enemy enemy, List<GameEvent> events)
     {
         foreach (var direction in ApproachDirections(enemy.Position, Player.Position))
         {
             var target = enemy.Position.Move(direction);
 
-            if (!IsFree(target))
+            if (!CanEnemyEnter(enemy, target))
                 continue;
 
             enemy.Position = target;
             events.Add(new EnemyMoved(enemy.Id, target));
-            return;
+            return true;
         }
+
+        return false;
     }
 
     private static IEnumerable<Direction> ApproachDirections(Position from, Position to)
@@ -201,6 +322,14 @@ public sealed class Game
         Map.IsWalkable(position) &&
         position != Player.Position &&
         FindLivingEnemyAt(position) is null;
+
+    private bool CanEnemyEnter(Enemy enemy, Position position) =>
+        (enemy.Kind.PassesThroughWalls ? Map.IsInside(position) : Map.IsWalkable(position)) &&
+        position != Player.Position &&
+        FindLivingEnemyAt(position) is null;
+
+    private bool IsNextToPlayer(Enemy enemy) =>
+        Distance(enemy.Position, Player.Position) == 1;
 
     private Enemy? FindLivingEnemyAt(Position position) =>
         _enemies.FirstOrDefault(enemy => !enemy.IsDead && enemy.Position == position);

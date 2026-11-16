@@ -1,5 +1,7 @@
 ﻿using Vaultrift.Api.Contracts;
+using Vaultrift.Engine.Combat;
 using Vaultrift.Engine.Gameplay;
+using Vaultrift.Engine.Items;
 using Vaultrift.Engine.World;
 
 namespace Vaultrift.Api.Mapping;
@@ -10,22 +12,18 @@ public static class GameMapper
         new(
             id,
             ToRows(game.Map),
-            new PlayerResponse(
-                game.Player.Position.X,
-                game.Player.Position.Y,
-                game.Player.Facing,
-                game.Player.Health,
-                game.Player.Stats.MaxHealth),
+            ToPlayerResponse(game.Player),
             game.Enemies
                 .Where(enemy => !enemy.IsDead)
-                .Select(enemy => new EnemyResponse(
-                    enemy.Id,
-                    enemy.Position.X,
-                    enemy.Position.Y,
-                    enemy.Health,
-                    enemy.Stats.MaxHealth,
-                    enemy.IsAwake))
+                .Select(ToEnemyResponse)
                 .ToList(),
+            game.FloorItems
+                .Select(pair => new FloorItemResponse(pair.Key.X, pair.Key.Y, ToItemResponse(pair.Value)))
+                .ToList(),
+            game.Player.Inventory.Entries
+                .Select(entry => new InventoryEntryResponse(entry.Id, ToItemResponse(entry.Item), entry.Quantity))
+                .ToList(),
+            game.Player.Inventory.Capacity,
             game.Deaths);
 
     public static TurnResponse ToResponse(Guid id, Game game, TurnResult result) =>
@@ -34,19 +32,103 @@ public static class GameMapper
             result.Events.Select(ToResponse).ToList(),
             ToResponse(id, game));
 
+    private static PlayerResponse ToPlayerResponse(Player player)
+    {
+        var combat = player.CombatStats;
+        var quickSlot = player.QuickSlot;
+
+        return new PlayerResponse(
+            player.Class?.Id,
+            player.Level,
+            player.Position.X,
+            player.Position.Y,
+            player.Facing,
+            player.Health,
+            player.Stats.MaxHealth,
+            combat.Attack,
+            combat.Defense,
+            Math.Min(combat.Evasion, DamageCalculator.MaxEvasion),
+            player.Equipment
+                .Select(pair => new EquippedItemResponse(pair.Key, pair.Value.Id))
+                .ToList(),
+            quickSlot is null ? null : ToItemResponse(quickSlot),
+            quickSlot is null ? 0 : player.Inventory.Entries
+                .Where(entry => entry.Item.Id == quickSlot.Id)
+                .Sum(entry => entry.Quantity),
+            player.Boosts
+                .Select(boost => new ActiveBoostResponse(
+                    ToItemResponse(boost.Source),
+                    ToModifierResponse(boost.Modifier),
+                    boost.RemainingTurns))
+                .ToList());
+    }
+
+    private static EnemyResponse ToEnemyResponse(Enemy enemy) =>
+        new(
+            enemy.Id,
+            enemy.Kind.Id,
+            enemy.Kind.Name,
+            enemy.Rarity,
+            enemy.Level,
+            enemy.Position.X,
+            enemy.Position.Y,
+            enemy.Health,
+            enemy.Stats.MaxHealth,
+            enemy.IsAwake);
+
     private static EventResponse ToResponse(GameEvent gameEvent) => gameEvent switch
     {
         PlayerMoved e => new("PlayerMoved", X: e.To.X, Y: e.To.Y),
         PlayerTurned => new("PlayerTurned"),
-        PlayerAttackedEnemy e => new("PlayerAttackedEnemy", EnemyId: e.EnemyId, Damage: e.Result.Damage, IsCritical: e.Result.IsCritical),
+        PlayerAttackedEnemy e => new("PlayerAttackedEnemy", EnemyId: e.EnemyId, Damage: e.Result.Damage, IsCritical: e.Result.IsCritical, IsDodged: e.Result.IsDodged),
         PlayerAttackedNothing => new("PlayerAttackedNothing"),
         EnemyDefeated e => new("EnemyDefeated", EnemyId: e.EnemyId),
-        EnemyAttackedPlayer e => new("EnemyAttackedPlayer", EnemyId: e.EnemyId, Damage: e.Result.Damage, IsCritical: e.Result.IsCritical),
+        EnemyAttackedPlayer e => new("EnemyAttackedPlayer", EnemyId: e.EnemyId, Damage: e.Result.Damage, IsCritical: e.Result.IsCritical, IsDodged: e.Result.IsDodged),
         EnemyWokeUp e => new("EnemyWokeUp", EnemyId: e.EnemyId),
         EnemyMoved e => new("EnemyMoved", EnemyId: e.EnemyId, X: e.To.X, Y: e.To.Y),
         PlayerDefeated => new("PlayerDefeated"),
         PlayerRespawned e => new("PlayerRespawned", X: e.At.X, Y: e.At.Y),
+        ItemPickedUp e => new("ItemPickedUp", Item: ToItemResponse(e.Item)),
+        InventoryFull e => new("InventoryFull", Item: ToItemResponse(e.Item)),
+        ItemEquipped e => new("ItemEquipped", Item: ToItemResponse(e.Item)),
+        EquipRejected e => new("EquipRejected", Reason: e.Reason.ToString()),
+        ItemUsed e => new("ItemUsed", Item: ToItemResponse(e.Item)),
+        UseRejected e => new("UseRejected", Reason: e.Reason.ToString()),
+        QuickSlotAssigned e => new("QuickSlotAssigned", Item: ToItemResponse(e.Item)),
+        BoostExpired e => new("BoostExpired", Item: ToItemResponse(e.Item)),
         _ => throw new ArgumentOutOfRangeException(nameof(gameEvent), gameEvent.GetType().Name, "Unknown game event.")
+    };
+
+    private static ItemResponse ToItemResponse(ItemDefinition item)
+    {
+        var potion = item as PotionDefinition;
+
+        return new ItemResponse(
+            item.Id,
+            item.Name,
+            item.Rarity,
+            CategoryOf(item),
+            item.Description,
+            ModifiersOf(item),
+            potion is { Healing: > 0 } ? potion.Healing : null,
+            potion?.Boost is { } boost ? ToModifierResponse(boost) : null,
+            potion?.Boost is not null ? potion.BoostTurns : null);
+    }
+
+    private static IReadOnlyList<ModifierResponse> ModifiersOf(ItemDefinition item) =>
+        item is EquipmentDefinition equipment
+            ? equipment.Modifiers.Select(ToModifierResponse).ToList()
+            : [];
+
+    private static ModifierResponse ToModifierResponse(StatModifier modifier) =>
+        new(modifier.Stat, modifier.Amount);
+
+    private static string CategoryOf(ItemDefinition item) => item switch
+    {
+        WeaponDefinition weapon => weapon.WeaponType.ToString(),
+        GearDefinition gear => gear.Kind.ToString(),
+        PotionDefinition => "Potion",
+        _ => throw new ArgumentOutOfRangeException(nameof(item), item.GetType().Name, "Unknown item type.")
     };
 
     private static IReadOnlyList<string> ToRows(DungeonMap map)

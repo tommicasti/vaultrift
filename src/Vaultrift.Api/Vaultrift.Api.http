@@ -1,7 +1,16 @@
 @baseUrl = https://localhost:7129
 
+GET {{baseUrl}}/api/classes
+
+###
+
 # @name create
 POST {{baseUrl}}/api/games
+Content-Type: application/json
+
+{
+  "classId": "knight"
+}
 
 ###
 
@@ -22,9 +31,9 @@ POST {{baseUrl}}/api/games/{{create.response.body.$.id}}/attack
 
 ###
 
-POST {{baseUrl}}/api/games/{{create.response.body.$.id}}/move
+POST {{baseUrl}}/api/games
 Content-Type: application/json
 
 {
-  "direction": "Diagonal"
+  "classId": "bard"
 }

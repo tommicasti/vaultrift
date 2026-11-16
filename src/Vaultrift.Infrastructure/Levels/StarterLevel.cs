@@ -1,7 +1,8 @@
-﻿using Vaultrift.Engine.Combat;
-using Vaultrift.Engine.Gameplay;
+﻿using Vaultrift.Engine.Gameplay;
+using Vaultrift.Engine.Items;
 using Vaultrift.Engine.Randomness;
 using Vaultrift.Engine.World;
+using Vaultrift.Infrastructure.Content;
 
 namespace Vaultrift.Infrastructure.Levels;
 
@@ -21,24 +22,54 @@ public static class StarterLevel
         "####################"
     ];
 
-    private static readonly Stats PlayerStats = new(maxHealth: 30, attack: 5, defense: 2);
-    private static readonly Stats WeakEnemy = new(maxHealth: 8, attack: 3, defense: 0);
-    private static readonly Stats StrongEnemy = new(maxHealth: 12, attack: 5, defense: 1);
-
-    public static Game CreateGame(IRandom random)
+    public static Game CreateGame(IRandom random, ClassDefinition playerClass)
     {
+        ArgumentNullException.ThrowIfNull(playerClass);
+
         var map = DungeonMap.Parse(Rows);
-        var player = new Player(new Position(1, 1), PlayerStats);
+        var player = new Player(new Position(1, 1), playerClass.Class);
+        GiveStartingKit(player, playerClass.StartingItemIds);
 
         Enemy[] enemies =
         [
-            new(1, new Position(5, 3), WeakEnemy),
-            new(2, new Position(14, 1), WeakEnemy),
-            new(3, new Position(2, 6), StrongEnemy),
-            new(4, new Position(17, 7), StrongEnemy),
-            new(5, new Position(9, 8), WeakEnemy)
+            Monster(1, 5, 3, "rat", Rarity.Common, level: 2),
+            Monster(2, 14, 1, "bat", Rarity.Rare),
+            Monster(3, 2, 6, "spider", Rarity.Epic),
+            Monster(4, 17, 7, "cyclops", Rarity.Rare),
+            Monster(5, 9, 8, "slime", Rarity.Common),
+            Monster(6, 13, 5, "ghost", Rarity.Legendary)
         ];
 
-        return new Game(map, player, enemies, random);
+        FloorItem[] items =
+        [
+            Item(3, 3, "potion-healing"),
+            Item(12, 6, "potion-healing"),
+            Item(9, 1, "sword-rare"),
+            Item(2, 7, "body-common"),
+            Item(17, 4, "potion-strength"),
+            Item(18, 8, "sword-vaultbreaker")
+        ];
+
+        return new Game(map, player, enemies, random, items);
     }
+
+    private static void GiveStartingKit(Player player, IReadOnlyList<string> itemIds)
+    {
+        foreach (var itemId in itemIds)
+            player.Inventory.TryAdd(ItemCatalog.Get(itemId));
+
+        foreach (var entry in player.Inventory.Entries)
+        {
+            if (entry.Item is EquipmentDefinition)
+                player.Equip(entry.Id);
+            else if (entry.Item is PotionDefinition && player.QuickSlot is null)
+                player.AssignQuickSlot(entry.Id);
+        }
+    }
+
+    private static Enemy Monster(int id, int x, int y, string kindId, Rarity rarity, int level = 1) =>
+        new(id, new Position(x, y), BestiaryCatalog.Get(kindId), rarity, level);
+
+    private static FloorItem Item(int x, int y, string itemId) =>
+        new(new Position(x, y), ItemCatalog.Get(itemId));
 }

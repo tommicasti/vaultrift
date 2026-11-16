@@ -1,0 +1,81 @@
+import type { EquipmentSlot, ItemCategory, ItemInfo, StatModifierInfo, StatType } from '../api/types'
+import { sheets, type SpriteSheet } from './sprites'
+
+export interface SpriteRef {
+  sheet: SpriteSheet
+  index: number
+}
+
+const categorySprites: Record<ItemCategory, SpriteRef> = {
+  Sword: { sheet: sheets.dungeon, index: 104 },
+  Axe: { sheet: sheets.dungeon, index: 119 },
+  Bow: { sheet: sheets.town, index: 118 },
+  Head: { sheet: sheets.items, index: 0 },
+  Body: { sheet: sheets.items, index: 1 },
+  Feet: { sheet: sheets.items, index: 2 },
+  Ring: { sheet: sheets.items, index: 3 },
+  Potion: { sheet: sheets.dungeon, index: 115 },
+}
+
+const potionSprites: Record<string, number> = {
+  'potion-healing': 127,
+  'potion-greater-healing': 115,
+  'potion-strength': 114,
+  'potion-protection': 116,
+}
+
+const legendarySprites: Record<string, number> = {
+  'sword-vaultbreaker': 5,
+  'sword-twinfang': 6,
+  'sword-ember-oath': 7,
+  'axe-riftsplitter': 8,
+  'axe-grudgebearer': 9,
+  'axe-stormmaw': 10,
+  'bow-starshot': 11,
+  'bow-nightglass': 12,
+  'bow-galecaller': 13,
+  'head-crown-of-echoes': 14,
+  'head-mask-of-the-hollow': 15,
+  'head-seers-visor': 16,
+  'body-aegis-of-the-rift': 17,
+  'body-bramblehide': 18,
+  'body-lifewell-plate': 19,
+  'feet-riftwalkers': 20,
+  'feet-ashstriders': 21,
+  'feet-galeheels': 22,
+  'ring-band-of-second-dawn': 23,
+  'ring-ouroboros': 24,
+  'ring-gilded-grasp': 25,
+}
+
+export function itemSprite(item: ItemInfo): SpriteRef {
+  if (item.id in legendarySprites) return { sheet: sheets.items, index: legendarySprites[item.id] }
+  if (item.id in potionSprites) return { sheet: sheets.dungeon, index: potionSprites[item.id] }
+  return categorySprites[item.category]
+}
+
+export const slotLabels: Record<EquipmentSlot, string> = {
+  Weapon: 'Weapon',
+  Head: 'Head',
+  Body: 'Body',
+  Feet: 'Feet',
+  Ring1: 'Ring',
+  Ring2: 'Ring',
+}
+
+const statLabels: Record<StatType, string> = {
+  Attack: 'attack',
+  Defense: 'defense',
+  Evasion: 'evasion',
+}
+
+export function describeModifier(modifier: StatModifierInfo): string {
+  const suffix = modifier.stat === 'Evasion' ? '%' : ''
+  return `+${modifier.amount}${suffix} ${statLabels[modifier.stat]}`
+}
+
+export function describeItem(item: ItemInfo): string {
+  if (item.healing) return `Restores ${item.healing} health`
+  if (item.boost) return `${describeModifier(item.boost)} for ${item.boostTurns} turns`
+  return item.modifiers.map(describeModifier).join(' · ')
+}
