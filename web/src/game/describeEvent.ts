@@ -13,8 +13,10 @@ const useRejectMessages: Record<UseRejectReason, string> = {
   QuickSlotEmpty: 'Your quick slot is empty.',
 }
 
-export function describeEvent(event: GameEvent): string | null {
+export function describeEvent(event: GameEvent, enemyNames: ReadonlyMap<number, string>): string | null {
   const critical = event.isCritical ? ' Critical hit!' : ''
+  const enemy = event.enemyId === undefined ? 'The enemy' : `The ${enemyNames.get(event.enemyId) ?? 'enemy'}`
+  const enemyLower = enemy.charAt(0).toLowerCase() + enemy.slice(1)
 
   switch (event.type) {
     case 'PlayerMoved':
@@ -23,18 +25,18 @@ export function describeEvent(event: GameEvent): string | null {
       return null
     case 'PlayerAttackedEnemy':
       return event.isDodged
-        ? `Enemy ${event.enemyId} dodges your attack!`
-        : `You hit enemy ${event.enemyId} for ${event.damage} damage.${critical}`
+        ? `${enemy} dodges your attack!`
+        : `You hit ${enemyLower} for ${event.damage} damage.${critical}`
     case 'PlayerAttackedNothing':
       return 'You swing at the empty air.'
     case 'EnemyDefeated':
-      return `Enemy ${event.enemyId} is defeated.`
+      return `${enemy} is defeated.`
     case 'EnemyAttackedPlayer':
       return event.isDodged
-        ? `You dodge enemy ${event.enemyId}'s attack!`
-        : `Enemy ${event.enemyId} hits you for ${event.damage} damage.${critical}`
+        ? `You dodge ${enemyLower}'s attack!`
+        : `${enemy} hits you for ${event.damage} damage.${critical}`
     case 'EnemyWokeUp':
-      return `Enemy ${event.enemyId} wakes up!`
+      return `${enemy} wakes up!`
     case 'PlayerDefeated':
       return 'You have fallen...'
     case 'PlayerRespawned':

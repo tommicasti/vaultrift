@@ -1,7 +1,9 @@
 import type { CSSProperties, PointerEvent, ReactElement } from 'react'
-import type { Direction, EnemyState, GameState } from '../api/types'
+import type { Direction, GameState } from '../api/types'
 import { classSprite, sheets } from '../game/sprites'
+import { EnemyMarker } from './EnemyMarker'
 import { ItemIcon } from './ItemIcon'
+import { LevelBadge } from './LevelBadge'
 import { Sprite } from './Sprite'
 
 const facingArrows: Record<Direction, string> = {
@@ -50,6 +52,7 @@ export function Board({ game, viewColumns, viewRows, onAttack }: BoardProps) {
               <span className={`facing facing-${game.player.facing.toLowerCase()}`} aria-hidden="true">
                 {facingArrows[game.player.facing]}
               </span>
+              <LevelBadge level={game.player.level} />
             </>
           )}
           {enemy && <EnemyMarker enemy={enemy} />}
@@ -75,15 +78,4 @@ function tileClass(symbol: string | undefined): string {
     return 'tile void'
 
   return symbol === '#' ? 'tile wall' : 'tile floor'
-}
-
-function EnemyMarker({ enemy }: { enemy: EnemyState }) {
-  const healthPercent = (enemy.health / enemy.maxHealth) * 100
-
-  return (
-    <span className={enemy.isAwake ? 'enemy' : 'enemy sleeping'}>
-      👾
-      <span className="enemy-health" style={{ width: `${healthPercent}%` }} />
-    </span>
-  )
 }

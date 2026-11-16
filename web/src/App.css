@@ -172,21 +172,54 @@
   transform: translateY(-50%);
 }
 
-.enemy {
-  position: relative;
-  line-height: 1;
+.actor.sleeping {
+  opacity: 0.45;
 }
 
-.enemy.sleeping {
-  opacity: 0.45;
+.rarity-stars {
+  position: absolute;
+  top: -6%;
+  left: 50%;
+  display: flex;
+  transform: translateX(-50%);
+}
+
+.star {
+  width: 0.62em;
+  height: 0.62em;
+  margin: 0 -0.1em;
+}
+
+.level-badge {
+  position: absolute;
+  right: 2%;
+  bottom: 2%;
+  min-width: 1.3em;
+  padding: 0.1em 0.2em;
+  border-radius: 0.35em;
+  background: rgb(20 18 28 / 80%);
+  color: #ffffff;
+  font-size: 0.36em;
+  font-weight: 700;
+  line-height: 1;
+  text-align: center;
 }
 
 .enemy-health {
   position: absolute;
-  left: 0;
-  bottom: -4px;
-  height: 3px;
+  left: 6%;
+  bottom: 4%;
+  width: 62%;
+  height: 4%;
+  min-height: 2px;
   border-radius: 2px;
+  background: rgb(20 18 28 / 55%);
+  overflow: hidden;
+}
+
+.enemy-health-fill {
+  display: block;
+  height: 100%;
   background: var(--danger);
 }
 
@@ -427,11 +460,11 @@
 
 .held-weapon {
   position: absolute;
-  left: 52%;
-  top: 30%;
-  width: 40%;
-  height: 40%;
-  transform: rotate(20deg);
+  left: 62%;
+  top: 44%;
+  width: 34%;
+  height: 34%;
+  transform: rotate(15deg);
 }
 
 .equipment-slots {

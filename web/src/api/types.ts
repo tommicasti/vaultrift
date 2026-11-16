@@ -72,6 +72,10 @@ export interface PlayerState {
 
 export interface EnemyState {
   id: number
+  kind: string
+  name: string
+  rarity: Rarity
+  level: number
   x: number
   y: number
   health: number

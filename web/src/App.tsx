@@ -63,8 +63,11 @@ function App() {
 
       try {
         const turn = await action(game.id)
+        const enemyNames = new Map(
+          [...game.enemies, ...turn.state.enemies].map(enemy => [enemy.id, enemy.name]),
+        )
         const messages = turn.events
-          .map(describeEvent)
+          .map(gameEvent => describeEvent(gameEvent, enemyNames))
           .filter((message): message is string => message !== null)
 
         setGame(turn.state)
