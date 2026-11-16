@@ -56,6 +56,7 @@ export interface ActiveBoostInfo {
 
 export interface PlayerState {
   classId?: string
+  level: number
   x: number
   y: number
   facing: Direction
