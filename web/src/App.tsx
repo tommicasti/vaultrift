@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { attack, consumeItem, consumeQuickSlot, createGame, equip, move, setQuickSlot } from './api/gamesApi'
 import type { Direction, GameState, TurnResponse } from './api/types'
 import { Board } from './components/Board'
+import { ClassSelect } from './components/ClassSelect'
 import { Controls } from './components/Controls'
 import { EventLog } from './components/EventLog'
 import { InventoryScreen } from './components/InventoryScreen'
@@ -31,12 +32,12 @@ function App() {
   const view = compact ? compactView : standardView
   const hasGame = game !== null
 
-  async function startGame() {
+  async function startGame(classId: string) {
     setBusy(true)
     setError(null)
 
     try {
-      setGame(await createGame())
+      setGame(await createGame(classId))
       setLog(['You enter the vault. It is dark.'])
       setInventoryOpen(false)
     } catch {
@@ -44,6 +45,13 @@ function App() {
     } finally {
       setBusy(false)
     }
+  }
+
+  function returnToClassSelect() {
+    setGame(null)
+    setLog([])
+    setError(null)
+    setInventoryOpen(false)
   }
 
   const play = useCallback(
@@ -98,7 +106,7 @@ function App() {
     function handleKeyDown(event: KeyboardEvent) {
       if (!hasGame) return
 
-      if (event.code === 'KeyI') {
+      if (event.code === 'Tab') {
         event.preventDefault()
         setInventoryOpen(open => !open)
         return
@@ -136,9 +144,8 @@ function App() {
     return (
       <main className="app start">
         <h1>Vaultrift</h1>
-        <button className="primary" onClick={startGame} disabled={busy}>
-          New game
-        </button>
+        <p className="label">Choose your hero</p>
+        <ClassSelect disabled={busy} onChoose={classId => void startGame(classId)} />
         {error && <p className="error">{error}</p>}
       </main>
     )
@@ -150,14 +157,14 @@ function App() {
         <h1>Vaultrift</h1>
         <div className="header-actions">
           <button onClick={() => setInventoryOpen(true)}>Backpack</button>
-          <button onClick={startGame} disabled={busy}>
+          <button onClick={returnToClassSelect} disabled={busy}>
             New game
           </button>
         </div>
       </header>
       <StatusBar player={game.player} deaths={game.deaths} />
       <Board game={game} viewColumns={view.columns} viewRows={view.rows} onAttack={handleAttack} />
-      <p className="keyboard-hint">WASD to move · Space or click to attack · Q quick slot · I backpack</p>
+      <p className="keyboard-hint">WASD to move · Space or click to attack · Q quick slot · Tab backpack</p>
       <Controls
         disabled={busy}
         quickSlot={game.player.quickSlot}

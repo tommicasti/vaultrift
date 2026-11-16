@@ -223,10 +223,29 @@ public sealed class Game
                 events.Add(new EnemyWokeUp(enemy.Id));
             }
 
-            if (Distance(enemy.Position, Player.Position) == 1)
-                AttackPlayer(enemy, events);
-            else
-                MoveTowardPlayer(enemy, events);
+            if (enemy.IsResting)
+            {
+                enemy.IsResting = false;
+                continue;
+            }
+
+            TakeEnemyTurn(enemy, events);
+            enemy.IsResting = enemy.Kind.Speed == Speed.Slow;
+        }
+    }
+
+    private void TakeEnemyTurn(Enemy enemy, List<GameEvent> events)
+    {
+        if (IsNextToPlayer(enemy))
+        {
+            AttackPlayer(enemy, events);
+            return;
+        }
+
+        for (var step = 0; step < enemy.StepsPerTurn; step++)
+        {
+            if (!StepTowardPlayer(enemy, events) || IsNextToPlayer(enemy))
+                return;
         }
     }
 
@@ -246,6 +265,7 @@ public sealed class Game
         {
             enemy.Position = enemy.StartPosition;
             enemy.IsAwake = false;
+            enemy.IsResting = false;
             enemy.RestoreFullHealth();
         }
 
@@ -256,19 +276,21 @@ public sealed class Game
         events.Add(new PlayerRespawned(_playerStart));
     }
 
-    private void MoveTowardPlayer(Enemy enemy, List<GameEvent> events)
+    private bool StepTowardPlayer(Enemy enemy, List<GameEvent> events)
     {
         foreach (var direction in ApproachDirections(enemy.Position, Player.Position))
         {
             var target = enemy.Position.Move(direction);
 
-            if (!IsFree(target))
+            if (!CanEnemyEnter(enemy, target))
                 continue;
 
             enemy.Position = target;
             events.Add(new EnemyMoved(enemy.Id, target));
-            return;
+            return true;
         }
+
+        return false;
     }
 
     private static IEnumerable<Direction> ApproachDirections(Position from, Position to)
@@ -300,6 +322,14 @@ public sealed class Game
         Map.IsWalkable(position) &&
         position != Player.Position &&
         FindLivingEnemyAt(position) is null;
+
+    private bool CanEnemyEnter(Enemy enemy, Position position) =>
+        (enemy.Kind.PassesThroughWalls ? Map.IsInside(position) : Map.IsWalkable(position)) &&
+        position != Player.Position &&
+        FindLivingEnemyAt(position) is null;
+
+    private bool IsNextToPlayer(Enemy enemy) =>
+        Distance(enemy.Position, Player.Position) == 1;
 
     private Enemy? FindLivingEnemyAt(Position position) =>
         _enemies.FirstOrDefault(enemy => !enemy.IsDead && enemy.Position == position);

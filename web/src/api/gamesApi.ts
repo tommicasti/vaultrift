@@ -1,8 +1,8 @@
-import type { Direction, GameState, TurnResponse } from './types'
+import type { ClassInfo, Direction, GameState, TurnResponse } from './types'
 
-async function post<T>(path: string, body?: unknown): Promise<T> {
-  const response = await fetch(`/api/games${path}`, {
-    method: 'POST',
+async function request<T>(method: 'GET' | 'POST', path: string, body?: unknown): Promise<T> {
+  const response = await fetch(`/api${path}`, {
+    method,
     headers: { 'Content-Type': 'application/json' },
     body: body === undefined ? undefined : JSON.stringify(body),
   })
@@ -14,30 +14,34 @@ async function post<T>(path: string, body?: unknown): Promise<T> {
   return (await response.json()) as T
 }
 
-export function createGame(): Promise<GameState> {
-  return post<GameState>('')
+export function getClasses(): Promise<ClassInfo[]> {
+  return request<ClassInfo[]>('GET', '/classes')
+}
+
+export function createGame(classId: string): Promise<GameState> {
+  return request<GameState>('POST', '/games', { classId })
 }
 
 export function move(gameId: string, direction: Direction): Promise<TurnResponse> {
-  return post<TurnResponse>(`/${gameId}/move`, { direction })
+  return request<TurnResponse>('POST', `/games/${gameId}/move`, { direction })
 }
 
 export function attack(gameId: string): Promise<TurnResponse> {
-  return post<TurnResponse>(`/${gameId}/attack`)
+  return request<TurnResponse>('POST', `/games/${gameId}/attack`)
 }
 
 export function equip(gameId: string, entryId: number): Promise<TurnResponse> {
-  return post<TurnResponse>(`/${gameId}/equip`, { entryId })
+  return request<TurnResponse>('POST', `/games/${gameId}/equip`, { entryId })
 }
 
 export function consumeItem(gameId: string, entryId: number): Promise<TurnResponse> {
-  return post<TurnResponse>(`/${gameId}/use`, { entryId })
+  return request<TurnResponse>('POST', `/games/${gameId}/use`, { entryId })
 }
 
 export function setQuickSlot(gameId: string, entryId: number): Promise<TurnResponse> {
-  return post<TurnResponse>(`/${gameId}/quick-slot`, { entryId })
+  return request<TurnResponse>('POST', `/games/${gameId}/quick-slot`, { entryId })
 }
 
 export function consumeQuickSlot(gameId: string): Promise<TurnResponse> {
-  return post<TurnResponse>(`/${gameId}/quick-slot/use`)
+  return request<TurnResponse>('POST', `/games/${gameId}/quick-slot/use`)
 }

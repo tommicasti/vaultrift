@@ -8,6 +8,8 @@ export type EquipmentSlot = 'Weapon' | 'Head' | 'Body' | 'Feet' | 'Ring1' | 'Rin
 
 export type StatType = 'Attack' | 'Defense' | 'Evasion'
 
+export type WeaponType = 'Sword' | 'Axe' | 'Bow'
+
 export type EquipRejectReason = 'ItemNotFound' | 'NotEquippable' | 'AlreadyEquipped'
 
 export type UseRejectReason = 'ItemNotFound' | 'NotUsable' | 'AlreadyAtFullHealth' | 'QuickSlotEmpty'
@@ -29,6 +31,18 @@ export interface ItemInfo {
   boostTurns?: number
 }
 
+export interface ClassInfo {
+  id: string
+  name: string
+  description: string
+  maxHealth: number
+  attack: number
+  defense: number
+  evasion: number
+  masteryWeapon: WeaponType
+  masteryBonus: StatModifierInfo
+}
+
 export interface EquippedItem {
   slot: EquipmentSlot
   entryId: number
@@ -41,6 +55,7 @@ export interface ActiveBoostInfo {
 }
 
 export interface PlayerState {
+  classId?: string
   x: number
   y: number
   facing: Direction

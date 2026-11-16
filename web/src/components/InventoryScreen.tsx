@@ -1,7 +1,9 @@
 import { useState } from 'react'
 import type { EquipmentSlot, InventoryEntryState, PlayerState } from '../api/types'
 import { describeItem, slotLabels } from '../game/items'
+import { classSprite, sheets } from '../game/sprites'
 import { ItemIcon } from './ItemIcon'
+import { Sprite } from './Sprite'
 
 const slotOrder: EquipmentSlot[] = ['Head', 'Weapon', 'Body', 'Ring1', 'Feet', 'Ring2']
 
@@ -32,6 +34,8 @@ export function InventoryScreen({
   const equippedBySlot = new Map(player.equipment.map(item => [item.slot, item.entryId]))
   const equippedIds = new Set(player.equipment.map(item => item.entryId))
   const selected = selectedId === null ? undefined : entriesById.get(selectedId)
+  const weaponEntryId = equippedBySlot.get('Weapon')
+  const weapon = weaponEntryId === undefined ? undefined : entriesById.get(weaponEntryId)
 
   return (
     <div className="overlay" role="dialog" aria-modal="true" aria-label="Inventory">
@@ -45,8 +49,9 @@ export function InventoryScreen({
 
         <div className="inventory-body">
           <div className="character-panel">
-            <div className="character-portrait" aria-hidden="true">
-              🧝
+            <div className="character-portrait">
+              <Sprite sheet={sheets.dungeon} index={classSprite(player.classId)} className="portrait-sprite" label="Your hero" />
+              {weapon && <ItemIcon item={weapon.item} className="held-weapon" />}
             </div>
             <div className="equipment-slots">
               {slotOrder.map(slot => {

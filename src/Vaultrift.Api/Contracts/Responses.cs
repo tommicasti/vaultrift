@@ -16,6 +16,7 @@ public sealed record GameStateResponse(
 
 public sealed record PlayerResponse(
     string? ClassId,
+    int Level,
     int X,
     int Y,
     Direction Facing,
@@ -44,8 +45,17 @@ public sealed record EquippedItemResponse(EquipmentSlot Slot, int EntryId);
 
 public sealed record ActiveBoostResponse(ItemResponse Item, ModifierResponse Modifier, int RemainingTurns);
 
-public sealed record EnemyResponse(int Id, int X, int Y, int Health, int MaxHealth, bool IsAwake);
-
+public sealed record EnemyResponse(
+    int Id,
+    string Kind,
+    string Name,
+    Rarity Rarity,
+    int Level,
+    int X,
+    int Y,
+    int Health,
+    int MaxHealth,
+    bool IsAwake);
 public sealed record ModifierResponse(StatType Stat, int Amount);
 
 public sealed record ItemResponse(

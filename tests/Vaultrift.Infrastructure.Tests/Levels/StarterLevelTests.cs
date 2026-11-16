@@ -22,4 +22,12 @@ public class StarterLevelTests
         Assert.Equal("potion-healing", game.Player.QuickSlot?.Id);
         Assert.NotEmpty(game.FloorItems);
     }
+
+    [Fact]
+    public void CreateGame_UsesOnlyKindsFromTheBestiary()
+    {
+        var game = StarterLevel.CreateGame(new SystemRandom(new Random(1)), ClassCatalog.Find("knight")!);
+
+        Assert.All(game.Enemies, enemy => Assert.Contains(enemy.Kind, BestiaryCatalog.All));
+    }
 }

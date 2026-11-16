@@ -22,7 +22,7 @@ public sealed class Player : Creature
     }
 
     public CharacterClass? Class { get; }
-
+    public int Level { get; internal set; } = 1;
     public Direction Facing { get; internal set; }
 
     public Inventory Inventory { get; } = new();

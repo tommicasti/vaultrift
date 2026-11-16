@@ -1,5 +1,4 @@
-﻿using Vaultrift.Engine.Combat;
-using Vaultrift.Engine.Gameplay;
+﻿using Vaultrift.Engine.Gameplay;
 using Vaultrift.Engine.Items;
 using Vaultrift.Engine.Randomness;
 using Vaultrift.Engine.World;
@@ -23,9 +22,6 @@ public static class StarterLevel
         "####################"
     ];
 
-    private static readonly Stats WeakEnemy = new(maxHealth: 8, attack: 3, defense: 0, evasion: 5);
-    private static readonly Stats StrongEnemy = new(maxHealth: 12, attack: 5, defense: 1, evasion: 0);
-
     public static Game CreateGame(IRandom random, ClassDefinition playerClass)
     {
         ArgumentNullException.ThrowIfNull(playerClass);
@@ -36,11 +32,12 @@ public static class StarterLevel
 
         Enemy[] enemies =
         [
-            new(1, new Position(5, 3), WeakEnemy),
-            new(2, new Position(14, 1), WeakEnemy),
-            new(3, new Position(2, 6), StrongEnemy),
-            new(4, new Position(17, 7), StrongEnemy),
-            new(5, new Position(9, 8), WeakEnemy)
+            Monster(1, 5, 3, "rat", Rarity.Common, level: 2),
+            Monster(2, 14, 1, "bat", Rarity.Rare),
+            Monster(3, 2, 6, "spider", Rarity.Epic),
+            Monster(4, 17, 7, "cyclops", Rarity.Rare),
+            Monster(5, 9, 8, "slime", Rarity.Common),
+            Monster(6, 13, 5, "ghost", Rarity.Legendary)
         ];
 
         FloorItem[] items =
@@ -69,6 +66,9 @@ public static class StarterLevel
                 player.AssignQuickSlot(entry.Id);
         }
     }
+
+    private static Enemy Monster(int id, int x, int y, string kindId, Rarity rarity, int level = 1) =>
+        new(id, new Position(x, y), BestiaryCatalog.Get(kindId), rarity, level);
 
     private static FloorItem Item(int x, int y, string itemId) =>
         new(new Position(x, y), ItemCatalog.Get(itemId));

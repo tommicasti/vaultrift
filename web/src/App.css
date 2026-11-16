@@ -8,8 +8,13 @@
 }
 
 .app.start {
+  max-width: 960px;
   align-items: center;
-  padding-top: 20vh;
+  padding-top: 8vh;
+}
+
+.app.start > .label {
+  margin: 0;
 }
 
 .app h1 {
@@ -122,9 +127,49 @@
   background: transparent;
 }
 
-.player {
+.sprite {
+  display: inline-block;
+  width: 1em;
+  height: 1em;
+  background-repeat: no-repeat;
+  image-rendering: crisp-edges;
+  image-rendering: pixelated;
+}
+
+.actor {
+  width: 90%;
+  height: 90%;
+}
+
+.facing {
+  position: absolute;
+  font-size: 0.45em;
+  line-height: 1;
   color: var(--accent);
-  font-weight: bold;
+}
+
+.facing-up {
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+.facing-down {
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+.facing-left {
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%);
+}
+
+.facing-right {
+  right: 0;
+  top: 50%;
+  transform: translateY(-50%);
 }
 
 .enemy {
@@ -162,8 +207,13 @@
 }
 
 .item-icon {
-  line-height: 1;
-  filter: drop-shadow(0 0 3px var(--rarity));
+  filter: drop-shadow(0 0 2px var(--rarity));
+}
+
+.tile .item-icon,
+.slot .item-icon {
+  width: 70%;
+  height: 70%;
 }
 
 .item-name {
@@ -239,6 +289,11 @@
   font-size: 1.3rem;
 }
 
+.use .item-icon {
+  width: 55%;
+  height: 55%;
+}
+
 .attack {
   width: 5.5rem;
   height: 5.5rem;
@@ -264,6 +319,48 @@
 
 .event-log p:first-child {
   font-weight: 600;
+}
+
+.class-select {
+  width: 100%;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr));
+  gap: 1rem;
+}
+
+.class-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 1rem;
+  border-radius: 12px;
+  background: var(--surface);
+  text-align: center;
+}
+
+.class-card h2 {
+  margin: 0;
+  font-size: 1.2rem;
+}
+
+.class-card p {
+  margin: 0;
+}
+
+.class-card .combat-stats {
+  width: 100%;
+}
+
+.class-portrait {
+  width: 6rem;
+  height: 6rem;
+}
+
+.class-mastery {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--accent);
 }
 
 .overlay {
@@ -313,6 +410,7 @@
 }
 
 .character-portrait {
+  position: relative;
   aspect-ratio: 1;
   display: flex;
   align-items: center;
@@ -320,6 +418,20 @@
   border-radius: 12px;
   background: var(--surface);
   font-size: 4rem;
+}
+
+.portrait-sprite {
+  width: 75%;
+  height: 75%;
+}
+
+.held-weapon {
+  position: absolute;
+  left: 52%;
+  top: 30%;
+  width: 40%;
+  height: 40%;
+  transform: rotate(20deg);
 }
 
 .equipment-slots {
@@ -409,7 +521,8 @@
 }
 
 .item-details > .item-icon {
-  font-size: 1.8rem;
+  width: 2.5rem;
+  height: 2.5rem;
 }
 
 .item-details-text {
@@ -477,7 +590,9 @@
   }
 
   .app.start {
-    padding-top: 0;
+    height: auto;
+    min-height: 100dvh;
+    padding: 1rem;
   }
 
   .board {

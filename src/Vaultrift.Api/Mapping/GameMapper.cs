@@ -15,13 +15,7 @@ public static class GameMapper
             ToPlayerResponse(game.Player),
             game.Enemies
                 .Where(enemy => !enemy.IsDead)
-                .Select(enemy => new EnemyResponse(
-                    enemy.Id,
-                    enemy.Position.X,
-                    enemy.Position.Y,
-                    enemy.Health,
-                    enemy.Stats.MaxHealth,
-                    enemy.IsAwake))
+                .Select(ToEnemyResponse)
                 .ToList(),
             game.FloorItems
                 .Select(pair => new FloorItemResponse(pair.Key.X, pair.Key.Y, ToItemResponse(pair.Value)))
@@ -45,6 +39,7 @@ public static class GameMapper
 
         return new PlayerResponse(
             player.Class?.Id,
+            player.Level,
             player.Position.X,
             player.Position.Y,
             player.Facing,
@@ -67,6 +62,19 @@ public static class GameMapper
                     boost.RemainingTurns))
                 .ToList());
     }
+
+    private static EnemyResponse ToEnemyResponse(Enemy enemy) =>
+        new(
+            enemy.Id,
+            enemy.Kind.Id,
+            enemy.Kind.Name,
+            enemy.Rarity,
+            enemy.Level,
+            enemy.Position.X,
+            enemy.Position.Y,
+            enemy.Health,
+            enemy.Stats.MaxHealth,
+            enemy.IsAwake);
 
     private static EventResponse ToResponse(GameEvent gameEvent) => gameEvent switch
     {
