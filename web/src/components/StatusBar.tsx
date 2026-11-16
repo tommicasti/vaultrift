@@ -1,5 +1,6 @@
 import type { PlayerState } from '../api/types'
-import { describeModifier } from '../game/items'
+import { describeModifier, elementNames } from '../game/items'
+import { ElementIcon } from './ElementIcon'
 import { ItemIcon } from './ItemIcon'
 
 interface StatusBarProps {
@@ -9,7 +10,7 @@ interface StatusBarProps {
 
 export function StatusBar({ player, deaths }: StatusBarProps) {
   const healthPercent = (player.health / player.maxHealth) * 100
-  const hasExtras = player.quickSlot !== undefined || player.boosts.length > 0
+  const hasExtras = player.quickSlot !== undefined || player.boosts.length > 0 || player.resistance !== undefined
 
   return (
     <section className="status-bar">
@@ -30,6 +31,11 @@ export function StatusBar({ player, deaths }: StatusBarProps) {
           {player.quickSlot && (
             <span className="label quick-slot-info">
               Quick slot <ItemIcon item={player.quickSlot} /> ×{player.quickSlotQuantity}
+            </span>
+          )}
+          {player.resistance && (
+            <span className="label resistance-info">
+              Resists <ElementIcon element={player.resistance} /> {elementNames[player.resistance]}
             </span>
           )}
           {player.boosts.map(boost => (

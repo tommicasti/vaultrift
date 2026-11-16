@@ -1,5 +1,5 @@
 import type { CSSProperties } from 'react'
-import type { Rarity } from '../api/types'
+import type { Element, Rarity } from '../api/types'
 
 export interface SpriteSheet {
   src: string
@@ -10,7 +10,7 @@ export interface SpriteSheet {
 export const sheets = {
   dungeon: { src: '/assets/tilesets/tiny-dungeon.png', columns: 12, rows: 11 },
   town: { src: '/assets/tilesets/tiny-town.png', columns: 12, rows: 11 },
-  items: { src: '/assets/tilesets/vaultrift-items.png', columns: 8, rows: 4 },
+  items: { src: '/assets/tilesets/vaultrift-items.png', columns: 8, rows: 5 },
   world: { src: '/assets/tilesets/vaultrift-world.png', columns: 8, rows: 1 },
 } satisfies Record<string, SpriteSheet>
 
@@ -55,6 +55,13 @@ export const starSprites: Record<Rarity, number> = {
   Rare: 26,
   Epic: 27,
   Legendary: 28,
+}
+
+export const elementSprites: Record<Element, number> = {
+  Fire: 34,
+  Ice: 35,
+  Lightning: 36,
+  Wind: 37,
 }
 
 function axisPercent(index: number, count: number): number {

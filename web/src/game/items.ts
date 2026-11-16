@@ -1,4 +1,4 @@
-import type { EquipmentSlot, ItemCategory, ItemInfo, StatModifierInfo, StatType } from '../api/types'
+import type { Element, EquipmentSlot, ItemCategory, ItemInfo, StatModifierInfo, StatType } from '../api/types'
 import { sheets, type SpriteSheet } from './sprites'
 
 export interface SpriteRef {
@@ -14,6 +14,7 @@ const categorySprites: Record<ItemCategory, SpriteRef> = {
   Body: { sheet: sheets.items, index: 1 },
   Feet: { sheet: sheets.items, index: 2 },
   Ring: { sheet: sheets.items, index: 3 },
+  Cloak: { sheet: sheets.items, index: 30 },
   Potion: { sheet: sheets.dungeon, index: 115 },
 }
 
@@ -46,6 +47,9 @@ const legendarySprites: Record<string, number> = {
   'ring-band-of-second-dawn': 23,
   'ring-ouroboros': 24,
   'ring-gilded-grasp': 25,
+  'cloak-cinderweave': 31,
+  'cloak-rimeveil': 32,
+  'cloak-stormshroud': 33,
 }
 
 export function itemSprite(item: ItemInfo): SpriteRef {
@@ -61,6 +65,7 @@ export const slotLabels: Record<EquipmentSlot, string> = {
   Feet: 'Feet',
   Ring1: 'Ring',
   Ring2: 'Ring',
+  Cloak: 'Cloak',
 }
 
 const statLabels: Record<StatType, string> = {
@@ -74,8 +79,32 @@ export function describeModifier(modifier: StatModifierInfo): string {
   return `+${modifier.amount}${suffix} ${statLabels[modifier.stat]}`
 }
 
+export const elementNames: Record<Element, string> = {
+  Fire: 'fire',
+  Ice: 'ice',
+  Lightning: 'lightning',
+  Wind: 'wind',
+}
+
+const elementEffects: Record<Element, string> = {
+  Fire: 'burn',
+  Ice: 'freeze',
+  Lightning: 'chain',
+  Wind: 'knockback',
+}
+
+export function describeElement(item: ItemInfo): string | null {
+  if (!item.element) return null
+  if (item.category === 'Cloak') return `Resists ${elementNames[item.element]}`
+  return `${capitalize(elementNames[item.element])} · ${item.effectChance}% ${elementEffects[item.element]}`
+}
+
 export function describeItem(item: ItemInfo): string {
   if (item.healing) return `Restores ${item.healing} health`
   if (item.boost) return `${describeModifier(item.boost)} for ${item.boostTurns} turns`
   return item.modifiers.map(describeModifier).join(' · ')
+}
+
+export function capitalize(text: string): string {
+  return text.charAt(0).toUpperCase() + text.slice(1)
 }

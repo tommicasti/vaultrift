@@ -1,4 +1,5 @@
 import type { EquipRejectReason, GameEvent, UseRejectReason } from '../api/types'
+import { elementNames } from './items'
 
 const equipRejectMessages: Record<EquipRejectReason, string> = {
   ItemNotFound: 'That item is no longer in your backpack.',
@@ -13,8 +14,21 @@ const useRejectMessages: Record<UseRejectReason, string> = {
   QuickSlotEmpty: 'Your quick slot is empty.',
 }
 
+function effectivenessNote(event: GameEvent): string {
+  switch (event.effectiveness) {
+    case 'Effective':
+      return " It's super effective!"
+    case 'Resisted':
+      return " It's resisted."
+    default:
+      return ''
+  }
+}
+
 export function describeEvent(event: GameEvent, enemyNames: ReadonlyMap<number, string>): string | null {
   const critical = event.isCritical ? ' Critical hit!' : ''
+  const note = effectivenessNote(event)
+  const withElement = event.element ? ` with ${elementNames[event.element]}` : ''
   const enemy = event.enemyId === undefined ? 'The enemy' : `The ${enemyNames.get(event.enemyId) ?? 'enemy'}`
   const enemyLower = enemy.charAt(0).toLowerCase() + enemy.slice(1)
 
@@ -26,7 +40,7 @@ export function describeEvent(event: GameEvent, enemyNames: ReadonlyMap<number, 
     case 'PlayerAttackedEnemy':
       return event.isDodged
         ? `${enemy} dodges your attack!`
-        : `You hit ${enemyLower} for ${event.damage} damage.${critical}`
+        : `You hit ${enemyLower}${withElement} for ${event.damage} damage.${critical}${note}`
     case 'PlayerAttackedNothing':
       return 'You swing at the empty air.'
     case 'EnemyDefeated':
@@ -34,7 +48,7 @@ export function describeEvent(event: GameEvent, enemyNames: ReadonlyMap<number, 
     case 'EnemyAttackedPlayer':
       return event.isDodged
         ? `You dodge ${enemyLower}'s attack!`
-        : `${enemy} hits you for ${event.damage} damage.${critical}`
+        : `${enemy} hits you${withElement} for ${event.damage} damage.${critical}${note}`
     case 'EnemyWokeUp':
       return `${enemy} wakes up!`
     case 'PlayerDefeated':
@@ -57,5 +71,17 @@ export function describeEvent(event: GameEvent, enemyNames: ReadonlyMap<number, 
       return `${event.item?.name} is now in your quick slot.`
     case 'BoostExpired':
       return `The effect of ${event.item?.name} wears off.`
+    case 'EnemyIgnited':
+      return `${enemy} catches fire!`
+    case 'EnemyBurned':
+      return `${enemy} burns for ${event.damage} damage.`
+    case 'EnemyFrozen':
+      return `${enemy} is frozen solid!`
+    case 'EnemyThawed':
+      return `${enemy} thaws out.`
+    case 'EnemyShocked':
+      return `Lightning jumps to ${enemyLower} for ${event.damage} damage.${note}`
+    case 'EnemyKnockedBack':
+      return `The wind pushes ${enemyLower} back.`
   }
 }

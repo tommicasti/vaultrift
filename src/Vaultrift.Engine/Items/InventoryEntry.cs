@@ -2,7 +2,7 @@
 
 public sealed class InventoryEntry
 {
-    internal InventoryEntry(int id, ItemDefinition item)
+    internal InventoryEntry(int id, ItemInstance item)
     {
         Id = id;
         Item = item;
@@ -11,7 +11,7 @@ public sealed class InventoryEntry
 
     public int Id { get; }
 
-    public ItemDefinition Item { get; }
+    public ItemInstance Item { get; }
 
     public int Quantity { get; internal set; }
 }

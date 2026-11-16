@@ -6,7 +6,7 @@ namespace Vaultrift.Infrastructure.Tests.Content;
 public class ItemCatalogTests
 {
     private static readonly EquipmentKind[] GearKinds =
-        [EquipmentKind.Head, EquipmentKind.Body, EquipmentKind.Feet, EquipmentKind.Ring];
+        [EquipmentKind.Head, EquipmentKind.Body, EquipmentKind.Feet, EquipmentKind.Ring, EquipmentKind.Cloak];
 
     private static IEnumerable<EquipmentDefinition> Equipment => ItemCatalog.All.OfType<EquipmentDefinition>();
 
@@ -55,6 +55,7 @@ public class ItemCatalogTests
     [InlineData(EquipmentKind.Head, StatType.Defense)]
     [InlineData(EquipmentKind.Body, StatType.Defense)]
     [InlineData(EquipmentKind.Feet, StatType.Evasion)]
+    [InlineData(EquipmentKind.Cloak, StatType.Evasion)]
     public void Gear_GivesThePrincipalBonusOfItsKind(EquipmentKind kind, StatType principal)
     {
         Assert.All(
@@ -94,6 +95,33 @@ public class ItemCatalogTests
         Assert.All(
             ItemCatalog.All.Where(item => item.Rarity == Rarity.Legendary),
             item => Assert.False(string.IsNullOrWhiteSpace(item.Description)));
+    }
+
+    [Fact]
+    public void FixedElements_BelongOnlyToLegendaryWeaponsAndCloaks()
+    {
+        Assert.All(
+            Equipment.Where(item => item.FixedElement is not null),
+            item =>
+            {
+                Assert.Equal(Rarity.Legendary, item.Rarity);
+                Assert.True(ItemInstance.CanHaveElement(item));
+            });
+    }
+
+    [Fact]
+    public void EveryElement_HasALegendaryWeapon()
+    {
+        foreach (var element in Enum.GetValues<Element>())
+            Assert.Contains(Weapons, weapon => weapon.Rarity == Rarity.Legendary && weapon.FixedElement == element);
+    }
+
+    [Fact]
+    public void LegendaryCloaks_AlwaysHaveAnElement()
+    {
+        Assert.All(
+            Gear.Where(item => item.Kind == EquipmentKind.Cloak && item.Rarity == Rarity.Legendary),
+            cloak => Assert.NotNull(cloak.FixedElement));
     }
 
     [Fact]

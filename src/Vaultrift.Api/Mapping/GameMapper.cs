@@ -51,16 +51,17 @@ public static class GameMapper
             player.Equipment
                 .Select(pair => new EquippedItemResponse(pair.Key, pair.Value.Id))
                 .ToList(),
-            quickSlot is null ? null : ToItemResponse(quickSlot),
+            quickSlot is null ? null : ToItemResponse(new ItemInstance(quickSlot)),
             quickSlot is null ? 0 : player.Inventory.Entries
                 .Where(entry => entry.Item.Id == quickSlot.Id)
                 .Sum(entry => entry.Quantity),
             player.Boosts
                 .Select(boost => new ActiveBoostResponse(
-                    ToItemResponse(boost.Source),
+                    ToItemResponse(new ItemInstance(boost.Source)),
                     ToModifierResponse(boost.Modifier),
                     boost.RemainingTurns))
-                .ToList());
+                .ToList(),
+            player.Resistance);
     }
 
     private static EnemyResponse ToEnemyResponse(Enemy enemy) =>
@@ -74,16 +75,21 @@ public static class GameMapper
             enemy.Position.Y,
             enemy.Health,
             enemy.Stats.MaxHealth,
-            enemy.IsAwake);
+            enemy.IsAwake,
+            enemy.Kind.Weakness,
+            enemy.Kind.Resistance,
+            enemy.Kind.AttackElement,
+            enemy.IsBurning,
+            enemy.IsFrozen);
 
     private static EventResponse ToResponse(GameEvent gameEvent) => gameEvent switch
     {
         PlayerMoved e => new("PlayerMoved", X: e.To.X, Y: e.To.Y),
         PlayerTurned => new("PlayerTurned"),
-        PlayerAttackedEnemy e => new("PlayerAttackedEnemy", EnemyId: e.EnemyId, Damage: e.Result.Damage, IsCritical: e.Result.IsCritical, IsDodged: e.Result.IsDodged),
+        PlayerAttackedEnemy e => Attack("PlayerAttackedEnemy", e.EnemyId, e.Result),
         PlayerAttackedNothing => new("PlayerAttackedNothing"),
         EnemyDefeated e => new("EnemyDefeated", EnemyId: e.EnemyId),
-        EnemyAttackedPlayer e => new("EnemyAttackedPlayer", EnemyId: e.EnemyId, Damage: e.Result.Damage, IsCritical: e.Result.IsCritical, IsDodged: e.Result.IsDodged),
+        EnemyAttackedPlayer e => Attack("EnemyAttackedPlayer", e.EnemyId, e.Result),
         EnemyWokeUp e => new("EnemyWokeUp", EnemyId: e.EnemyId),
         EnemyMoved e => new("EnemyMoved", EnemyId: e.EnemyId, X: e.To.X, Y: e.To.Y),
         PlayerDefeated => new("PlayerDefeated"),
@@ -94,26 +100,50 @@ public static class GameMapper
         EquipRejected e => new("EquipRejected", Reason: e.Reason.ToString()),
         ItemUsed e => new("ItemUsed", Item: ToItemResponse(e.Item)),
         UseRejected e => new("UseRejected", Reason: e.Reason.ToString()),
-        QuickSlotAssigned e => new("QuickSlotAssigned", Item: ToItemResponse(e.Item)),
-        BoostExpired e => new("BoostExpired", Item: ToItemResponse(e.Item)),
+        QuickSlotAssigned e => new("QuickSlotAssigned", Item: ToItemResponse(new ItemInstance(e.Item))),
+        BoostExpired e => new("BoostExpired", Item: ToItemResponse(new ItemInstance(e.Item))),
+        EnemyIgnited e => new("EnemyIgnited", EnemyId: e.EnemyId, Element: Element.Fire),
+        EnemyBurned e => new("EnemyBurned", EnemyId: e.EnemyId, Damage: e.Damage, Element: Element.Fire),
+        EnemyFrozen e => new("EnemyFrozen", EnemyId: e.EnemyId, Element: Element.Ice),
+        EnemyThawed e => new("EnemyThawed", EnemyId: e.EnemyId, Element: Element.Ice),
+        EnemyShocked e => Attack("EnemyShocked", e.EnemyId, e.Result),
+        EnemyKnockedBack e => new("EnemyKnockedBack", EnemyId: e.EnemyId, X: e.To.X, Y: e.To.Y, Element: Element.Wind),
         _ => throw new ArgumentOutOfRangeException(nameof(gameEvent), gameEvent.GetType().Name, "Unknown game event.")
     };
 
-    private static ItemResponse ToItemResponse(ItemDefinition item)
+    private static EventResponse Attack(string type, int enemyId, AttackResult result) =>
+        new(
+            type,
+            EnemyId: enemyId,
+            Damage: result.Damage,
+            IsCritical: result.IsCritical,
+            IsDodged: result.IsDodged,
+            Element: result.Element,
+            Effectiveness: result.Element is null ? null : result.Effectiveness);
+
+    private static ItemResponse ToItemResponse(ItemInstance instance)
     {
+        var item = instance.Definition;
         var potion = item as PotionDefinition;
 
         return new ItemResponse(
-            item.Id,
-            item.Name,
-            item.Rarity,
+            instance.Id,
+            instance.Name,
+            instance.Rarity,
             CategoryOf(item),
             item.Description,
             ModifiersOf(item),
             potion is { Healing: > 0 } ? potion.Healing : null,
             potion?.Boost is { } boost ? ToModifierResponse(boost) : null,
-            potion?.Boost is not null ? potion.BoostTurns : null);
+            potion?.Boost is not null ? potion.BoostTurns : null,
+            instance.Element,
+            EffectChanceOf(instance));
     }
+
+    private static int? EffectChanceOf(ItemInstance instance) =>
+        instance.Element is { } element && instance.Definition is WeaponDefinition
+            ? (int)Math.Round(ElementRules.EffectChance(element, instance.Rarity) * 100)
+            : null;
 
     private static IReadOnlyList<ModifierResponse> ModifiersOf(ItemDefinition item) =>
         item is EquipmentDefinition equipment
