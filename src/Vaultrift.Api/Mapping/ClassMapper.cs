@@ -19,6 +19,8 @@ public static class ClassMapper
             stats.Attack,
             stats.Defense,
             stats.Evasion,
+            stats.Critical,
+            playerClass.Speed,
             playerClass.Mastery.WeaponType,
             new ModifierResponse(bonus.Stat, bonus.Amount));
     }

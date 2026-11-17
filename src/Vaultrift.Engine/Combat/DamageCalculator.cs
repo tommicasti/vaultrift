@@ -4,11 +4,10 @@ namespace Vaultrift.Engine.Combat;
 
 public sealed class DamageCalculator
 {
-    public const double CriticalChance = 0.10;
     public const int CriticalMultiplier = 2;
     public const int MinimumDamage = 1;
     public const int MaxEvasion = 50;
-
+    public const int MaxCritical = 50;
 
     private readonly IRandom _random;
 
@@ -27,7 +26,7 @@ public sealed class DamageCalculator
             return AttackResult.Dodged;
 
         var baseDamage = Math.Max(MinimumDamage, attacker.Attack - defender.Defense);
-        var isCritical = _random.NextDouble() < CriticalChance;
+        var isCritical = _random.NextDouble() < Math.Min(attacker.Critical, MaxCritical) / 100.0;
         var damage = isCritical ? baseDamage * CriticalMultiplier : baseDamage;
 
         return new AttackResult(damage, isCritical);

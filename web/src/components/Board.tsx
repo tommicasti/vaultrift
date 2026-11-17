@@ -1,6 +1,6 @@
 import type { CSSProperties, PointerEvent, ReactElement } from 'react'
 import type { Direction, GameState } from '../api/types'
-import { classSprite, sheets } from '../game/sprites'
+import { classSprite } from '../game/sprites'
 import { EnemyMarker } from './EnemyMarker'
 import { ItemIcon } from './ItemIcon'
 import { LevelBadge } from './LevelBadge'
@@ -48,7 +48,7 @@ export function Board({ game, viewColumns, viewRows, onAttack }: BoardProps) {
         <div key={`${column},${row}`} className={tileClass(symbol)}>
           {isPlayer && (
             <>
-              <Sprite sheet={sheets.dungeon} index={playerSprite} className="actor" label="You" />
+              <Sprite sheet={playerSprite.sheet} index={playerSprite.index} className="actor" label={game.player.name} />
               <span className={`facing facing-${game.player.facing.toLowerCase()}`} aria-hidden="true">
                 {facingArrows[game.player.facing]}
               </span>

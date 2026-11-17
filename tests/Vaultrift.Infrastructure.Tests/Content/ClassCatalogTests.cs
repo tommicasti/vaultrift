@@ -1,4 +1,5 @@
-﻿using Vaultrift.Engine.Items;
+﻿using Vaultrift.Engine.Gameplay;
+using Vaultrift.Engine.Items;
 using Vaultrift.Infrastructure.Content;
 
 namespace Vaultrift.Infrastructure.Tests.Content;
@@ -42,5 +43,20 @@ public class ClassCatalogTests
     public void Find_UnknownId_ReturnsNull()
     {
         Assert.Null(ClassCatalog.Find("bard"));
+    }
+
+    [Fact]
+    public void Rogue_IsTheOnlyFastClass_AndCritsMoreThanTheOthers()
+    {
+        var rogue = ClassCatalog.Find("rogue")!.Class;
+
+        Assert.Equal(Speed.Fast, rogue.Speed);
+        Assert.All(
+            ClassCatalog.All.Where(definition => definition.Class.Id != "rogue"),
+            definition =>
+            {
+                Assert.Equal(Speed.Normal, definition.Class.Speed);
+                Assert.True(definition.Class.BaseStats.Critical < rogue.BaseStats.Critical);
+            });
     }
 }

@@ -33,7 +33,7 @@ public sealed class GamesController : ControllerBase
             return ValidationProblem(ModelState);
         }
 
-        var game = StarterLevel.CreateGame(_random, playerClass);
+        var game = StarterLevel.CreateGame(_random, playerClass, request.Name);
         var id = _store.Add(game);
 
         return CreatedAtAction(nameof(Get), new { id }, GameMapper.ToResponse(id, game));

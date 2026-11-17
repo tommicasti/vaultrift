@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import type { EquipmentSlot, InventoryEntryState, PlayerState } from '../api/types'
 import { describeElement, describeItem, elementNames, slotLabels } from '../game/items'
-import { classSprite, sheets } from '../game/sprites'
+import { classSprite } from '../game/sprites'
 import { ItemIcon } from './ItemIcon'
 import { Sprite } from './Sprite'
 
@@ -36,6 +36,14 @@ export function InventoryScreen({
   const selected = selectedId === null ? undefined : entriesById.get(selectedId)
   const weaponEntryId = equippedBySlot.get('Weapon')
   const weapon = weaponEntryId === undefined ? undefined : entriesById.get(weaponEntryId)
+  const portrait = classSprite(player.classId)
+
+  function handleDoubleClick(entry: InventoryEntryState) {
+    if (disabled) return
+
+    if (entry.item.category === 'Potion') onUse(entry.id)
+    else if (!equippedIds.has(entry.id)) onEquip(entry.id)
+  }
 
   return (
     <div className="overlay" role="dialog" aria-modal="true" aria-label="Inventory">
@@ -50,9 +58,10 @@ export function InventoryScreen({
         <div className="inventory-body">
           <div className="character-panel">
             <div className="character-portrait">
-              <Sprite sheet={sheets.dungeon} index={classSprite(player.classId)} className="portrait-sprite" label="Your hero" />
+              <Sprite sheet={portrait.sheet} index={portrait.index} className="portrait-sprite" label={player.name} />
               {weapon && <ItemIcon item={weapon.item} className="held-weapon" />}
             </div>
+            <div className="hero-name">{player.name}</div>
             <div className="equipment-slots">
               {slotOrder.map(slot => {
                 const entryId = equippedBySlot.get(slot)
@@ -86,6 +95,8 @@ export function InventoryScreen({
               <dd>{player.defense}</dd>
               <dt>Evasion</dt>
               <dd>{player.evasion}%</dd>
+              <dt>Critical</dt>
+              <dd>{player.critical}%</dd>
               <dt>Resists</dt>
               <dd>{player.resistance ? elementNames[player.resistance] : '—'}</dd>
             </dl>
@@ -108,7 +119,13 @@ export function InventoryScreen({
                 ].join(' ')
 
                 return (
-                  <button key={entry.id} className={classes} aria-label={entry.item.name} onClick={() => setSelectedId(entry.id)}>
+                  <button
+                    key={entry.id}
+                    className={classes}
+                    aria-label={entry.item.name}
+                    onClick={() => setSelectedId(entry.id)}
+                    onDoubleClick={() => handleDoubleClick(entry)}
+                  >
                     <ItemIcon item={entry.item} />
                     {entry.quantity > 1 && <span className="slot-quantity">{entry.quantity}</span>}
                     {equippedIds.has(entry.id) && <span className="slot-equipped">E</span>}

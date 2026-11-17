@@ -16,6 +16,7 @@ public sealed partial class Game
     private readonly DamageCalculator _damageCalculator;
     private readonly IRandom _random;
     private readonly Position _playerStart;
+    private int _stepsThisTurn;
 
     public Game(
         DungeonMap map,
@@ -72,6 +73,8 @@ public sealed partial class Game
 
     public int TurnNumber { get; private set; }
 
+    public int FreeStepsLeft => Player.StepsPerTurn - 1 - _stepsThisTurn;
+
     public TurnResult MovePlayer(Direction direction)
     {
         var events = new List<GameEvent>();
@@ -88,6 +91,12 @@ public sealed partial class Game
         Player.Position = target;
         events.Add(new PlayerMoved(target));
         PickUpItemAt(target, events);
+
+        if (FreeStepsLeft > 0)
+        {
+            _stepsThisTurn++;
+            return new TurnResult(TurnPassed: false, events);
+        }
 
         EndTurn(events);
         return new TurnResult(TurnPassed: true, events);
@@ -200,6 +209,7 @@ public sealed partial class Game
 
     private void EndTurn(List<GameEvent> events)
     {
+        _stepsThisTurn = 0;
         EnemiesAct(events);
         BurnEnemies(events);
         TurnNumber++;

@@ -22,12 +22,12 @@ public static class StarterLevel
         "####################"
     ];
 
-    public static Game CreateGame(IRandom random, ClassDefinition playerClass)
+    public static Game CreateGame(IRandom random, ClassDefinition playerClass, string? playerName = null)
     {
         ArgumentNullException.ThrowIfNull(playerClass);
 
         var map = DungeonMap.Parse(Rows);
-        var player = new Player(new Position(1, 1), playerClass.Class);
+        var player = new Player(new Position(1, 1), playerClass.Class, playerName);
         GiveStartingKit(player, playerClass.StartingItemIds);
 
         Enemy[] enemies =

@@ -7,24 +7,30 @@ export interface SpriteSheet {
   rows: number
 }
 
+export interface SpriteRef {
+  sheet: SpriteSheet
+  index: number
+}
+
 export const sheets = {
   dungeon: { src: '/assets/tilesets/tiny-dungeon.png', columns: 12, rows: 11 },
   town: { src: '/assets/tilesets/tiny-town.png', columns: 12, rows: 11 },
-  items: { src: '/assets/tilesets/vaultrift-items.png', columns: 8, rows: 5 },
+  items: { src: '/assets/tilesets/vaultrift-items.png', columns: 8, rows: 6 },
   world: { src: '/assets/tilesets/vaultrift-world.png', columns: 8, rows: 1 },
+  heroes: { src: '/assets/tilesets/vaultrift-heroes.png', columns: 8, rows: 1 },
 } satisfies Record<string, SpriteSheet>
 
-const classSprites: Record<string, number> = {
-  knight: 96,
-  berserker: 87,
-  ranger: 112,
-  rogue: 111,
-  mage: 84,
+const classSprites: Record<string, SpriteRef> = {
+  knight: { sheet: sheets.dungeon, index: 96 },
+  berserker: { sheet: sheets.dungeon, index: 87 },
+  ranger: { sheet: sheets.dungeon, index: 112 },
+  rogue: { sheet: sheets.heroes, index: 0 },
+  mage: { sheet: sheets.dungeon, index: 84 },
 }
 
-const defaultClassSprite = 96
+const defaultClassSprite = classSprites.knight
 
-export function classSprite(classId?: string): number {
+export function classSprite(classId?: string): SpriteRef {
   return classId !== undefined && classId in classSprites ? classSprites[classId] : defaultClassSprite
 }
 

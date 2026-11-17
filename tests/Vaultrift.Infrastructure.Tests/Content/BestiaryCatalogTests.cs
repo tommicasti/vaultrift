@@ -1,5 +1,6 @@
 ﻿using Vaultrift.Engine.Combat;
 using Vaultrift.Engine.Gameplay;
+using Vaultrift.Engine.Items;
 using Vaultrift.Infrastructure.Content;
 
 namespace Vaultrift.Infrastructure.Tests.Content;
@@ -27,6 +28,13 @@ public class BestiaryCatalogTests
     public void EverySpeed_HasAtLeastOneKind(Speed speed)
     {
         Assert.Contains(BestiaryCatalog.All, kind => kind.Speed == speed);
+    }
+
+    [Fact]
+    public void EveryElement_IsSomeKindsWeakness()
+    {
+        foreach (var element in Enum.GetValues<Element>())
+            Assert.Contains(BestiaryCatalog.All, kind => kind.Weakness == element);
     }
 
     [Fact]

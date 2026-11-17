@@ -45,6 +45,19 @@ public static class ItemCatalog
             "Ask the wind nicely. Then pull.",
             Element.Wind, Attack(7), Evasion(10), Defense(1)),
 
+        Weapon("dagger-common", "Rusty Dagger", WeaponType.Dagger, Rarity.Common, Attack(2)),
+        Weapon("dagger-rare", "Steel Dagger", WeaponType.Dagger, Rarity.Rare, Attack(4)),
+        Weapon("dagger-epic", "Shadow Kris", WeaponType.Dagger, Rarity.Epic, Attack(6), Critical(5)),
+        LegendaryWeapon("dagger-whisperthorn", "Whisperthorn", WeaponType.Dagger,
+            "By the time they hear it, it has already left.",
+            Attack(9), Critical(15), Evasion(4)),
+        LegendaryWeapon("dagger-last-breath", "Last Breath", WeaponType.Dagger,
+            "Every fight ends with one. This blade just gets there first.",
+            Attack(10), Critical(12), Defense(1)),
+        LegendaryWeapon("dagger-gutterstar", "Gutterstar", WeaponType.Dagger,
+            "Born in the alleys, polished by the stars.",
+            Attack(8), Critical(14), Evasion(6)),
+
         Gear("head-common", "Leather Cap", EquipmentKind.Head, Rarity.Common, Defense(1)),
         Gear("head-rare", "Iron Helm", EquipmentKind.Head, Rarity.Rare, Defense(2)),
         Gear("head-epic", "Warden's Visage", EquipmentKind.Head, Rarity.Epic, Defense(3), Evasion(3)),
@@ -125,6 +138,8 @@ public static class ItemCatalog
     private static StatModifier Defense(int amount) => new(StatType.Defense, amount);
 
     private static StatModifier Evasion(int amount) => new(StatType.Evasion, amount);
+
+    private static StatModifier Critical(int amount) => new(StatType.Critical, amount);
 
     private static WeaponDefinition Weapon(string id, string name, WeaponType type, Rarity rarity, params StatModifier[] modifiers) =>
         new(id, name, rarity, type, modifiers);

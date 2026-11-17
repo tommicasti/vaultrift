@@ -75,4 +75,27 @@ public class StatsTests
 
         Assert.Equal(100, result.Evasion);
     }
+
+    [Fact]
+    public void Constructor_WithoutCritical_DefaultsToTenPercent()
+    {
+        Assert.Equal(Stats.DefaultCritical, new Stats(maxHealth: 30, attack: 5, defense: 2).Critical);
+        Assert.Equal(10, Stats.DefaultCritical);
+    }
+
+    [Theory]
+    [InlineData(-1)]
+    [InlineData(101)]
+    public void Constructor_CriticalOutOfRange_Throws(int critical)
+    {
+        Assert.Throws<ArgumentOutOfRangeException>(() => new Stats(maxHealth: 30, attack: 5, defense: 2, critical: critical));
+    }
+
+    [Fact]
+    public void Apply_AddsCriticalModifiers()
+    {
+        var stats = new Stats(maxHealth: 30, attack: 2, defense: 2, critical: 20);
+
+        Assert.Equal(35, stats.Apply([new StatModifier(StatType.Critical, 15)]).Critical);
+    }
 }

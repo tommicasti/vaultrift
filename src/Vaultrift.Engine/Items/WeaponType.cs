@@ -4,5 +4,6 @@ public enum WeaponType
 {
     Sword,
     Axe,
-    Bow
+    Bow,
+    Dagger
 }

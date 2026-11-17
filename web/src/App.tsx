@@ -32,12 +32,12 @@ function App() {
   const view = compact ? compactView : standardView
   const hasGame = game !== null
 
-  async function startGame(classId: string) {
+  async function startGame(classId: string, name: string) {
     setBusy(true)
     setError(null)
 
     try {
-      setGame(await createGame(classId))
+      setGame(await createGame(classId, name))
       setLog(['You enter the vault. It is dark.'])
       setInventoryOpen(false)
     } catch {
@@ -148,7 +148,7 @@ function App() {
       <main className="app start">
         <h1>Vaultrift</h1>
         <p className="label">Choose your hero</p>
-        <ClassSelect disabled={busy} onChoose={classId => void startGame(classId)} />
+        <ClassSelect disabled={busy} onChoose={(classId, name) => void startGame(classId, name)} />
         {error && <p className="error">{error}</p>}
       </main>
     )

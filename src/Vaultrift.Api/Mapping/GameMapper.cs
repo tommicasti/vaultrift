@@ -12,7 +12,7 @@ public static class GameMapper
         new(
             id,
             ToRows(game.Map),
-            ToPlayerResponse(game.Player),
+            ToPlayerResponse(game.Player, game.FreeStepsLeft),
             game.Enemies
                 .Where(enemy => !enemy.IsDead)
                 .Select(ToEnemyResponse)
@@ -32,13 +32,14 @@ public static class GameMapper
             result.Events.Select(ToResponse).ToList(),
             ToResponse(id, game));
 
-    private static PlayerResponse ToPlayerResponse(Player player)
+    private static PlayerResponse ToPlayerResponse(Player player, int freeSteps)
     {
         var combat = player.CombatStats;
         var quickSlot = player.QuickSlot;
 
         return new PlayerResponse(
             player.Class?.Id,
+            player.Name,
             player.Level,
             player.Position.X,
             player.Position.Y,
@@ -48,6 +49,8 @@ public static class GameMapper
             combat.Attack,
             combat.Defense,
             Math.Min(combat.Evasion, DamageCalculator.MaxEvasion),
+            Math.Min(combat.Critical, DamageCalculator.MaxCritical),
+            freeSteps,
             player.Equipment
                 .Select(pair => new EquippedItemResponse(pair.Key, pair.Value.Id))
                 .ToList(),
