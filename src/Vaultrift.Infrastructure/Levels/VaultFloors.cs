@@ -1,4 +1,4 @@
-﻿using Vaultrift.Engine.Gameplay;
+using Vaultrift.Engine.Gameplay;
 using Vaultrift.Engine.Items;
 using Vaultrift.Engine.Randomness;
 using Vaultrift.Engine.World;
@@ -8,19 +8,19 @@ namespace Vaultrift.Infrastructure.Levels;
 
 public sealed class VaultFloors : IFloorProvider
 {
-    public static IReadOnlyList<FloorTheme> Themes { get; } =
-    [
-        new("rat-king", ["rat", "bat", "slime"]),
-        new("spider-queen", ["rat", "bat", "spider", "slime", "ghost"]),
-        new("troll", ["bat", "spider", "slime", "ghost", "cyclops"])
-    ];
+    public const int FloorCount = 20;
+    public const int FloorsPerBossTier = 5;
 
     private const int IdsPerFloor = 1000;
-    private const int GearPerFloor = 4;
-    private const int PotionsPerFloor = 3;
+    private const int GearPerFloor = 6;
+    private const int PotionsPerFloor = 5;
+    private const int MinChestsPerFloor = 2;
+    private const int MaxChestsPerFloor = 3;
+    private const int ChestPlacementAttempts = 30;
+    private const string MimicId = "mimic";
 
     private static readonly string[] Potions =
-        ["potion-healing", "potion-healing", "potion-greater-healing", "potion-strength", "potion-protection"];
+        ["potion-healing", "potion-healing", "potion-greater-healing", "potion-mana", "potion-strength", "potion-protection"];
 
     private readonly IRandom _random;
 
@@ -28,17 +28,48 @@ public sealed class VaultFloors : IFloorProvider
     {
         ArgumentNullException.ThrowIfNull(random);
         _random = random;
+        Biomes = RollBiomes(BiomeCatalog.All);
     }
 
-    public int Count => Themes.Count;
+    public IReadOnlyList<Biome> Biomes { get; }
+
+    public int Count => FloorCount;
+
+    public static Rarity BossRarity(int floor) => ((floor - 1) / FloorsPerBossTier) switch
+    {
+        0 => Rarity.Common,
+        1 => Rarity.Rare,
+        _ => Rarity.Epic
+    };
+
+    public static int MaxMonstersPerRoom(int floor) => Math.Min(2 + (floor - 1) / 3, 5);
+
+    public static double MimicChance(int floor) => Math.Min(0.4, 0.05 + 0.03 * (floor - 1));
+
+    public static double MonsterRarityChance(Rarity rarity, int floor) => rarity switch
+    {
+        Rarity.Legendary => Math.Min(0.08, 0.005 * (floor - 1)),
+        Rarity.Epic => Math.Min(0.18, 0.03 + 0.01 * (floor - 1)),
+        Rarity.Rare => Math.Min(0.35, 0.15 + 0.015 * (floor - 1)),
+        _ => throw new ArgumentOutOfRangeException(nameof(rarity), rarity, "Common is whatever is left.")
+    };
+
+    public static double GearRarityChance(Rarity rarity, int floor) => rarity switch
+    {
+        Rarity.Legendary => Math.Min(0.08, 0.004 * floor),
+        Rarity.Epic => Math.Min(0.25, 0.05 + 0.01 * (floor - 1)),
+        Rarity.Rare => Math.Min(0.35, 0.20 + 0.01 * (floor - 1)),
+        _ => throw new ArgumentOutOfRangeException(nameof(rarity), rarity, "Common is whatever is left.")
+    };
 
     public Floor Create(int number)
     {
         ArgumentOutOfRangeException.ThrowIfLessThan(number, 1);
         ArgumentOutOfRangeException.ThrowIfGreaterThan(number, Count);
 
-        var theme = Themes[number - 1];
-        var layout = FloorGenerator.Generate(_random);
+        var biome = Biomes[number - 1];
+        var layout = FloorGenerator.Generate(_random, obstacleDensity: biome.ObstacleDensity);
+        var map = layout.Map;
         var start = layout.StartRoom.Center;
         var stairs = number < Count ? layout.BossRoom.Center : (Position?)null;
         var occupied = new HashSet<Position> { start };
@@ -47,20 +78,24 @@ public sealed class VaultFloors : IFloorProvider
         if (stairs is { } stairsPosition)
             occupied.Add(stairsPosition);
 
-        var enemies = new List<Enemy>
-        {
-            new(nextId++, BossPosition(layout.BossRoom, occupied), BestiaryCatalog.Get(theme.BossId))
-        };
+        var boss = new Enemy(
+            nextId++,
+            BossPosition(layout.BossRoom, occupied),
+            BestiaryCatalog.Get(biome.BossId),
+            BossRarity(number),
+            number);
+        var enemies = new List<Enemy> { boss };
+        var chests = PlaceChests(layout, number, occupied, () => nextId++);
 
         foreach (var room in layout.Rooms.Where(room => room != layout.StartRoom && room != layout.BossRoom))
         {
-            var count = _random.Next(1, 3 + number / 2);
+            var count = _random.Next(1, MaxMonstersPerRoom(number) + 1);
 
-            for (var index = 0; index < count && FreeTile(room, occupied) is { } position; index++)
+            for (var index = 0; index < count && FreeTile(map, room, occupied) is { } position; index++)
             {
                 occupied.Add(position);
-                var kind = BestiaryCatalog.Get(_random.Pick(theme.MonsterIds));
-                enemies.Add(new Enemy(nextId++, position, kind, RollRarity(number), number));
+                var kind = BestiaryCatalog.Get(_random.Pick(biome.MonsterIds));
+                enemies.Add(new Enemy(nextId++, position, kind, RollMonsterRarity(number), number));
             }
         }
 
@@ -71,14 +106,105 @@ public sealed class VaultFloors : IFloorProvider
         {
             var definition = index < GearPerFloor ? RollGear(number) : ItemCatalog.Get(_random.Pick(Potions));
 
-            if (FreeTile(_random.Pick(lootRooms), occupied) is not { } position)
+            if (FreeTile(map, _random.Pick(lootRooms), occupied) is not { } position)
                 continue;
 
             occupied.Add(position);
             items.Add(new FloorItem(position, ItemRoller.Roll(definition, _random)));
         }
 
-        return new Floor(layout.Map, start, enemies, items, stairs);
+        return new Floor(map, start, enemies, items, stairs, biome.Id, chests);
+    }
+
+    private List<Chest> PlaceChests(FloorLayout layout, int floor, HashSet<Position> occupied, Func<int> nextId)
+    {
+        var rooms = layout.Rooms.Where(room => room != layout.StartRoom && room != layout.BossRoom).ToList();
+        var wanted = _random.Next(MinChestsPerFloor, MaxChestsPerFloor + 1);
+        var chests = new List<Chest>();
+        var blocked = new HashSet<Position>();
+        var hasMimic = false;
+
+        for (var attempt = 0; attempt < ChestPlacementAttempts && chests.Count < wanted && rooms.Count > 0; attempt++)
+        {
+            var room = _random.Pick(rooms);
+            var candidates = room.Tiles()
+                .Where(tile => tile.X > room.X && tile.X < room.X + room.Width - 1)
+                .Where(tile => tile.Y > room.Y && tile.Y < room.Y + room.Height - 1)
+                .Where(tile => layout.Map.IsWalkable(tile) && !occupied.Contains(tile))
+                .ToList();
+
+            if (candidates.Count == 0)
+                continue;
+
+            var tile = _random.Pick(candidates);
+            blocked.Add(tile);
+
+            if (!EverythingReachable(layout, blocked))
+            {
+                blocked.Remove(tile);
+                continue;
+            }
+
+            occupied.Add(tile);
+            Enemy? mimic = null;
+
+            if (!hasMimic && _random.NextDouble() < MimicChance(floor))
+            {
+                mimic = new Enemy(nextId(), tile, BestiaryCatalog.Get(MimicId), Rarity.Rare, floor);
+                hasMimic = true;
+            }
+
+            chests.Add(new Chest(tile, mimic));
+        }
+
+        return chests;
+    }
+
+    private static bool EverythingReachable(FloorLayout layout, HashSet<Position> blocked)
+    {
+        var map = layout.Map;
+        var start = layout.StartRoom.Center;
+        var walkable = 0;
+
+        for (var y = 0; y < map.Height; y++)
+        {
+            for (var x = 0; x < map.Width; x++)
+            {
+                if (map.IsWalkable(new Position(x, y)))
+                    walkable++;
+            }
+        }
+
+        var seen = new HashSet<Position> { start };
+        var queue = new Queue<Position>([start]);
+
+        while (queue.Count > 0)
+        {
+            var current = queue.Dequeue();
+
+            foreach (var direction in Enum.GetValues<Direction>())
+            {
+                var next = current.Move(direction);
+
+                if (map.IsWalkable(next) && !blocked.Contains(next) && seen.Add(next))
+                    queue.Enqueue(next);
+            }
+        }
+
+        return seen.Count == walkable - blocked.Count;
+    }
+
+    private List<Biome> RollBiomes(IReadOnlyList<Biome> catalog)
+    {
+        var biomes = new List<Biome>(FloorCount);
+
+        while (biomes.Count < FloorCount)
+        {
+            var candidates = catalog.Where(biome => biome != biomes.LastOrDefault()).ToList();
+            biomes.Add(_random.Pick(candidates));
+        }
+
+        return biomes;
     }
 
     private static Position BossPosition(Room room, HashSet<Position> occupied)
@@ -89,29 +215,37 @@ public sealed class VaultFloors : IFloorProvider
         return position;
     }
 
-    private Position? FreeTile(Room room, HashSet<Position> occupied)
+    private Position? FreeTile(DungeonMap map, Room room, HashSet<Position> occupied)
     {
-        var free = room.Tiles().Where(tile => !occupied.Contains(tile)).ToList();
+        var free = room.Tiles().Where(tile => map.IsWalkable(tile) && !occupied.Contains(tile)).ToList();
 
         return free.Count == 0 ? null : _random.Pick(free);
     }
 
-    private Rarity RollRarity(int floor)
+    private Rarity RollMonsterRarity(int floor) => Roll(rarity => MonsterRarityChance(rarity, floor));
+
+    private Rarity RollGearRarity(int floor) => Roll(rarity => GearRarityChance(rarity, floor));
+
+    private Rarity Roll(Func<Rarity, double> chance)
     {
         var roll = _random.NextDouble();
-        var bonus = (floor - 1) * 0.05;
+        var threshold = 0.0;
 
-        if (roll < 0.02 + bonus / 2) return Rarity.Legendary;
-        if (roll < 0.10 + bonus) return Rarity.Epic;
-        if (roll < 0.30 + bonus * 2) return Rarity.Rare;
+        foreach (var rarity in new[] { Rarity.Legendary, Rarity.Epic, Rarity.Rare })
+        {
+            threshold += chance(rarity);
+
+            if (roll < threshold)
+                return rarity;
+        }
+
         return Rarity.Common;
     }
 
     private ItemDefinition RollGear(int floor)
     {
-        var rarity = RollRarity(floor);
-        var candidates = ItemCatalog.All
-            .OfType<EquipmentDefinition>()
+        var rarity = RollGearRarity(floor);
+        var candidates = ItemCatalog.Equipment
             .Where(item => item.Rarity == rarity)
             .ToList();
 

@@ -1,4 +1,4 @@
-﻿using Vaultrift.Engine.Combat;
+using Vaultrift.Engine.Combat;
 using Vaultrift.Engine.Gameplay;
 using Vaultrift.Engine.Items;
 using Vaultrift.Engine.Tests.Fakes;
@@ -199,7 +199,7 @@ public class ElementCombatTests
     }
 
     [Fact]
-    public void Wind_AgainstAWall_LeavesTheEnemyInPlace()
+    public void Wind_AgainstAWall_SlamsTheEnemyForHalfTheHit()
     {
         var enemy = NewEnemy(PlainDummy, 8, 1);
         var player = NewPlayer(Sword(Element.Wind));
@@ -210,6 +210,8 @@ public class ElementCombatTests
 
         Assert.Equal(new Position(8, 1), enemy.Position);
         Assert.DoesNotContain(result.Events, gameEvent => gameEvent is EnemyKnockedBack);
+        Assert.Contains(new EnemySlammed(1, 4), result.Events);
+        Assert.Equal(40 - 8 - 4, enemy.Health);
     }
 
     [Fact]
@@ -260,7 +262,7 @@ public class ElementCombatTests
         var player = NewPlayer(Sword(Element.Fire), new ItemInstance(Cloak, Element.Wind));
 
         Assert.True(player.Equipment.ContainsKey(EquipmentSlot.Cloak));
-        Assert.True(player.Equipment.ContainsKey(EquipmentSlot.Weapon));
+        Assert.True(player.Equipment.ContainsKey(EquipmentSlot.MainHand));
         Assert.Equal(Element.Wind, player.Resistance);
     }
 

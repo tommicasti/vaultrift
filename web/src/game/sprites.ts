@@ -15,11 +15,12 @@ export interface SpriteRef {
 export const sheets = {
   dungeon: { src: '/assets/tilesets/tiny-dungeon.png', columns: 12, rows: 11 },
   town: { src: '/assets/tilesets/tiny-town.png', columns: 12, rows: 11 },
-  items: { src: '/assets/tilesets/vaultrift-items.png', columns: 8, rows: 6 },
+  items: { src: '/assets/tilesets/vaultrift-items.png', columns: 8, rows: 9 },
   world: { src: '/assets/tilesets/vaultrift-world.png', columns: 8, rows: 1 },
   heroes: { src: '/assets/tilesets/vaultrift-heroes.png', columns: 8, rows: 1 },
   vault: { src: '/assets/tilesets/vaultrift-dungeon.png', columns: 8, rows: 2 },
   outfits: { src: '/assets/tilesets/vaultrift-outfits.png', columns: 8, rows: 6 },
+  biomes: { src: '/assets/tilesets/vaultrift-biomes.png', columns: 8, rows: 6 },
 } satisfies Record<string, SpriteSheet>
 
 const classSprites: Record<string, SpriteRef> = {
@@ -46,6 +47,10 @@ const enemySprites: Record<string, SpriteRef> = {
   'rat-king': { sheet: sheets.vault, index: 0 },
   'spider-queen': { sheet: sheets.vault, index: 1 },
   troll: { sheet: sheets.vault, index: 2 },
+  'dune-scorpion': { sheet: sheets.vault, index: 3 },
+  'frost-yeti': { sheet: sheets.vault, index: 4 },
+  'black-knight': { sheet: sheets.vault, index: 5 },
+  mimic: { sheet: sheets.dungeon, index: 92 },
 }
 
 const defaultEnemySprite = enemySprites.rat
@@ -99,6 +104,8 @@ export function outfitSprite(classId: string | undefined, bodyItemId: string | u
 }
 
 export const crownSprite = 29
+
+export const chestSprite = { sheet: sheets.dungeon, index: 89 }
 
 export const stairsSprites = {
   open: 8,

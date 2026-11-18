@@ -16,7 +16,7 @@ public static class VaultDungeon
         var player = new Player(new Position(0, 0), playerClass.Class, playerName);
         GiveStartingKit(player, playerClass.StartingItemIds);
 
-        return new Game(player, new VaultFloors(random), random);
+        return new Game(player, new VaultFloors(random), random, new VaultLoot(random));
     }
 
     private static void GiveStartingKit(Player player, IReadOnlyList<string> itemIds)

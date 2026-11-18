@@ -69,4 +69,14 @@ public class DungeonMapTests
 
         Assert.Throws<ArgumentException>(() => DungeonMap.Parse(rows));
     }
+
+    [Fact]
+    public void Parse_ReadsObstacles_AsNotWalkable()
+    {
+        var map = DungeonMap.Parse(["#o#", "#.#"]);
+
+        Assert.Equal(TileType.Obstacle, map.GetTile(new Position(1, 0)));
+        Assert.False(map.IsWalkable(new Position(1, 0)));
+        Assert.True(map.IsInside(new Position(1, 0)));
+    }
 }

@@ -1,4 +1,4 @@
-﻿using Vaultrift.Api.Contracts;
+using Vaultrift.Api.Contracts;
 using Vaultrift.Engine.Combat;
 using Vaultrift.Engine.Gameplay;
 using Vaultrift.Engine.Items;
@@ -28,7 +28,9 @@ public static class GameMapper
             game.FloorNumber,
             game.FloorCount,
             game.Stairs is { } stairs ? new StairsResponse(stairs.X, stairs.Y, game.StairsOpen) : null,
-            game.IsConquered);
+            game.IsConquered,
+            game.Biome,
+            ToPositions(game.Chests));
 
     public static TurnResponse ToResponse(Guid id, Game game, TurnResult result) =>
         new(
@@ -45,6 +47,11 @@ public static class GameMapper
             player.Class?.Id,
             player.Name,
             player.Level,
+            player.Experience,
+            player.ExperienceToNextLevel,
+            player.UnspentPoints,
+            player.Mana,
+            player.MaxMana,
             player.Position.X,
             player.Position.Y,
             player.Facing,
@@ -54,7 +61,9 @@ public static class GameMapper
             combat.Defense,
             Math.Min(combat.Evasion, DamageCalculator.MaxEvasion),
             Math.Min(combat.Critical, DamageCalculator.MaxCritical),
+            Math.Min(combat.Block, DamageCalculator.MaxBlock),
             freeSteps,
+            ToAbilityResponse(player),
             player.Equipment
                 .Select(pair => new EquippedItemResponse(pair.Key, pair.Value.Id, ToItemResponse(pair.Value.Item)))
                 .ToList(),
@@ -69,6 +78,22 @@ public static class GameMapper
                     boost.RemainingTurns))
                 .ToList(),
             player.Resistance);
+    }
+
+    private static AbilityResponse? ToAbilityResponse(Player player)
+    {
+        if (player.Ability is not { } ability)
+            return null;
+
+        var activeTurns = ability switch
+        {
+            ClassAbility.Bulwark => player.BulwarkTurns,
+            ClassAbility.Fury => player.FuryTurns,
+            ClassAbility.Invisibility => player.InvisibleTurns,
+            _ => 0
+        };
+
+        return new AbilityResponse(ability, player.AbilityCooldown, AbilityRules.Cooldown(ability), activeTurns);
     }
 
     private static EnemyResponse ToEnemyResponse(Enemy enemy) =>
@@ -97,13 +122,28 @@ public static class GameMapper
         PlayerAttackedEnemy e => Attack("PlayerAttackedEnemy", e.EnemyId, e.Result),
         PlayerAttackedNothing => new("PlayerAttackedNothing"),
         EnemyDefeated e => new("EnemyDefeated", EnemyId: e.EnemyId),
+        ExperienceGained e => new("ExperienceGained", Amount: e.Amount),
+        LeveledUp e => new("LeveledUp", Level: e.Level),
+        StatPointSpent e => new("StatPointSpent", Stat: e.Stat),
+        SpendRejected e => new("SpendRejected", Reason: e.Reason.ToString()),
         EnemyAttackedPlayer e => Attack("EnemyAttackedPlayer", e.EnemyId, e.Result),
         EnemyWokeUp e => new("EnemyWokeUp", EnemyId: e.EnemyId),
+        EnemyRespawned e => new("EnemyRespawned", EnemyId: e.EnemyId),
         EnemyMoved e => new("EnemyMoved", EnemyId: e.EnemyId, X: e.To.X, Y: e.To.Y),
         PlayerDefeated => new("PlayerDefeated"),
         PlayerRespawned e => new("PlayerRespawned", X: e.At.X, Y: e.At.Y),
         ItemPickedUp e => new("ItemPickedUp", Item: ToItemResponse(e.Item)),
         InventoryFull e => new("InventoryFull", Item: ToItemResponse(e.Item)),
+        LifeDrained e => new("LifeDrained", Amount: e.Amount),
+        EnemyPricked e => new("EnemyPricked", EnemyId: e.EnemyId, Damage: e.Damage),
+        EnemySlammed e => new("EnemySlammed", EnemyId: e.EnemyId, Damage: e.Damage, Element: Element.Wind),
+        AbilityUsed e => new("AbilityUsed", Ability: e.Ability),
+        AbilityRejected e => new("AbilityRejected", Reason: e.Reason.ToString()),
+        AbilityEnded e => new("AbilityEnded", Ability: e.Ability),
+        ItemDropped e => new("ItemDropped", EnemyId: e.EnemyId, X: e.At.X, Y: e.At.Y, Item: ToItemResponse(e.Item)),
+        ItemDiscarded e => new("ItemDiscarded", Item: ToItemResponse(e.Item)),
+        ChestOpened e => new("ChestOpened", X: e.At.X, Y: e.At.Y, Item: e.Item is null ? null : ToItemResponse(e.Item)),
+        MimicRevealed e => new("MimicRevealed", EnemyId: e.EnemyId, X: e.At.X, Y: e.At.Y),
         ItemEquipped e => new("ItemEquipped", Item: ToItemResponse(e.Item)),
         EquipRejected e => new("EquipRejected", Reason: e.Reason.ToString()),
         ItemUnequipped e => new("ItemUnequipped", Item: ToItemResponse(e.Item)),
@@ -118,8 +158,9 @@ public static class GameMapper
         EnemyThawed e => new("EnemyThawed", EnemyId: e.EnemyId, Element: Element.Ice),
         EnemyShocked e => Attack("EnemyShocked", e.EnemyId, e.Result),
         EnemyKnockedBack e => new("EnemyKnockedBack", EnemyId: e.EnemyId, X: e.To.X, Y: e.To.Y, Element: Element.Wind),
-        ArrowFlew e => new("ArrowFlew", Tiles: ToPositions(e.Path)),
+        ArrowFlew e => new("ArrowFlew", Tiles: ToPositions(e.Path), Powered: e.Powered),
         PlayerSwept e => new("PlayerSwept", Tiles: ToPositions(e.Tiles)),
+        PlayerThrust e => new("PlayerThrust", Tiles: ToPositions(e.Tiles)),
         StairsSealed => new("StairsSealed"),
         StairsOpened e => new("StairsOpened", X: e.At.X, Y: e.At.Y),
         FloorDescended e => new("FloorDescended", X: e.At.X, Y: e.At.Y, Floor: e.Floor),
@@ -134,6 +175,7 @@ public static class GameMapper
             Damage: result.Damage,
             IsCritical: result.IsCritical,
             IsDodged: result.IsDodged,
+            IsBlocked: result.IsBlocked,
             Element: result.Element,
             Effectiveness: result.Element is null ? null : result.Effectiveness);
 
@@ -156,8 +198,17 @@ public static class GameMapper
             potion?.Boost is { } boost ? ToModifierResponse(boost) : null,
             potion?.Boost is not null ? potion.BoostTurns : null,
             instance.Element,
-            EffectChanceOf(instance));
+            EffectChanceOf(instance),
+            EffectsOf(item),
+            item is WeaponDefinition { IsTwoHanded: true },
+            (item as GearDefinition)?.ClassId,
+            potion is { ManaRestore: > 0 } ? potion.ManaRestore : null);
     }
+
+    private static IReadOnlyList<EffectResponse> EffectsOf(ItemDefinition item) =>
+        item is EquipmentDefinition equipment
+            ? equipment.Effects.Select(effect => new EffectResponse(effect.Kind, effect.Amount)).ToList()
+            : [];
 
     private static int? EffectChanceOf(ItemInstance instance) =>
         instance.Element is { } element && instance.Definition is WeaponDefinition
@@ -180,6 +231,13 @@ public static class GameMapper
         _ => throw new ArgumentOutOfRangeException(nameof(item), item.GetType().Name, "Unknown item type.")
     };
 
+    private static char SymbolOf(TileType tile) => tile switch
+    {
+        TileType.Wall => '#',
+        TileType.Obstacle => 'o',
+        _ => '.'
+    };
+
     private static IReadOnlyList<string> ToRows(DungeonMap map)
     {
         var rows = new List<string>(map.Height);
@@ -189,7 +247,7 @@ public static class GameMapper
             var row = new char[map.Width];
 
             for (var x = 0; x < map.Width; x++)
-                row[x] = map.GetTile(new Position(x, y)) == TileType.Wall ? '#' : '.';
+                row[x] = SymbolOf(map.GetTile(new Position(x, y)));
 
             rows.Add(new string(row));
         }

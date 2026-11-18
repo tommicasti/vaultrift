@@ -4,22 +4,28 @@ namespace Vaultrift.Engine.World;
 
 public static class FloorGenerator
 {
-    public const int DefaultWidth = 48;
-    public const int DefaultHeight = 32;
-    public const int MinRooms = 6;
-    public const int MaxRooms = 10;
+
+    public const int DefaultWidth = 64;
+    public const int DefaultHeight = 44;
+    public const int MinRooms = 10;
+    public const int MaxRooms = 16;
     public const int RoomMargin = 2;
 
     private const int MinRoomWidth = 5;
     private const int MaxRoomWidth = 11;
     private const int MinRoomHeight = 4;
     private const int MaxRoomHeight = 8;
-    private const int PlacementAttempts = 300;
-    private const int ExtraCorridors = 2;
+    private const int PlacementAttempts = 600;
+    private static readonly Direction[] Directions = Enum.GetValues<Direction>();
 
-    public static FloorLayout Generate(IRandom random, int width = DefaultWidth, int height = DefaultHeight)
+    public static FloorLayout Generate(
+        IRandom random,
+        int width = DefaultWidth,
+        int height = DefaultHeight,
+        double obstacleDensity = 0)
     {
         ArgumentNullException.ThrowIfNull(random);
+        ArgumentOutOfRangeException.ThrowIfNegative(obstacleDensity);
 
         if (width < MaxRoomWidth + 2 || height < MaxRoomHeight + 2)
             throw new ArgumentOutOfRangeException(nameof(width), "The floor is too small to hold a room.");
@@ -29,7 +35,7 @@ public static class FloorGenerator
             var rooms = PlaceRooms(random, width, height);
 
             if (rooms.Count >= MinRooms)
-                return Build(random, width, height, rooms);
+                return Build(random, width, height, rooms, obstacleDensity);
         }
     }
 
@@ -44,7 +50,7 @@ public static class FloorGenerator
         {
             var current = queue.Dequeue();
 
-            foreach (var direction in Enum.GetValues<Direction>())
+            foreach (var direction in Directions)
             {
                 var next = current.Move(direction);
 
@@ -80,7 +86,7 @@ public static class FloorGenerator
         return rooms.OrderBy(room => room.Center.X).ThenBy(room => room.Center.Y).ToList();
     }
 
-    private static FloorLayout Build(IRandom random, int width, int height, List<Room> rooms)
+    private static FloorLayout Build(IRandom random, int width, int height, List<Room> rooms, double obstacleDensity)
     {
         var tiles = new TileType[height, width];
 
@@ -96,21 +102,88 @@ public static class FloorGenerator
         for (var index = 1; index < rooms.Count; index++)
             CarveCorridor(tiles, rooms[index - 1].Center, rooms[index].Center, random);
 
-        for (var extra = 0; extra < ExtraCorridors; extra++)
-        {
-            var from = random.Pick(rooms);
-            var to = random.Pick(rooms);
+        for (var index = 2; index < rooms.Count; index++)
+            CarveCorridor(tiles, rooms[index - 2].Center, rooms[index].Center, random);
 
-            if (from != to)
-                CarveCorridor(tiles, from.Center, to.Center, random);
-        }
-
-        var map = new DungeonMap(tiles);
         var startRoom = rooms[0];
-        var distances = WalkingDistances(map, startRoom.Center);
+        var distances = WalkingDistances(new DungeonMap(tiles), startRoom.Center);
         var bossRoom = rooms.Skip(1).MaxBy(room => distances[room.Center])!;
 
-        return new FloorLayout(map, rooms, startRoom, bossRoom);
+        if (obstacleDensity > 0)
+            PlaceObstacles(tiles, rooms, startRoom, bossRoom, obstacleDensity, random);
+
+        return new FloorLayout(new DungeonMap(tiles), rooms, startRoom, bossRoom);
+    }
+
+    private static void PlaceObstacles(
+        TileType[,] tiles,
+        List<Room> rooms,
+        Room startRoom,
+        Room bossRoom,
+        double density,
+        IRandom random)
+    {
+        var start = startRoom.Center;
+        var reserved = new HashSet<Position>
+        {
+            bossRoom.Center,
+            bossRoom.Center with { X = bossRoom.Center.X - 1 }
+        };
+        var walkable = CountReachable(tiles, start);
+
+        foreach (var room in rooms.Where(room => room != startRoom))
+        {
+            var interior = room.Tiles()
+                .Where(tile => tile.X > room.X && tile.X < room.X + room.Width - 1)
+                .Where(tile => tile.Y > room.Y && tile.Y < room.Y + room.Height - 1)
+                .Where(tile => !reserved.Contains(tile))
+                .ToList();
+            var attempts = (int)Math.Round(interior.Count * density);
+
+            for (var attempt = 0; attempt < attempts && interior.Count > 0; attempt++)
+            {
+                var tile = random.Pick(interior);
+                interior.Remove(tile);
+                tiles[tile.Y, tile.X] = TileType.Obstacle;
+
+                if (CountReachable(tiles, start) == walkable - 1)
+                    walkable--;
+                else
+                    tiles[tile.Y, tile.X] = TileType.Floor;
+            }
+        }
+    }
+
+    private static int CountReachable(TileType[,] tiles, Position start)
+    {
+        var height = tiles.GetLength(0);
+        var width = tiles.GetLength(1);
+        var visited = new bool[height, width];
+        var queue = new Queue<Position>([start]);
+        var count = 0;
+        visited[start.Y, start.X] = true;
+
+        while (queue.Count > 0)
+        {
+            var current = queue.Dequeue();
+            count++;
+
+            foreach (var direction in Directions)
+            {
+                var next = current.Move(direction);
+
+                if (next.X < 0 || next.Y < 0 || next.X >= width || next.Y >= height)
+                    continue;
+
+                if (visited[next.Y, next.X] || tiles[next.Y, next.X] != TileType.Floor)
+                    continue;
+
+                visited[next.Y, next.X] = true;
+                queue.Enqueue(next);
+            }
+        }
+
+        return count;
     }
 
     private static void CarveCorridor(TileType[,] tiles, Position from, Position to, IRandom random)

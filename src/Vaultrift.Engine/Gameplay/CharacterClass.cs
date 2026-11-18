@@ -1,4 +1,4 @@
-﻿using Vaultrift.Engine.Combat;
+using Vaultrift.Engine.Combat;
 using Vaultrift.Engine.Items;
 
 namespace Vaultrift.Engine.Gameplay;
@@ -10,4 +10,5 @@ public sealed record CharacterClass(
     string Name,
     Stats BaseStats,
     WeaponMastery Mastery,
-    Speed Speed = Speed.Normal);
+    Speed Speed = Speed.Normal,
+    ClassAbility? Ability = null);

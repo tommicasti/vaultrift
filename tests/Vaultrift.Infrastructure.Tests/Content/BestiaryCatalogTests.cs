@@ -1,4 +1,4 @@
-﻿using Vaultrift.Engine.Combat;
+using Vaultrift.Engine.Combat;
 using Vaultrift.Engine.Gameplay;
 using Vaultrift.Engine.Items;
 using Vaultrift.Infrastructure.Content;
@@ -35,7 +35,7 @@ public class BestiaryCatalogTests
     {
         var bossIds = BestiaryCatalog.All.Where(kind => kind.IsBoss).Select(kind => kind.Id);
 
-        Assert.Equal(new[] { "rat-king", "spider-queen", "troll" }, bossIds);
+        Assert.Equal(new[] { "rat-king", "spider-queen", "troll", "dune-scorpion", "frost-yeti", "black-knight" }, bossIds);
         Assert.DoesNotContain(BestiaryCatalog.Monsters, kind => kind.IsBoss);
     }
 
@@ -56,5 +56,12 @@ public class BestiaryCatalogTests
     public void Get_UnknownId_Throws()
     {
         Assert.Throws<KeyNotFoundException>(() => BestiaryCatalog.Get("dragon"));
+    }
+
+    [Fact]
+    public void TheMimic_NeverMoves_AndNeverSpawnsInABiome()
+    {
+        Assert.True(BestiaryCatalog.Get("mimic").IsStationary);
+        Assert.DoesNotContain(BiomeCatalog.All, biome => biome.MonsterIds.Contains("mimic") || biome.BossId == "mimic");
     }
 }

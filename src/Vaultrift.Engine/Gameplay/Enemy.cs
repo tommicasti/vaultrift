@@ -49,6 +49,15 @@ public sealed class Enemy : Creature
 
     public bool IsFrozen => FrozenTurnsLeft > 0;
 
+    internal void ReturnToStart()
+    {
+        Position = StartPosition;
+        IsAwake = false;
+        IsResting = false;
+        ClearStatuses();
+        RestoreFullHealth();
+    }
+
     internal void ClearStatuses()
     {
         BurnTurnsLeft = 0;

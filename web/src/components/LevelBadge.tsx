@@ -1,10 +1,11 @@
 interface LevelBadgeProps {
   level: number
+  highlight?: boolean
 }
 
-export function LevelBadge({ level }: LevelBadgeProps) {
+export function LevelBadge({ level, highlight = false }: LevelBadgeProps) {
   return (
-    <span className="level-badge" aria-label={`Level ${level}`}>
+    <span className={highlight ? 'level-badge has-points' : 'level-badge'} aria-label={`Level ${level}`}>
       {level}
     </span>
   )

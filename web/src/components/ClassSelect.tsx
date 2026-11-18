@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { getClasses } from '../api/gamesApi'
 import type { ClassInfo } from '../api/types'
-import { describeModifier } from '../game/items'
+import { abilityDescriptions, abilityNames, describeModifier } from '../game/items'
 import { classSprite } from '../game/sprites'
 import { Sprite } from './Sprite'
 
@@ -93,12 +93,22 @@ export function ClassSelect({ disabled, onChoose }: ClassSelectProps) {
                 <dd>{heroClass.evasion}%</dd>
                 <dt>Critical</dt>
                 <dd>{heroClass.critical}%</dd>
+                <dt>Mana</dt>
+                <dd>{heroClass.maxMana}</dd>
               </dl>
               <div className="class-perks">
                 <p className="class-mastery">
                   {heroClass.masteryWeapon} mastery: {describeModifier(heroClass.masteryBonus)}
                 </p>
                 {heroClass.speed === 'Fast' && <p className="class-mastery">Swift: one free step every turn</p>}
+                {heroClass.ability && (
+                  <p className="class-ability">
+                    <strong>
+                      {abilityNames[heroClass.ability]} (E, every {heroClass.abilityCooldown} turns):
+                    </strong>{' '}
+                    {abilityDescriptions[heroClass.ability]}
+                  </p>
+                )}
               </div>
               <button className="primary" disabled={disabled} onClick={() => choose(heroClass.id)}>
                 Choose {heroClass.name}

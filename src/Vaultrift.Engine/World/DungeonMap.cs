@@ -54,6 +54,7 @@ public sealed class DungeonMap
                 {
                     '#' => TileType.Wall,
                     '.' => TileType.Floor,
+                    'o' => TileType.Obstacle,
                     var symbol => throw new ArgumentException($"Unknown symbol '{symbol}' at ({x}, {y}).", nameof(rows))
                 };
             }

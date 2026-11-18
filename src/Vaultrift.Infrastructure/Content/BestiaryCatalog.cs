@@ -1,4 +1,4 @@
-﻿using Vaultrift.Engine.Combat;
+using Vaultrift.Engine.Combat;
 using Vaultrift.Engine.Gameplay;
 using Vaultrift.Engine.Items;
 
@@ -20,13 +20,20 @@ public static class BestiaryCatalog
             weakness: Element.Wind, resistance: Element.Ice, attackElement: Element.Ice),
         new("cyclops", "Cyclops", new Stats(maxHealth: 22, attack: 7, defense: 3),
             weakness: Element.Ice, resistance: Element.Fire, attackElement: Element.Fire),
+        new("mimic", "Mimic", new Stats(maxHealth: 26, attack: 8, defense: 3), isStationary: true),
 
         new("rat-king", "Rat King", new Stats(maxHealth: 45, attack: 6, defense: 1, evasion: 10),
             weakness: Element.Fire, isBoss: true),
-        new("spider-queen", "Spider Queen", new Stats(maxHealth: 65, attack: 8, defense: 2, evasion: 10), Speed.Fast,
+        new("spider-queen", "Spider Queen", new Stats(maxHealth: 45, attack: 6, defense: 1, evasion: 10), Speed.Fast,
             weakness: Element.Fire, resistance: Element.Wind, isBoss: true),
-        new("troll", "Troll", new Stats(maxHealth: 110, attack: 13, defense: 4), Speed.Slow,
-            weakness: Element.Lightning, resistance: Element.Ice, isBoss: true)
+        new("troll", "Troll", new Stats(maxHealth: 70, attack: 9, defense: 3), Speed.Slow,
+            weakness: Element.Lightning, resistance: Element.Ice, isBoss: true),
+        new("dune-scorpion", "Dune Scorpion", new Stats(maxHealth: 50, attack: 7, defense: 3, evasion: 5),
+            weakness: Element.Ice, resistance: Element.Fire, attackElement: Element.Fire, isBoss: true),
+        new("frost-yeti", "Frost Yeti", new Stats(maxHealth: 60, attack: 7, defense: 2),
+            weakness: Element.Fire, resistance: Element.Ice, attackElement: Element.Ice, isBoss: true),
+        new("black-knight", "Black Knight", new Stats(maxHealth: 55, attack: 7, defense: 5),
+            weakness: Element.Lightning, resistance: Element.Wind, isBoss: true)
     ];
 
     public static IReadOnlyList<EnemyKind> Monsters { get; } = All.Where(kind => !kind.IsBoss).ToList();

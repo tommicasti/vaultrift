@@ -1,6 +1,19 @@
-import type { Direction, Element, EnemyState, GameEvent, PlayerState, TilePosition } from '../api/types'
+import type { ClassAbility, Direction, Element, EnemyState, GameEvent, PlayerState, TilePosition } from '../api/types'
 
-export type EffectKind = 'fire' | 'ice' | 'lightning' | 'wind' | 'arrow' | 'sweep'
+export type EffectKind =
+  | 'fire'
+  | 'ice'
+  | 'lightning'
+  | 'wind'
+  | 'arrow'
+  | 'sweep'
+  | 'thrust'
+  | 'power'
+  | 'impact'
+  | 'block'
+  | 'fury'
+  | 'bulwark'
+  | 'smoke'
 
 export interface Effect {
   key: string
@@ -15,6 +28,13 @@ export const effectDurationMs = 450
 export const arrowStepMs = 45
 const chainDelayMs = 150
 const burnDelayMs = 300
+
+const abilityEffects: Record<ClassAbility, EffectKind | null> = {
+  Bulwark: 'bulwark',
+  Fury: 'fury',
+  PowerShot: null,
+  Invisibility: 'smoke',
+}
 
 const elementEffects: Record<Element, EffectKind> = {
   Fire: 'fire',
@@ -53,12 +73,31 @@ export function effectsForTurn(
 
     switch (event.type) {
       case 'ArrowFlew':
-        event.tiles?.forEach((tile, index) => add(tile, 'arrow', index * arrowStepMs))
+        event.tiles?.forEach((tile, index) => add(tile, event.powered ? 'power' : 'arrow', index * arrowStepMs))
         impactDelayMs = (event.tiles?.length ?? 0) * arrowStepMs
         break
       case 'PlayerSwept':
         event.tiles?.forEach(tile => add(tile, 'sweep', 0))
         break
+      case 'PlayerThrust':
+        event.tiles?.forEach(tile => add(tile, 'thrust', 0))
+        break
+      case 'EnemySlammed':
+      case 'EnemyPricked':
+        if (event.enemyId !== undefined)
+          add(positionsAfter.get(event.enemyId) ?? positionsBefore.get(event.enemyId), 'impact', impactDelayMs + chainDelayMs)
+        break
+      case 'ChestOpened':
+        add(event.x !== undefined && event.y !== undefined ? { x: event.x, y: event.y } : undefined, 'impact', 0)
+        break
+      case 'MimicRevealed':
+        add(event.x !== undefined && event.y !== undefined ? { x: event.x, y: event.y } : undefined, 'smoke', 0)
+        break
+      case 'AbilityUsed': {
+        const kind = event.ability ? abilityEffects[event.ability] : null
+        if (kind) add(player, kind, 0)
+        break
+      }
       case 'PlayerAttackedEnemy':
         if (landed && event.enemyId !== undefined)
           add(positionsBefore.get(event.enemyId), elementEffects[event.element!], impactDelayMs)
@@ -72,8 +111,8 @@ export function effectsForTurn(
           add(positionsAfter.get(event.enemyId) ?? positionsBefore.get(event.enemyId), 'fire', impactDelayMs + burnDelayMs)
         break
       case 'EnemyAttackedPlayer':
-        if (landed)
-          add(player, elementEffects[event.element!], impactDelayMs + burnDelayMs)
+        if (event.isBlocked) add(player, 'block', impactDelayMs + burnDelayMs)
+        else if (landed) add(player, elementEffects[event.element!], impactDelayMs + burnDelayMs)
         break
     }
   }

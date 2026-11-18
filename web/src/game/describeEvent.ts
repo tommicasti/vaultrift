@@ -1,10 +1,20 @@
-import type { EquipRejectReason, GameEvent, UnequipRejectReason, UseRejectReason } from '../api/types'
+import type {
+  AbilityRejectReason,
+  ClassAbility,
+  EquipRejectReason,
+  GameEvent,
+  SpendRejectReason,
+  UnequipRejectReason,
+  UseRejectReason,
+} from '../api/types'
 import { elementNames } from './items'
 
 const equipRejectMessages: Record<EquipRejectReason, string> = {
   ItemNotFound: 'That item is no longer in your backpack.',
   NotEquippable: "You can't equip that.",
   AlreadyEquipped: 'That item is already equipped.',
+  BackpackFull: 'Your backpack is full. Make room for what you would take off first.',
+  WrongClass: 'That class mod belongs to another class.',
 }
 
 const unequipRejectMessages: Record<UnequipRejectReason, string> = {
@@ -12,11 +22,37 @@ const unequipRejectMessages: Record<UnequipRejectReason, string> = {
   BackpackFull: 'Your backpack is full. Make some room first.',
 }
 
+const spendRejectMessages: Record<SpendRejectReason, string> = {
+  NoPointsLeft: 'You have no points left to spend.',
+  StatAtCap: 'That stat is already at its limit.',
+}
+
 const useRejectMessages: Record<UseRejectReason, string> = {
   ItemNotFound: "You don't have any left.",
   NotUsable: "You can't use that.",
   AlreadyAtFullHealth: 'You are already at full health.',
+  AlreadyAtFullMana: 'Your mana is already full.',
   QuickSlotEmpty: 'Your quick slot is empty.',
+}
+
+const abilityRejectMessages: Record<AbilityRejectReason, string> = {
+  NoAbility: 'You have no special ability.',
+  OnCooldown: 'Your ability is still recharging.',
+  NeedsBow: 'Power Shot needs a bow in your main hand.',
+}
+
+const abilityUsedMessages: Record<ClassAbility, string> = {
+  Bulwark: 'You raise your guard. Bulwark!',
+  Fury: 'Fury takes over. Your blows grow heavier!',
+  PowerShot: 'You loose a Power Shot!',
+  Invisibility: 'You melt into the shadows.',
+}
+
+const abilityEndedMessages: Record<ClassAbility, string> = {
+  Bulwark: 'Your guard drops.',
+  Fury: 'Your fury fades.',
+  PowerShot: '',
+  Invisibility: 'You are visible again.',
 }
 
 function effectivenessNote(event: GameEvent): string {
@@ -41,8 +77,10 @@ export function describeEvent(event: GameEvent, enemyNames: ReadonlyMap<number, 
     case 'PlayerMoved':
     case 'PlayerTurned':
     case 'EnemyMoved':
+    case 'StatPointSpent':
     case 'ArrowFlew':
     case 'PlayerSwept':
+    case 'PlayerThrust':
       return null
     case 'PlayerAttackedEnemy':
       return event.isDodged
@@ -53,17 +91,45 @@ export function describeEvent(event: GameEvent, enemyNames: ReadonlyMap<number, 
     case 'EnemyDefeated':
       return `${enemy} is defeated.`
     case 'EnemyAttackedPlayer':
-      return event.isDodged
-        ? `You dodge ${enemyLower}'s attack!`
-        : `${enemy} hits you${withElement} for ${event.damage} damage.${critical}${note}`
+      if (event.isDodged) return `You dodge ${enemyLower}'s attack!`
+      if (event.isBlocked) return `You block ${enemyLower}'s attack!`
+      return `${enemy} hits you${withElement} for ${event.damage} damage.${critical}${note}`
+    case 'LifeDrained':
+      return `You drain ${event.amount} health.`
+    case 'EnemyPricked':
+      return `${enemy} takes ${event.damage} damage striking you.`
+    case 'EnemySlammed':
+      return `${enemy} slams into an obstacle for ${event.damage} damage!`
+    case 'AbilityUsed':
+      return event.ability ? abilityUsedMessages[event.ability] : null
+    case 'AbilityRejected':
+      return abilityRejectMessages[event.reason as AbilityRejectReason]
+    case 'AbilityEnded':
+      return event.ability ? abilityEndedMessages[event.ability] || null : null
+    case 'ExperienceGained':
+      return `+${event.amount} XP.`
+    case 'LeveledUp':
+      return `Level up! You are now level ${event.level}. Press Tab to spend your points.`
+    case 'SpendRejected':
+      return spendRejectMessages[event.reason as SpendRejectReason]
     case 'EnemyWokeUp':
       return `${enemy} wakes up!`
+    case 'EnemyRespawned':
+      return 'Something stirs in the dark. A monster has returned.'
     case 'PlayerDefeated':
       return 'You have fallen...'
     case 'PlayerRespawned':
       return 'You wake up at the entrance of the floor.'
     case 'ItemPickedUp':
       return `You pick up ${event.item?.name}.`
+    case 'ItemDropped':
+      return `${enemy} drops ${event.item?.name} (${event.item?.rarity})!`
+    case 'ItemDiscarded':
+      return `You throw away ${event.item?.name}.`
+    case 'ChestOpened':
+      return event.item ? `You open the chest: ${event.item.name} (${event.item.rarity})!` : 'The chest is empty.'
+    case 'MimicRevealed':
+      return 'The chest bares its teeth. It was a Mimic!'
     case 'InventoryFull':
       return `Your backpack is full. ${event.item?.name} stays on the floor.`
     case 'ItemEquipped':

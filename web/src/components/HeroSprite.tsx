@@ -14,7 +14,8 @@ export function HeroSprite({ player, className }: HeroSpriteProps) {
   const cloak = equipped.get('Cloak')
   const outfit = body ? legendaryOutfits[body.id] : undefined
   const sprite = outfitSprite(player.classId, body?.id) ?? classSprite(player.classId)
-  const classes = ['hero', className, outfit ? `glow-${outfit.glow}` : ''].filter(Boolean).join(' ')
+  const active = player.ability && player.ability.activeTurns > 0 ? `status-${player.ability.kind.toLowerCase()}` : ''
+  const classes = ['hero', className, outfit ? `glow-${outfit.glow}` : '', active].filter(Boolean).join(' ')
 
   return (
     <span className={classes} role="img" aria-label={player.name}>

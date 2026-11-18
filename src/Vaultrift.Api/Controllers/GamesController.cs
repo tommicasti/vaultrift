@@ -63,11 +63,23 @@ public sealed class GamesController : ControllerBase
 
     [HttpPost("{id:guid}/equip")]
     public ActionResult<TurnResponse> Equip(Guid id, EntryRequest request) =>
-        Play(id, game => game.Equip(request.EntryId));
+        Play(id, game => game.Equip(request.EntryId, request.Hand));
 
     [HttpPost("{id:guid}/unequip")]
     public ActionResult<TurnResponse> Unequip(Guid id, UnequipRequest request) =>
         Play(id, game => game.Unequip(request.Slot));
+
+    [HttpPost("{id:guid}/stats")]
+    public ActionResult<TurnResponse> SpendPoint(Guid id, SpendPointRequest request) =>
+        Play(id, game => game.SpendPoint(request.Stat));
+
+    [HttpPost("{id:guid}/ability")]
+    public ActionResult<TurnResponse> UseAbility(Guid id) =>
+        Play(id, game => game.UseAbility());
+
+    [HttpPost("{id:guid}/discard")]
+    public ActionResult<TurnResponse> Discard(Guid id, EntryRequest request) =>
+        Play(id, game => game.Discard(request.EntryId));
 
     [HttpPost("{id:guid}/use")]
     public ActionResult<TurnResponse> Use(Guid id, EntryRequest request) =>

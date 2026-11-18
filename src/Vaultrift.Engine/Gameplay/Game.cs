@@ -1,4 +1,4 @@
-﻿using System.Diagnostics.CodeAnalysis;
+using System.Diagnostics.CodeAnalysis;
 using Vaultrift.Engine.Combat;
 using Vaultrift.Engine.Items;
 using Vaultrift.Engine.Randomness;
@@ -16,6 +16,7 @@ public sealed partial class Game
     private readonly Dictionary<Position, ItemInstance> _floorItems = [];
     private readonly DamageCalculator _damageCalculator;
     private readonly IRandom _random;
+    private readonly ILootTable? _loot;
     private List<Enemy> _enemies = [];
     private Position _playerStart;
     private int _stepsThisTurn;
@@ -31,7 +32,7 @@ public sealed partial class Game
     {
     }
 
-    public Game(Player player, IFloorProvider floors, IRandom random)
+    public Game(Player player, IFloorProvider floors, IRandom random, ILootTable? loot = null)
     {
         ArgumentNullException.ThrowIfNull(player);
         ArgumentNullException.ThrowIfNull(floors);
@@ -40,6 +41,7 @@ public sealed partial class Game
         Player = player;
         _floors = floors;
         _random = random;
+        _loot = loot;
         _damageCalculator = new DamageCalculator(random);
 
         LoadFloor(1);
@@ -64,6 +66,8 @@ public sealed partial class Game
     public int FloorCount => _floors.Count;
 
     public Position? Stairs { get; private set; }
+
+    public string? Biome { get; private set; }
 
     public bool StairsOpen => Stairs is not null && FloorNumber < FloorCount && BossesDefeated;
 
@@ -114,30 +118,16 @@ public sealed partial class Game
     public TurnResult Attack()
     {
         var events = new List<GameEvent>();
-        var weapon = Player.Weapon;
-
-        switch ((weapon?.Definition as WeaponDefinition)?.WeaponType)
-        {
-            case WeaponType.Bow:
-                Shoot(weapon!, events);
-                break;
-            case WeaponType.Axe:
-                Sweep(weapon!, events);
-                break;
-            default:
-                Strike(weapon, events);
-                break;
-        }
-
+        PerformAttack(events);
         EndTurn(events);
         return new TurnResult(TurnPassed: true, events);
     }
 
-    public TurnResult Equip(int entryId)
+    public TurnResult Equip(int entryId, EquipmentSlot? hand = null)
     {
         var events = new List<GameEvent>();
         var item = Player.Inventory.Find(entryId)?.Item;
-        var result = Player.Equip(entryId);
+        var result = Player.Equip(entryId, hand);
 
         if (result != EquipResult.Equipped)
         {
@@ -167,6 +157,17 @@ public sealed partial class Game
 
         EndTurn(events);
         return new TurnResult(TurnPassed: true, events);
+    }
+
+    public TurnResult SpendPoint(StatPoint stat)
+    {
+        var result = Player.SpendPoint(stat);
+
+        GameEvent outcome = result == SpendResult.Spent
+            ? new StatPointSpent(stat)
+            : new SpendRejected(result);
+
+        return new TurnResult(TurnPassed: false, [outcome]);
     }
 
     public TurnResult UseItem(int entryId)
@@ -241,8 +242,28 @@ public sealed partial class Game
         foreach (var boost in Player.AdvanceBoosts())
             events.Add(new BoostExpired(boost.Source));
 
-        if (TurnNumber % HealthRegenInterval == 0)
-            Player.Heal(HealthRegenAmount);
+        TickAbilities(events);
+        Regenerate();
+        RespawnMonster(events);
+    }
+
+    private void Defeat(Enemy enemy, List<GameEvent> events)
+    {
+        events.Add(new EnemyDefeated(enemy.Id));
+
+        var experience = Progression.ExperienceFor(enemy, Player.EffectAmount(EffectKind.Wisdom));
+        var levelBefore = Player.Level;
+        events.Add(new ExperienceGained(experience));
+
+        Player.GainExperience(experience);
+
+        for (var level = levelBefore + 1; level <= Player.Level; level++)
+            events.Add(new LeveledUp(level));
+
+        if (Player.FuryTurns > 0)
+            Player.FuryTurns += Player.EffectAmount(EffectKind.FuryExtension);
+
+        DropLoot(enemy, events);
     }
 
     private void Descend(List<GameEvent> events)
@@ -251,6 +272,7 @@ public sealed partial class Game
         LoadFloor(FloorNumber + 1);
         Player.Facing = Direction.Down;
         Player.RestoreFullHealth();
+        Player.RestoreFullMana();
         events.Add(new FloorDescended(FloorNumber, Player.Position));
     }
 
@@ -288,6 +310,8 @@ public sealed partial class Game
         Player.Position = floor.Start;
         _playerStart = floor.Start;
         Stairs = floor.Stairs;
+        Biome = floor.Biome;
+        LoadChests(floor);
         FloorNumber = number;
         _bossDefeatAnnounced = false;
     }
@@ -317,6 +341,28 @@ public sealed partial class Game
 
         if (floor.Stairs is { } stairs && !map.IsWalkable(stairs))
             throw new ArgumentException("The stairs must be on a floor tile.", "floor");
+
+        var chests = floor.Chests ?? [];
+        var taken = occupied
+            .Concat(floor.Items.Select(item => item.Position))
+            .Concat(floor.Stairs is { } stairsTile ? [stairsTile] : [])
+            .ToHashSet();
+
+        if (chests.Any(chest => !map.IsWalkable(chest.Position) || taken.Contains(chest.Position)))
+            throw new ArgumentException("A chest must stand alone on a floor tile.", "floor");
+
+        if (chests.Select(chest => chest.Position).Distinct().Count() != chests.Count)
+            throw new ArgumentException("Two chests cannot share a tile.", "floor");
+
+        if (chests.Any(chest => chest.Mimic is { } mimic && mimic.Position != chest.Position))
+            throw new ArgumentException("A mimic must hide inside its chest.", "floor");
+
+        var ids = floor.Enemies.Select(enemy => enemy.Id)
+            .Concat(chests.Select(chest => chest.Mimic?.Id).OfType<int>())
+            .ToList();
+
+        if (ids.Distinct().Count() != ids.Count)
+            throw new ArgumentException("Mimic ids must be unique.", "floor");
     }
 
     private void EnemiesAct(List<GameEvent> events)
@@ -332,9 +378,12 @@ public sealed partial class Game
             if (enemy.FreezeImmunityTurnsLeft > 0)
                 enemy.FreezeImmunityTurnsLeft--;
 
+            if (Player.IsInvisible)
+                continue;
+
             if (!enemy.IsAwake)
             {
-                if (Distance(enemy.Position, Player.Position) > EnemyWakeDistance)
+                if (Distance(enemy.Position, Player.Position) > WakeDistance)
                     continue;
 
                 enemy.IsAwake = true;
@@ -366,6 +415,9 @@ public sealed partial class Game
             return;
         }
 
+        if (enemy.Kind.IsStationary)
+            return;
+
         for (var step = 0; step < enemy.StepsPerTurn; step++)
         {
             if (!StepTowardPlayer(enemy, events) || IsNextToPlayer(enemy))
@@ -375,15 +427,46 @@ public sealed partial class Game
 
     private void AttackPlayer(Enemy enemy, List<GameEvent> events)
     {
-        var result = ElementRules.Apply(
-            _damageCalculator.Calculate(enemy.CombatStats, Player.CombatStats),
+        var defense = Player.CombatStats;
+        var result = ApplyBulwark(ElementRules.Apply(
+            _damageCalculator.Calculate(enemy.CombatStats, defense),
             enemy.Kind.AttackElement,
             weakness: null,
             Player.Resistance,
-            enemy.Rarity);
+            enemy.Rarity));
 
         Player.TakeDamage(result.Damage);
         events.Add(new EnemyAttackedPlayer(enemy.Id, result));
+
+        if (result.IsBlocked && Player.EffectAmount(EffectKind.BlockReflect) > 0)
+            Prick(enemy, DamageCalculator.BaseDamage(enemy.CombatStats, defense), events);
+
+        var thorns = Player.EffectAmount(EffectKind.Thorns);
+
+        if (!result.IsDodged && thorns > 0)
+            Prick(enemy, thorns, events);
+    }
+
+    private AttackResult ApplyBulwark(AttackResult result)
+    {
+        if (Player.BulwarkTurns == 0 || result.Missed)
+            return result;
+
+        return Player.HasShield
+            ? AttackResult.Blocked with { Element = result.Element }
+            : result with { Damage = Math.Max(DamageCalculator.MinimumDamage, result.Damage / 2) };
+    }
+
+    private void Prick(Enemy enemy, int damage, List<GameEvent> events)
+    {
+        if (enemy.IsDead)
+            return;
+
+        enemy.TakeDamage(damage);
+        events.Add(new EnemyPricked(enemy.Id, damage));
+
+        if (enemy.IsDead)
+            Defeat(enemy, events);
     }
 
     private void RespawnPlayer(List<GameEvent> events)
@@ -392,18 +475,14 @@ public sealed partial class Game
         events.Add(new PlayerDefeated());
 
         foreach (var enemy in _enemies.Where(enemy => !enemy.IsDead))
-        {
-            enemy.Position = enemy.StartPosition;
-            enemy.IsAwake = false;
-            enemy.IsResting = false;
-            enemy.ClearStatuses();
-            enemy.RestoreFullHealth();
-        }
+            enemy.ReturnToStart();
 
         Player.Position = _playerStart;
         Player.Facing = Direction.Down;
         Player.RestoreFullHealth();
+        Player.RestoreFullMana();
         Player.ClearBoosts();
+        Player.ClearAbilityStatuses();
         events.Add(new PlayerRespawned(_playerStart));
     }
 
@@ -451,11 +530,13 @@ public sealed partial class Game
 
     private bool IsFree(Position position) =>
         Map.IsWalkable(position) &&
+        !IsChest(position) &&
         position != Player.Position &&
         FindLivingEnemyAt(position) is null;
 
     private bool CanEnemyEnter(Enemy enemy, Position position) =>
         (enemy.Kind.PassesThroughWalls ? Map.IsInside(position) : Map.IsWalkable(position)) &&
+        !IsChest(position) &&
         position != Player.Position &&
         FindLivingEnemyAt(position) is null;
 

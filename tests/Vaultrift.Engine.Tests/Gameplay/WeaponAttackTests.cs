@@ -84,6 +84,20 @@ public class WeaponAttackTests
     }
 
     [Fact]
+    public void Bow_HitsAGhostHidingInTheNextWall()
+    {
+        var ghostKind = new EnemyKind("test-ghost", "Ghost", new Stats(maxHealth: 50, attack: 1, defense: 0), passesThroughWalls: true);
+        var ghost = new Enemy(1, new Position(5, 1), ghostKind);
+        var game = NewGame(SplitRoom, Bow, new Position(3, 1), Direction.Right, ghost);
+        ghost.Position = new Position(4, 1);
+
+        var result = game.Attack();
+
+        Assert.Single(result.Events.OfType<PlayerAttackedEnemy>(), hit => hit.EnemyId == 1);
+        Assert.Equal(new[] { new Position(4, 1) }, result.Events.OfType<ArrowFlew>().Single().Path);
+    }
+
+    [Fact]
     public void Bow_CannotReachBeyondItsRange()
     {
         var game = NewGame(OpenRoom, Bow, new Position(1, 2), Direction.Right, NewEnemy(1, 1 + Game.BowRange + 1, 2));

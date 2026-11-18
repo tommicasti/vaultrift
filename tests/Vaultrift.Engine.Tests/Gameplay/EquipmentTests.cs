@@ -70,7 +70,7 @@ public class EquipmentTests
 
         player.Equip(axeId);
 
-        Assert.Equal(axeId, player.Equipment[EquipmentSlot.Weapon].Id);
+        Assert.Equal(axeId, player.Equipment[EquipmentSlot.MainHand].Id);
         Assert.Equal(4, player.CombatStats.Attack);
     }
 
@@ -264,10 +264,10 @@ public class EquipmentTests
         var swordId = AddToInventory(player, TestItems.Sword);
         player.Equip(swordId);
 
-        var result = player.Unequip(EquipmentSlot.Weapon);
+        var result = player.Unequip(EquipmentSlot.MainHand);
 
         Assert.Equal(UnequipResult.Unequipped, result);
-        Assert.False(player.Equipment.ContainsKey(EquipmentSlot.Weapon));
+        Assert.False(player.Equipment.ContainsKey(EquipmentSlot.MainHand));
         Assert.Equal(swordId, Assert.Single(player.Inventory.Entries).Id);
         Assert.Equal(2, player.CombatStats.Attack);
     }
@@ -287,8 +287,8 @@ public class EquipmentTests
         while (!player.Inventory.IsFull)
             player.Inventory.TryAdd(TestItems.Axe);
 
-        Assert.Equal(UnequipResult.BackpackFull, player.Unequip(EquipmentSlot.Weapon));
-        Assert.True(player.Equipment.ContainsKey(EquipmentSlot.Weapon));
+        Assert.Equal(UnequipResult.BackpackFull, player.Unequip(EquipmentSlot.MainHand));
+        Assert.True(player.Equipment.ContainsKey(EquipmentSlot.MainHand));
     }
 
     [Fact]
@@ -298,7 +298,7 @@ public class EquipmentTests
         player.Equip(AddToInventory(player, TestItems.Sword));
         var game = new Game(Map, player, [], new FixedRandom());
 
-        var result = game.Unequip(EquipmentSlot.Weapon);
+        var result = game.Unequip(EquipmentSlot.MainHand);
 
         Assert.True(result.TurnPassed);
         Assert.Contains(new ItemUnequipped(TestItems.Sword), result.Events);

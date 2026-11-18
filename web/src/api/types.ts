@@ -2,11 +2,52 @@ export type Direction = 'Up' | 'Down' | 'Left' | 'Right'
 
 export type Rarity = 'Common' | 'Rare' | 'Epic' | 'Legendary'
 
-export type ItemCategory = 'Sword' | 'Axe' | 'Bow' | 'Dagger' | 'Head' | 'Body' | 'Feet' | 'Ring' | 'Cloak' | 'Potion'
+export type ItemCategory =
+  | 'Sword'
+  | 'Axe'
+  | 'Bow'
+  | 'Dagger'
+  | 'Spear'
+  | 'Shield'
+  | 'Head'
+  | 'Body'
+  | 'Feet'
+  | 'Ring'
+  | 'Cloak'
+  | 'ClassMod'
+  | 'Potion'
 
-export type EquipmentSlot = 'Weapon' | 'Head' | 'Body' | 'Feet' | 'Ring1' | 'Ring2' | 'Cloak'
+export type EquipmentSlot = 'MainHand' | 'OffHand' | 'Head' | 'Body' | 'Feet' | 'Ring1' | 'Ring2' | 'Cloak' | 'ClassMod'
 
-export type StatType = 'Attack' | 'Defense' | 'Evasion' | 'Critical'
+export type StatType = 'Attack' | 'Defense' | 'Evasion' | 'Critical' | 'Block' | 'Mana'
+
+export type EffectKind =
+  | 'FireBoost'
+  | 'IceBoost'
+  | 'LightningBoost'
+  | 'WindBoost'
+  | 'LifeSteal'
+  | 'Thorns'
+  | 'BowRange'
+  | 'Luck'
+  | 'Wisdom'
+  | 'ManaFlow'
+  | 'Haste'
+  | 'Regeneration'
+  | 'BulwarkExtension'
+  | 'BlockReflect'
+  | 'FuryLifeSteal'
+  | 'FuryRegeneration'
+  | 'FuryExtension'
+  | 'FarShotCritical'
+  | 'PowerShotMastery'
+  | 'Stealth'
+  | 'Ambush'
+  | 'Phantom'
+
+export type ClassAbility = 'Bulwark' | 'Fury' | 'PowerShot' | 'Invisibility'
+
+export type AbilityRejectReason = 'NoAbility' | 'OnCooldown' | 'NeedsBow'
 
 export type Speed = 'Slow' | 'Normal' | 'Fast'
 
@@ -14,16 +55,25 @@ export type Element = 'Fire' | 'Ice' | 'Lightning' | 'Wind'
 
 export type Effectiveness = 'Neutral' | 'Effective' | 'Resisted'
 
-export type WeaponType = 'Sword' | 'Axe' | 'Bow' | 'Dagger'
+export type WeaponType = 'Sword' | 'Axe' | 'Bow' | 'Dagger' | 'Spear'
 
-export type EquipRejectReason = 'ItemNotFound' | 'NotEquippable' | 'AlreadyEquipped'
+export type EquipRejectReason = 'ItemNotFound' | 'NotEquippable' | 'AlreadyEquipped' | 'BackpackFull' | 'WrongClass'
 
 export type UnequipRejectReason = 'SlotEmpty' | 'BackpackFull'
 
-export type UseRejectReason = 'ItemNotFound' | 'NotUsable' | 'AlreadyAtFullHealth' | 'QuickSlotEmpty'
+export type SpendRejectReason = 'NoPointsLeft' | 'StatAtCap'
+
+export type StatPoint = 'Health' | 'Attack' | 'Defense' | 'Evasion' | 'Critical' | 'Mana'
+
+export type UseRejectReason = 'ItemNotFound' | 'NotUsable' | 'AlreadyAtFullHealth' | 'AlreadyAtFullMana' | 'QuickSlotEmpty'
 
 export interface StatModifierInfo {
   stat: StatType
+  amount: number
+}
+
+export interface ItemEffectInfo {
+  kind: EffectKind
   amount: number
 }
 
@@ -39,6 +89,10 @@ export interface ItemInfo {
   boostTurns?: number
   element?: Element
   effectChance?: number
+  effects: ItemEffectInfo[]
+  twoHanded: boolean
+  classId?: string
+  manaRestore?: number
 }
 
 export interface ClassInfo {
@@ -53,6 +107,16 @@ export interface ClassInfo {
   speed: Speed
   masteryWeapon: WeaponType
   masteryBonus: StatModifierInfo
+  maxMana: number
+  ability?: ClassAbility
+  abilityCooldown: number
+}
+
+export interface AbilityInfo {
+  kind: ClassAbility
+  cooldown: number
+  maxCooldown: number
+  activeTurns: number
 }
 
 export interface EquippedItem {
@@ -71,6 +135,11 @@ export interface PlayerState {
   classId?: string
   name: string
   level: number
+  experience: number
+  experienceToNextLevel: number
+  unspentPoints: number
+  mana: number
+  maxMana: number
   x: number
   y: number
   facing: Direction
@@ -80,7 +149,9 @@ export interface PlayerState {
   defense: number
   evasion: number
   critical: number
+  block: number
   freeSteps: number
+  ability?: AbilityInfo
   equipment: EquippedItem[]
   quickSlot?: ItemInfo
   quickSlotQuantity: number
@@ -138,6 +209,8 @@ export interface GameState {
   floorCount: number
   stairs?: StairsState
   isConquered: boolean
+  biome?: string
+  chests: TilePosition[]
 }
 
 export type GameEventType =
@@ -146,13 +219,28 @@ export type GameEventType =
   | 'PlayerAttackedEnemy'
   | 'PlayerAttackedNothing'
   | 'EnemyDefeated'
+  | 'ExperienceGained'
+  | 'LeveledUp'
+  | 'StatPointSpent'
+  | 'SpendRejected'
   | 'EnemyAttackedPlayer'
   | 'EnemyWokeUp'
+  | 'EnemyRespawned'
   | 'EnemyMoved'
   | 'PlayerDefeated'
   | 'PlayerRespawned'
   | 'ItemPickedUp'
   | 'InventoryFull'
+  | 'ItemDropped'
+  | 'ItemDiscarded'
+  | 'ChestOpened'
+  | 'MimicRevealed'
+  | 'LifeDrained'
+  | 'EnemyPricked'
+  | 'EnemySlammed'
+  | 'AbilityUsed'
+  | 'AbilityRejected'
+  | 'AbilityEnded'
   | 'ItemEquipped'
   | 'EquipRejected'
   | 'ItemUnequipped'
@@ -169,6 +257,7 @@ export type GameEventType =
   | 'EnemyKnockedBack'
   | 'ArrowFlew'
   | 'PlayerSwept'
+  | 'PlayerThrust'
   | 'StairsSealed'
   | 'StairsOpened'
   | 'FloorDescended'
@@ -185,6 +274,7 @@ export interface GameEvent {
   damage?: number
   isCritical?: boolean
   isDodged?: boolean
+  isBlocked?: boolean
   x?: number
   y?: number
   item?: ItemInfo
@@ -193,6 +283,11 @@ export interface GameEvent {
   effectiveness?: Effectiveness
   tiles?: TilePosition[]
   floor?: number
+  amount?: number
+  level?: number
+  stat?: StatPoint
+  powered?: boolean
+  ability?: ClassAbility
 }
 
 export interface TurnResponse {

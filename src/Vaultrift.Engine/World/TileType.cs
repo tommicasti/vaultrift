@@ -1,12 +1,8 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Text;
+﻿namespace Vaultrift.Engine.World;
 
-namespace Vaultrift.Engine.World
+public enum TileType
 {
-    public enum TileType
-    {
-        Wall,
-        Floor
-    }
+    Wall,
+    Floor,
+    Obstacle
 }

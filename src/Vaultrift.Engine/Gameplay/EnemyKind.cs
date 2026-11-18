@@ -1,4 +1,4 @@
-﻿using Vaultrift.Engine.Combat;
+using Vaultrift.Engine.Combat;
 using Vaultrift.Engine.Items;
 
 namespace Vaultrift.Engine.Gameplay;
@@ -14,7 +14,8 @@ public sealed record EnemyKind
         Element? weakness = null,
         Element? resistance = null,
         Element? attackElement = null,
-        bool isBoss = false)
+        bool isBoss = false,
+        bool isStationary = false)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(id);
         ArgumentException.ThrowIfNullOrWhiteSpace(name);
@@ -32,6 +33,7 @@ public sealed record EnemyKind
         Resistance = resistance;
         AttackElement = attackElement;
         IsBoss = isBoss;
+        IsStationary = isStationary;
     }
 
     public string Id { get; }
@@ -51,4 +53,6 @@ public sealed record EnemyKind
     public Element? AttackElement { get; }
 
     public bool IsBoss { get; }
+
+    public bool IsStationary { get; }
 }

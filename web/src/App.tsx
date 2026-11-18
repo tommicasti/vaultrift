@@ -1,6 +1,18 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { attack, consumeItem, consumeQuickSlot, createGame, equip, move, setQuickSlot, unequip } from './api/gamesApi'
-import type { Direction, EquipmentSlot, GameState, TurnResponse } from './api/types'
+import {
+  activateAbility,
+  attack,
+  consumeItem,
+  consumeQuickSlot,
+  createGame,
+  discardItem,
+  equip,
+  move,
+  setQuickSlot,
+  spendPoint,
+  unequip,
+} from './api/gamesApi'
+import type { Direction, EquipmentSlot, GameState, StatPoint, TurnResponse } from './api/types'
 import { Board } from './components/Board'
 import { ClassSelect } from './components/ClassSelect'
 import { Controls } from './components/Controls'
@@ -97,7 +109,7 @@ function App() {
   const handleAttack = useCallback(() => void play(attack), [play])
 
   const handleEquip = useCallback(
-    (entryId: number) => void play(gameId => equip(gameId, entryId)),
+    (entryId: number, hand?: EquipmentSlot) => void play(gameId => equip(gameId, entryId, hand)),
     [play],
   )
 
@@ -117,6 +129,18 @@ function App() {
   )
 
   const handleUseQuickSlot = useCallback(() => void play(consumeQuickSlot), [play])
+
+  const handleUseAbility = useCallback(() => void play(activateAbility), [play])
+
+  const handleDiscard = useCallback(
+    (entryId: number) => void play(gameId => discardItem(gameId, entryId)),
+    [play],
+  )
+
+  const handleSpendPoint = useCallback(
+    (stat: StatPoint) => void play(gameId => spendPoint(gameId, stat)),
+    [play],
+  )
 
   useEffect(() => {
     if (effects.length === 0) return
@@ -156,12 +180,15 @@ function App() {
       } else if (event.code === 'KeyQ') {
         event.preventDefault()
         handleUseQuickSlot()
+      } else if (event.code === 'KeyE') {
+        event.preventDefault()
+        handleUseAbility()
       }
     }
 
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [hasGame, inventoryOpen, handleMove, handleAttack, handleUseQuickSlot])
+  }, [hasGame, inventoryOpen, handleMove, handleAttack, handleUseQuickSlot, handleUseAbility])
 
   if (!game) {
     return (
@@ -185,16 +212,25 @@ function App() {
           </button>
         </div>
       </header>
-      <StatusBar player={game.player} deaths={game.deaths} floor={game.floor} floorCount={game.floorCount} />
+      <StatusBar
+        player={game.player}
+        deaths={game.deaths}
+        floor={game.floor}
+        floorCount={game.floorCount}
+        biome={game.biome}
+        onOpenInventory={() => setInventoryOpen(true)}
+      />
       <Board game={game} viewColumns={view.columns} viewRows={view.rows} effects={effects} onAttack={handleAttack} />
-      <p className="keyboard-hint">WASD to move · Space or click to attack · Q quick slot · Tab backpack</p>
+      <p className="keyboard-hint">WASD to move · Space or click to attack · E ability · Q quick slot · Tab backpack</p>
       <Controls
         disabled={busy}
         quickSlot={game.player.quickSlot}
         quickSlotQuantity={game.player.quickSlotQuantity}
+        ability={game.player.ability}
         onMove={handleMove}
         onAttack={handleAttack}
         onUseQuickSlot={handleUseQuickSlot}
+        onUseAbility={handleUseAbility}
       />
       {error && <p className="error">{error}</p>}
       <EventLog entries={log} />
@@ -208,6 +244,8 @@ function App() {
           onUnequip={handleUnequip}
           onUse={handleUse}
           onAssignQuickSlot={handleAssignQuickSlot}
+          onSpendPoint={handleSpendPoint}
+          onDiscard={handleDiscard}
           onClose={() => setInventoryOpen(false)}
         />
       )}

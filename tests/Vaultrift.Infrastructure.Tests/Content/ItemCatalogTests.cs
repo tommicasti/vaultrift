@@ -1,4 +1,4 @@
-﻿using Vaultrift.Engine.Items;
+using Vaultrift.Engine.Items;
 using Vaultrift.Infrastructure.Content;
 
 namespace Vaultrift.Infrastructure.Tests.Content;
@@ -6,7 +6,9 @@ namespace Vaultrift.Infrastructure.Tests.Content;
 public class ItemCatalogTests
 {
     private static readonly EquipmentKind[] GearKinds =
-        [EquipmentKind.Head, EquipmentKind.Body, EquipmentKind.Feet, EquipmentKind.Ring, EquipmentKind.Cloak];
+        [EquipmentKind.Shield, EquipmentKind.Head, EquipmentKind.Body, EquipmentKind.Feet, EquipmentKind.Ring, EquipmentKind.Cloak];
+
+    private static readonly Rarity[] NonLegendary = [Rarity.Common, Rarity.Rare, Rarity.Epic];
 
     private static IEnumerable<EquipmentDefinition> Equipment => ItemCatalog.All.OfType<EquipmentDefinition>();
 
@@ -28,15 +30,22 @@ public class ItemCatalogTests
     }
 
     [Fact]
-    public void Equipment_ModifierCountMatchesRarity()
+    public void Equipment_StaysWithinTheModifierBudgetOfItsRarity()
     {
-        Assert.All(Equipment, item => Assert.Equal(ExpectedModifierCount(item.Rarity), item.Modifiers.Count));
+        Assert.All(Equipment, item => Assert.InRange(item.Modifiers.Count, 0, ModifierBudget(item.Rarity)));
     }
 
     [Fact]
-    public void Equipment_AllModifiersArePositive()
+    public void Equipment_AlwaysGivesSomething()
+    {
+        Assert.All(Equipment, item => Assert.True(item.Modifiers.Count + item.Effects.Count > 0, item.Id));
+    }
+
+    [Fact]
+    public void Equipment_AllModifiersAndEffectsArePositive()
     {
         Assert.All(Equipment.SelectMany(item => item.Modifiers), modifier => Assert.True(modifier.Amount > 0));
+        Assert.All(Equipment.SelectMany(item => item.Effects), effect => Assert.True(effect.Amount > 0));
     }
 
     [Fact]
@@ -52,6 +61,8 @@ public class ItemCatalogTests
     }
 
     [Theory]
+    [InlineData(EquipmentKind.Shield, StatType.Block)]
+    [InlineData(EquipmentKind.Shield, StatType.Defense)]
     [InlineData(EquipmentKind.Head, StatType.Defense)]
     [InlineData(EquipmentKind.Body, StatType.Defense)]
     [InlineData(EquipmentKind.Feet, StatType.Evasion)]
@@ -64,11 +75,24 @@ public class ItemCatalogTests
     }
 
     [Fact]
-    public void EveryWeaponType_ExistsInEveryRarity()
+    public void EveryWeaponType_HasTwoOfEachRarity_AndThreeLegendaries()
     {
         foreach (var type in Enum.GetValues<WeaponType>())
-            foreach (var rarity in Enum.GetValues<Rarity>())
-                Assert.Contains(Weapons, weapon => weapon.WeaponType == type && weapon.Rarity == rarity);
+        {
+            foreach (var rarity in NonLegendary)
+                Assert.Equal(2, Weapons.Count(weapon => weapon.WeaponType == type && weapon.Rarity == rarity));
+
+            Assert.Equal(3, Weapons.Count(weapon => weapon.WeaponType == type && weapon.Rarity == Rarity.Legendary));
+        }
+    }
+
+    [Theory]
+    [InlineData(WeaponType.Axe)]
+    [InlineData(WeaponType.Spear)]
+    public void TwoHandedMeleeWeapons_HitHarderThanSwordsOfTheSameRarity(WeaponType type)
+    {
+        foreach (var rarity in NonLegendary)
+            Assert.True(BestAttack(type, rarity) > BestAttack(WeaponType.Sword, rarity), $"{type} {rarity}");
     }
 
     [Fact]
@@ -80,11 +104,8 @@ public class ItemCatalogTests
     }
 
     [Fact]
-    public void EveryEquipmentType_HasThreeLegendaries()
+    public void EveryGearKind_HasThreeLegendaries()
     {
-        foreach (var type in Enum.GetValues<WeaponType>())
-            Assert.Equal(3, Weapons.Count(weapon => weapon.WeaponType == type && weapon.Rarity == Rarity.Legendary));
-
         foreach (var kind in GearKinds)
             Assert.Equal(3, Gear.Count(item => item.Kind == kind && item.Rarity == Rarity.Legendary));
     }
@@ -116,6 +137,18 @@ public class ItemCatalogTests
             Assert.Contains(Weapons, weapon => weapon.Rarity == Rarity.Legendary && weapon.FixedElement == element);
     }
 
+    [Theory]
+    [InlineData(EffectKind.FireBoost)]
+    [InlineData(EffectKind.IceBoost)]
+    [InlineData(EffectKind.LightningBoost)]
+    [InlineData(EffectKind.WindBoost)]
+    public void EveryElement_HasARingThatBoostsIt(EffectKind boost)
+    {
+        Assert.Contains(
+            Gear,
+            item => item.Kind == EquipmentKind.Ring && item.Effects.Any(effect => effect.Kind == boost));
+    }
+
     [Fact]
     public void LegendaryCloaks_AlwaysHaveAnElement()
     {
@@ -125,9 +158,34 @@ public class ItemCatalogTests
     }
 
     [Fact]
+    public void EveryClass_HasARareAnEpicAndALegendaryClassMod()
+    {
+        foreach (var definition in ClassCatalog.All)
+        {
+            var mods = ItemCatalog.ClassMods.Where(mod => mod.ClassId == definition.Class.Id).ToList();
+
+            Assert.Equal(new List<Rarity> { Rarity.Rare, Rarity.Epic, Rarity.Legendary }, mods.Select(mod => mod.Rarity).Order().ToList());
+            Assert.All(mods, mod => Assert.NotEmpty(mod.Effects));
+            Assert.All(mods, mod => Assert.False(string.IsNullOrWhiteSpace(mod.Description)));
+        }
+    }
+
+    [Fact]
+    public void ClassMods_BelongToAnExistingClass_AndAreNotGenericEquipment()
+    {
+        Assert.All(ItemCatalog.ClassMods, mod => Assert.NotNull(ClassCatalog.Find(mod.ClassId!)));
+        Assert.DoesNotContain(ItemCatalog.Equipment, item => item.Kind == EquipmentKind.ClassMod);
+    }
+
+    [Fact]
     public void Potions_HaveExactlyOneEffect()
     {
-        Assert.All(Potions, potion => Assert.True((potion.Healing > 0) ^ (potion.Boost is not null)));
+        Assert.All(Potions, potion =>
+        {
+            var effects = new[] { potion.Healing > 0, potion.ManaRestore > 0, potion.Boost is not null };
+
+            Assert.Equal(1, effects.Count(effect => effect));
+        });
     }
 
     [Fact]
@@ -151,11 +209,15 @@ public class ItemCatalogTests
         Assert.Throws<KeyNotFoundException>(() => ItemCatalog.Get("sword-imaginary"));
     }
 
-    private static int ExpectedModifierCount(Rarity rarity) => rarity switch
+    private static int BestAttack(WeaponType type, Rarity rarity) =>
+        Weapons
+            .Where(weapon => weapon.WeaponType == type && weapon.Rarity == rarity)
+            .Max(weapon => weapon.Modifiers.Where(modifier => modifier.Stat == StatType.Attack).Sum(modifier => modifier.Amount));
+
+    private static int ModifierBudget(Rarity rarity) => rarity switch
     {
-        Rarity.Common or Rarity.Rare => 1,
-        Rarity.Epic => 2,
-        Rarity.Legendary => 3,
+        Rarity.Common or Rarity.Rare => 2,
+        Rarity.Epic or Rarity.Legendary => 3,
         _ => throw new ArgumentOutOfRangeException(nameof(rarity))
     };
 }

@@ -28,12 +28,12 @@ public class EnemyScalingTests
     }
 
     [Fact]
-    public void Scale_EachLevel_AddsTenPercent()
+    public void Scale_EachLevel_AddsFifteenPercent()
     {
         var scaled = EnemyScaling.Scale(Base, Rarity.Common, level: 5);
 
-        Assert.Equal(14, scaled.MaxHealth);
-        Assert.Equal(7, scaled.Attack);
+        Assert.Equal(16, scaled.MaxHealth);
+        Assert.Equal(8, scaled.Attack);
         Assert.Equal(3, scaled.Defense);
     }
 

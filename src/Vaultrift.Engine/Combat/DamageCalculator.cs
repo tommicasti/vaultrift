@@ -1,4 +1,4 @@
-﻿using Vaultrift.Engine.Randomness;
+using Vaultrift.Engine.Randomness;
 
 namespace Vaultrift.Engine.Combat;
 
@@ -8,6 +8,7 @@ public sealed class DamageCalculator
     public const int MinimumDamage = 1;
     public const int MaxEvasion = 50;
     public const int MaxCritical = 50;
+    public const int MaxBlock = 30;
 
     private readonly IRandom _random;
 
@@ -25,11 +26,24 @@ public sealed class DamageCalculator
         if (IsDodged(defender))
             return AttackResult.Dodged;
 
-        var baseDamage = Math.Max(MinimumDamage, attacker.Attack - defender.Defense);
+        if (IsBlocked(defender))
+            return AttackResult.Blocked;
+
+        var baseDamage = BaseDamage(attacker, defender);
         var isCritical = _random.NextDouble() < Math.Min(attacker.Critical, MaxCritical) / 100.0;
         var damage = isCritical ? baseDamage * CriticalMultiplier : baseDamage;
 
         return new AttackResult(damage, isCritical);
+    }
+
+    public static int BaseDamage(Stats attacker, Stats defender) =>
+        Math.Max(MinimumDamage, attacker.Attack - defender.Defense);
+
+    private bool IsBlocked(Stats defender)
+    {
+        var block = Math.Min(defender.Block, MaxBlock);
+
+        return block > 0 && _random.NextDouble() < block / 100.0;
     }
 
     private bool IsDodged(Stats defender)

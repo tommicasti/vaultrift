@@ -1,4 +1,4 @@
-import type { ClassInfo, Direction, EquipmentSlot, GameState, TurnResponse } from './types'
+import type { ClassInfo, Direction, EquipmentSlot, GameState, StatPoint, TurnResponse } from './types'
 
 async function request<T>(method: 'GET' | 'POST', path: string, body?: unknown): Promise<T> {
   const response = await fetch(`/api${path}`, {
@@ -30,12 +30,24 @@ export function attack(gameId: string): Promise<TurnResponse> {
   return request<TurnResponse>('POST', `/games/${gameId}/attack`)
 }
 
-export function equip(gameId: string, entryId: number): Promise<TurnResponse> {
-  return request<TurnResponse>('POST', `/games/${gameId}/equip`, { entryId })
+export function equip(gameId: string, entryId: number, hand?: EquipmentSlot): Promise<TurnResponse> {
+  return request<TurnResponse>('POST', `/games/${gameId}/equip`, { entryId, hand })
+}
+
+export function activateAbility(gameId: string): Promise<TurnResponse> {
+  return request<TurnResponse>('POST', `/games/${gameId}/ability`)
 }
 
 export function unequip(gameId: string, slot: EquipmentSlot): Promise<TurnResponse> {
   return request<TurnResponse>('POST', `/games/${gameId}/unequip`, { slot })
+}
+
+export function spendPoint(gameId: string, stat: StatPoint): Promise<TurnResponse> {
+  return request<TurnResponse>('POST', `/games/${gameId}/stats`, { stat })
+}
+
+export function discardItem(gameId: string, entryId: number): Promise<TurnResponse> {
+  return request<TurnResponse>('POST', `/games/${gameId}/discard`, { entryId })
 }
 
 export function consumeItem(gameId: string, entryId: number): Promise<TurnResponse> {

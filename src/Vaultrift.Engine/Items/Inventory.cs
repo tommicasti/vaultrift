@@ -1,8 +1,8 @@
-﻿namespace Vaultrift.Engine.Items;
+namespace Vaultrift.Engine.Items;
 
 public sealed class Inventory
 {
-    public const int DefaultCapacity = 40;
+    public const int DefaultCapacity = 64;
 
     private readonly List<InventoryEntry> _entries = [];
     private int _nextId = 1;
@@ -65,6 +65,13 @@ public sealed class Inventory
 
         _entries.Add(entry);
         return true;
+    }
+
+    public bool Remove(int entryId)
+    {
+        var entry = Find(entryId);
+
+        return entry is not null && _entries.Remove(entry);
     }
 
     public void RemoveOne(int entryId)
