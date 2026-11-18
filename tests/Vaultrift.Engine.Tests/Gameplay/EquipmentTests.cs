@@ -70,7 +70,7 @@ public class EquipmentTests
 
         player.Equip(axeId);
 
-        Assert.Equal(axeId, player.Equipment[EquipmentSlot.Weapon].Id);
+        Assert.Equal(axeId, player.Equipment[EquipmentSlot.MainHand].Id);
         Assert.Equal(4, player.CombatStats.Attack);
     }
 
@@ -213,5 +213,105 @@ public class EquipmentTests
 
         Assert.Equal(29, game.Player.Health);
         Assert.Contains(new EnemyAttackedPlayer(1, new AttackResult(1, false)), result.Events);
+    }
+
+    [Fact]
+    public void Equip_MovesTheItemOutOfTheBackpack()
+    {
+        var player = NewPlayer();
+        var swordId = AddToInventory(player, TestItems.Sword);
+
+        player.Equip(swordId);
+
+        Assert.Null(player.Inventory.Find(swordId));
+        Assert.Empty(player.Inventory.Entries);
+    }
+
+    [Fact]
+    public void Equip_OverAnOccupiedSlot_PutsTheOldItemBackInTheBackpack()
+    {
+        var player = NewPlayer();
+        var swordId = AddToInventory(player, TestItems.Sword);
+        var axeId = AddToInventory(player, TestItems.Axe);
+        player.Equip(swordId);
+
+        player.Equip(axeId);
+
+        Assert.Equal(TestItems.Sword, Assert.Single(player.Inventory.Entries).Item);
+        Assert.Equal(swordId, player.Inventory.Entries[0].Id);
+    }
+
+    [Fact]
+    public void Equip_WithAFullBackpack_StillSwapsItems()
+    {
+        var player = new Player(new Position(1, 1), new Stats(maxHealth: 30, attack: 2, defense: 2));
+        var swordId = AddToInventory(player, TestItems.Sword);
+        player.Equip(swordId);
+
+        while (!player.Inventory.IsFull)
+            player.Inventory.TryAdd(TestItems.Axe);
+
+        var result = player.Equip(player.Inventory.Entries[0].Id);
+
+        Assert.Equal(EquipResult.Equipped, result);
+        Assert.Contains(player.Inventory.Entries, entry => entry.Id == swordId);
+    }
+
+    [Fact]
+    public void Unequip_PutsTheItemBackInTheBackpack()
+    {
+        var player = NewPlayer();
+        var swordId = AddToInventory(player, TestItems.Sword);
+        player.Equip(swordId);
+
+        var result = player.Unequip(EquipmentSlot.MainHand);
+
+        Assert.Equal(UnequipResult.Unequipped, result);
+        Assert.False(player.Equipment.ContainsKey(EquipmentSlot.MainHand));
+        Assert.Equal(swordId, Assert.Single(player.Inventory.Entries).Id);
+        Assert.Equal(2, player.CombatStats.Attack);
+    }
+
+    [Fact]
+    public void Unequip_EmptySlot_IsRejected()
+    {
+        Assert.Equal(UnequipResult.SlotEmpty, NewPlayer().Unequip(EquipmentSlot.Head));
+    }
+
+    [Fact]
+    public void Unequip_WithAFullBackpack_IsRejected()
+    {
+        var player = NewPlayer();
+        player.Equip(AddToInventory(player, TestItems.Sword));
+
+        while (!player.Inventory.IsFull)
+            player.Inventory.TryAdd(TestItems.Axe);
+
+        Assert.Equal(UnequipResult.BackpackFull, player.Unequip(EquipmentSlot.MainHand));
+        Assert.True(player.Equipment.ContainsKey(EquipmentSlot.MainHand));
+    }
+
+    [Fact]
+    public void GameUnequip_PassesTheTurn()
+    {
+        var player = NewPlayer();
+        player.Equip(AddToInventory(player, TestItems.Sword));
+        var game = new Game(Map, player, [], new FixedRandom());
+
+        var result = game.Unequip(EquipmentSlot.MainHand);
+
+        Assert.True(result.TurnPassed);
+        Assert.Contains(new ItemUnequipped(TestItems.Sword), result.Events);
+    }
+
+    [Fact]
+    public void GameUnequip_EmptySlot_DoesNotPassTheTurn()
+    {
+        var game = new Game(Map, NewPlayer(), [], new FixedRandom());
+
+        var result = game.Unequip(EquipmentSlot.Cloak);
+
+        Assert.False(result.TurnPassed);
+        Assert.Contains(new UnequipRejected(UnequipResult.SlotEmpty), result.Events);
     }
 }

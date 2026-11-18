@@ -1,9 +1,10 @@
-﻿namespace Vaultrift.Engine.Items;
+namespace Vaultrift.Engine.Items;
 
 public enum WeaponType
 {
     Sword,
     Axe,
     Bow,
-    Dagger
+    Dagger,
+    Spear
 }

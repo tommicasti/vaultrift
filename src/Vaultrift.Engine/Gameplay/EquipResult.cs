@@ -1,9 +1,11 @@
-﻿namespace Vaultrift.Engine.Gameplay;
+namespace Vaultrift.Engine.Gameplay;
 
 public enum EquipResult
 {
     Equipped,
     ItemNotFound,
     NotEquippable,
-    AlreadyEquipped
+    AlreadyEquipped,
+    BackpackFull,
+    WrongClass
 }

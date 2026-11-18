@@ -1,16 +1,28 @@
-import type { Direction, ItemInfo } from '../api/types'
+import type { AbilityInfo, Direction, ItemInfo } from '../api/types'
+import { abilityNames } from '../game/items'
 import { ItemIcon } from './ItemIcon'
 
 interface ControlsProps {
   disabled: boolean
   quickSlot?: ItemInfo
   quickSlotQuantity: number
+  ability?: AbilityInfo
   onMove: (direction: Direction) => void
   onAttack: () => void
   onUseQuickSlot: () => void
+  onUseAbility: () => void
 }
 
-export function Controls({ disabled, quickSlot, quickSlotQuantity, onMove, onAttack, onUseQuickSlot }: ControlsProps) {
+export function Controls({
+  disabled,
+  quickSlot,
+  quickSlotQuantity,
+  ability,
+  onMove,
+  onAttack,
+  onUseQuickSlot,
+  onUseAbility,
+}: ControlsProps) {
   return (
     <section className="controls">
       <div className="dpad">
@@ -32,6 +44,16 @@ export function Controls({ disabled, quickSlot, quickSlotQuantity, onMove, onAtt
           {quickSlot ? <ItemIcon item={quickSlot} /> : 'Use'}
           {quickSlot && <span className="slot-quantity">{quickSlotQuantity}</span>}
         </button>
+        {ability && (
+          <button
+            className={ability.activeTurns > 0 ? 'ability active' : 'ability'}
+            aria-label={`Use ${abilityNames[ability.kind]}`}
+            disabled={disabled || ability.cooldown > 0}
+            onClick={onUseAbility}
+          >
+            {ability.cooldown > 0 ? ability.cooldown : abilityNames[ability.kind]}
+          </button>
+        )}
         <button className="attack" disabled={disabled} onClick={onAttack}>
           Attack
         </button>

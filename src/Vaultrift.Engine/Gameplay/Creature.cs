@@ -16,7 +16,7 @@ public abstract class Creature
 
     public Position Position { get; internal set; }
 
-    public Stats Stats { get; }
+    public Stats Stats { get; protected set; }
 
     public virtual Stats CombatStats => Stats;
 

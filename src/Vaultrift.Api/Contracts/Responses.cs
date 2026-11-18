@@ -1,4 +1,4 @@
-﻿using Vaultrift.Engine.Combat;
+using Vaultrift.Engine.Combat;
 using Vaultrift.Engine.Gameplay;
 using Vaultrift.Engine.Items;
 using Vaultrift.Engine.World;
@@ -13,12 +13,25 @@ public sealed record GameStateResponse(
     IReadOnlyList<FloorItemResponse> FloorItems,
     IReadOnlyList<InventoryEntryResponse> Inventory,
     int InventoryCapacity,
-    int Deaths);
+    int Deaths,
+    int Floor,
+    int FloorCount,
+    StairsResponse? Stairs,
+    bool IsConquered,
+    string? Biome,
+    IReadOnlyList<PositionResponse> Chests);
+
+public sealed record StairsResponse(int X, int Y, bool IsOpen);
 
 public sealed record PlayerResponse(
     string? ClassId,
     string Name,
     int Level,
+    int Experience,
+    int ExperienceToNextLevel,
+    int UnspentPoints,
+    int Mana,
+    int MaxMana,
     int X,
     int Y,
     Direction Facing,
@@ -28,7 +41,9 @@ public sealed record PlayerResponse(
     int Defense,
     int Evasion,
     int Critical,
+    int Block,
     int FreeSteps,
+    AbilityResponse? Ability,
     IReadOnlyList<EquippedItemResponse> Equipment,
     ItemResponse? QuickSlot,
     int QuickSlotQuantity,
@@ -46,9 +61,14 @@ public sealed record ClassResponse(
     int Critical,
     Speed Speed,
     WeaponType MasteryWeapon,
-    ModifierResponse MasteryBonus);
+    ModifierResponse MasteryBonus,
+    int MaxMana,
+    ClassAbility? Ability,
+    int AbilityCooldown);
 
-public sealed record EquippedItemResponse(EquipmentSlot Slot, int EntryId);
+public sealed record AbilityResponse(ClassAbility Kind, int Cooldown, int MaxCooldown, int ActiveTurns);
+
+public sealed record EquippedItemResponse(EquipmentSlot Slot, int EntryId, ItemResponse Item);
 
 public sealed record ActiveBoostResponse(ItemResponse Item, ModifierResponse Modifier, int RemainingTurns);
 
@@ -67,9 +87,11 @@ public sealed record EnemyResponse(
     Element? Resistance,
     Element? AttackElement,
     bool IsBurning,
-    bool IsFrozen);
-
+    bool IsFrozen,
+    bool IsBoss);
 public sealed record ModifierResponse(StatType Stat, int Amount);
+
+public sealed record EffectResponse(EffectKind Kind, int Amount);
 
 public sealed record ItemResponse(
     string Id,
@@ -82,7 +104,11 @@ public sealed record ItemResponse(
     ModifierResponse? Boost,
     int? BoostTurns,
     Element? Element,
-    int? EffectChance);
+    int? EffectChance,
+    IReadOnlyList<EffectResponse> Effects,
+    bool TwoHanded,
+    string? ClassId,
+    int? ManaRestore);
 
 public sealed record FloorItemResponse(int X, int Y, ItemResponse Item);
 
@@ -96,12 +122,19 @@ public sealed record EventResponse(
     int? Damage = null,
     bool? IsCritical = null,
     bool? IsDodged = null,
+    bool? IsBlocked = null,
     int? X = null,
     int? Y = null,
     ItemResponse? Item = null,
     string? Reason = null,
     Element? Element = null,
     Effectiveness? Effectiveness = null,
-    IReadOnlyList<PositionResponse>? Tiles = null);
+    IReadOnlyList<PositionResponse>? Tiles = null,
+    int? Floor = null,
+    int? Amount = null,
+    int? Level = null,
+    StatPoint? Stat = null,
+    bool? Powered = null,
+    ClassAbility? Ability = null);
 
 public sealed record PositionResponse(int X, int Y);

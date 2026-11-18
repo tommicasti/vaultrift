@@ -1,4 +1,4 @@
-﻿using Vaultrift.Engine.Gameplay;
+using Vaultrift.Engine.Gameplay;
 using Vaultrift.Engine.Items;
 using Vaultrift.Infrastructure.Content;
 
@@ -58,5 +58,29 @@ public class ClassCatalogTests
                 Assert.Equal(Speed.Normal, definition.Class.Speed);
                 Assert.True(definition.Class.BaseStats.Critical < rogue.BaseStats.Critical);
             });
+    }
+
+    [Fact]
+    public void EveryClass_HasItsOwnAbility()
+    {
+        var abilities = ClassCatalog.All.Select(definition => definition.Class.Ability).ToList();
+
+        Assert.All(abilities, ability => Assert.NotNull(ability));
+        Assert.Equal(abilities.Count, abilities.Distinct().Count());
+    }
+
+    [Fact]
+    public void EveryClass_StartsWithSomeMana()
+    {
+        Assert.All(ClassCatalog.All, definition => Assert.True(definition.Class.BaseStats.MaxMana > 0));
+    }
+
+    [Fact]
+    public void TheKnight_StartsWithSwordAndShield()
+    {
+        var kit = ClassCatalog.Find("knight")!.StartingItemIds;
+
+        Assert.Contains("sword-common", kit);
+        Assert.Contains(kit, id => ItemCatalog.Get(id) is GearDefinition { Kind: EquipmentKind.Shield });
     }
 }

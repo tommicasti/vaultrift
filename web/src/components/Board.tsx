@@ -1,8 +1,10 @@
 import type { CSSProperties, PointerEvent, ReactElement } from 'react'
 import type { Direction, GameState } from '../api/types'
+import { tileArt } from '../game/biomes'
 import type { Effect } from '../game/effects'
-import { classSprite } from '../game/sprites'
+import { chestSprite, sheets, stairsSprites } from '../game/sprites'
 import { EnemyMarker } from './EnemyMarker'
+import { HeroSprite } from './HeroSprite'
 import { ItemIcon } from './ItemIcon'
 import { LevelBadge } from './LevelBadge'
 import { Sprite } from './Sprite'
@@ -27,7 +29,7 @@ export function Board({ game, viewColumns, viewRows, effects, onAttack }: BoardP
   const top = game.player.y - Math.floor(viewRows / 2)
   const enemiesByTile = new Map(game.enemies.map(enemy => [`${enemy.x},${enemy.y}`, enemy]))
   const itemsByTile = new Map(game.floorItems.map(floorItem => [`${floorItem.x},${floorItem.y}`, floorItem.item]))
-  const playerSprite = classSprite(game.player.classId)
+  const chestTiles = new Set(game.chests.map(chest => `${chest.x},${chest.y}`))
   const effectsByTile = new Map<string, Effect[]>()
 
   for (const effect of effects) {
@@ -51,20 +53,39 @@ export function Board({ game, viewColumns, viewRows, effects, onAttack }: BoardP
       const isPlayer = game.player.x === x && game.player.y === y
       const enemy = enemiesByTile.get(key)
       const floorItem = itemsByTile.get(key)
+      const stairs = game.stairs && game.stairs.x === x && game.stairs.y === y ? game.stairs : undefined
+      const art = tileArt(game.biome, game.map, x, y)
 
       tiles.push(
         <div key={`${column},${row}`} className={tileClass(symbol)}>
+          {art && <Sprite sheet={sheets.biomes} index={art.base} className={art.deep ? 'tile-art deep' : 'tile-art'} />}
+          {art?.overlay !== undefined && <Sprite sheet={sheets.biomes} index={art.overlay} className="tile-art" />}
+          {stairs && (
+            <Sprite
+              sheet={sheets.vault}
+              index={stairs.isOpen ? stairsSprites.open : stairsSprites.sealed}
+              className="stairs"
+              label={stairs.isOpen ? 'Stairs down' : 'Sealed stairs'}
+            />
+          )}
           {isPlayer && (
             <>
-              <Sprite sheet={playerSprite.sheet} index={playerSprite.index} className="actor" label={game.player.name} />
+              <HeroSprite player={game.player} className="actor" />
               <span className={`facing facing-${game.player.facing.toLowerCase()}`} aria-hidden="true">
                 {facingArrows[game.player.facing]}
               </span>
-              <LevelBadge level={game.player.level} />
+              <LevelBadge level={game.player.level} highlight={game.player.unspentPoints > 0} />
             </>
           )}
           {enemy && <EnemyMarker enemy={enemy} />}
-          {!isPlayer && !enemy && floorItem && <ItemIcon item={floorItem} />}
+          {chestTiles.has(key) && (
+            <Sprite sheet={chestSprite.sheet} index={chestSprite.index} className="chest" label="Chest" />
+          )}
+          {!isPlayer && !enemy && floorItem && (
+            <span className={`floor-item rarity-${floorItem.rarity.toLowerCase()}`}>
+              <ItemIcon item={floorItem} />
+            </span>
+          )}
           {effectsByTile.get(key)?.map(effect => (
             <span
               key={effect.key}
@@ -80,7 +101,7 @@ export function Board({ game, viewColumns, viewRows, effects, onAttack }: BoardP
 
   return (
     <div
-      className="board"
+      className={game.biome ? 'board with-art' : 'board'}
       style={{ '--columns': viewColumns, '--rows': viewRows } as CSSProperties}
       onPointerDown={handlePointerDown}
     >
@@ -93,5 +114,7 @@ function tileClass(symbol: string | undefined): string {
   if (symbol === undefined)
     return 'tile void'
 
-  return symbol === '#' ? 'tile wall' : 'tile floor'
+  if (symbol === '#') return 'tile wall'
+
+  return symbol === 'o' ? 'tile floor obstacle' : 'tile floor'
 }

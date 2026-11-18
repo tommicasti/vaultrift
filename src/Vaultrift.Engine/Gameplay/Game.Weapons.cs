@@ -1,4 +1,4 @@
-﻿using Vaultrift.Engine.Combat;
+using Vaultrift.Engine.Combat;
 using Vaultrift.Engine.Items;
 using Vaultrift.Engine.World;
 
@@ -8,18 +8,56 @@ public sealed partial class Game
 {
     public const int BowRange = 6;
     public const int GlancingBlowDivisor = 2;
+    public const int FarShotDistance = 4;
 
-    private void Strike(ItemInstance? weapon, List<GameEvent> events)
+    private bool _ambushReady;
+    private bool _ambushKilled;
+    private bool _ambushStruck;
+
+    private void PerformAttack(List<GameEvent> events)
+    {
+        if (TryOpenChest(events))
+            return;
+
+        BeginAmbush();
+
+        var weapon = Player.Weapon;
+
+        switch ((weapon?.Definition as WeaponDefinition)?.WeaponType)
+        {
+            case WeaponType.Bow:
+                Shoot(weapon!, events, powered: false);
+                break;
+            case WeaponType.Axe:
+                Sweep(weapon!, events);
+                break;
+            case WeaponType.Spear:
+                Thrust(weapon!, events);
+                break;
+            default:
+                Strike(weapon, Player.CombatStats, glancing: false, events);
+                break;
+        }
+
+        if (Player.OffHandWeapon is { } offHand)
+            Strike(offHand, Player.OffHandStats, glancing: true, events);
+
+        EndAmbush(events);
+    }
+
+    private void Strike(ItemInstance? weapon, Stats stats, bool glancing, List<GameEvent> events)
     {
         var target = FindLivingEnemyAt(Player.Position.Move(Player.Facing));
 
         if (target is null)
         {
-            events.Add(new PlayerAttackedNothing());
+            if (!events.OfType<PlayerAttackedNothing>().Any())
+                events.Add(new PlayerAttackedNothing());
+
             return;
         }
 
-        Hit(target, weapon, glancing: false, triggersElement: true, events);
+        Hit(target, weapon, stats, new HitOptions(Glancing: glancing), events);
     }
 
     private void Sweep(ItemInstance weapon, List<GameEvent> events)
@@ -42,48 +80,108 @@ public sealed partial class Game
         }
 
         if (target is not null)
-            Hit(target, weapon, glancing: false, triggersElement: true, events);
+            Hit(target, weapon, Player.CombatStats, new HitOptions(), events);
 
         foreach (var bystander in bystanders.Where(enemy => !enemy.IsDead))
-            Hit(bystander, weapon, glancing: true, triggersElement: false, events);
+            Hit(bystander, weapon, Player.CombatStats, new HitOptions(Glancing: true, TriggersElement: false), events);
     }
 
-    private void Shoot(ItemInstance weapon, List<GameEvent> events)
+    private void Thrust(ItemInstance weapon, List<GameEvent> events)
     {
-        var path = new List<Position>();
-        Enemy? target = null;
-        var position = Player.Position;
+        var front = Player.Position.Move(Player.Facing);
+        var behind = front.Move(Player.Facing);
+        var reachesBehind = (Map.IsWalkable(front) && !IsChest(front)) || FindLivingEnemyAt(front) is not null;
+        var tiles = reachesBehind ? new List<Position> { front, behind } : [front];
 
-        for (var step = 0; step < BowRange; step++)
-        {
-            position = position.Move(Player.Facing);
+        events.Add(new PlayerThrust(tiles));
 
-            if (!Map.IsWalkable(position))
-                break;
+        var targets = tiles
+            .Select(FindLivingEnemyAt)
+            .OfType<Enemy>()
+            .ToList();
 
-            path.Add(position);
-            target = FindLivingEnemyAt(position);
-
-            if (target is not null)
-                break;
-        }
-
-        events.Add(new ArrowFlew(path));
-
-        if (target is null)
+        if (targets.Count == 0)
         {
             events.Add(new PlayerAttackedNothing());
             return;
         }
 
-        Hit(target, weapon, glancing: path.Count == 1, triggersElement: true, events);
+        for (var index = 0; index < targets.Count; index++)
+        {
+            if (!targets[index].IsDead)
+                Hit(targets[index], weapon, Player.CombatStats, new HitOptions(TriggersElement: index == 0), events);
+        }
     }
 
-    private void Hit(Enemy target, ItemInstance? weapon, bool glancing, bool triggersElement, List<GameEvent> events)
+    private void Shoot(ItemInstance weapon, List<GameEvent> events, bool powered)
     {
-        var rolled = _damageCalculator.Calculate(Player.CombatStats, target.CombatStats);
+        var path = new List<Position>();
+        var targets = new List<(Enemy Enemy, int Distance)>();
+        var position = Player.Position;
+        var range = BowRange + Player.EffectAmount(EffectKind.BowRange);
 
-        if (glancing && !rolled.IsDodged)
+        for (var step = 1; step <= range; step++)
+        {
+            position = position.Move(Player.Facing);
+            var target = FindLivingEnemyAt(position);
+
+            if (target is null && (!Map.IsWalkable(position) || IsChest(position)))
+                break;
+
+            path.Add(position);
+
+            if (target is null)
+                continue;
+
+            targets.Add((target, step));
+
+            if (!powered)
+                break;
+        }
+
+        events.Add(new ArrowFlew(path, powered));
+
+        if (targets.Count == 0)
+        {
+            events.Add(new PlayerAttackedNothing());
+            return;
+        }
+
+        var guaranteedElement = powered && Player.EffectAmount(EffectKind.PowerShotMastery) > 0;
+
+        for (var index = 0; index < targets.Count; index++)
+        {
+            var (target, distance) = targets[index];
+
+            if (target.IsDead)
+                continue;
+
+            var options = new HitOptions(
+                Glancing: !powered && distance == 1,
+                TriggersElement: index == 0,
+                DamageMultiplier: powered ? AbilityRules.PowerShotDamageMultiplier : 1,
+                GuaranteedElement: guaranteedElement && index == 0);
+
+            Hit(target, weapon, FarShotStats(distance), options, events);
+        }
+    }
+
+    private Stats FarShotStats(int distance)
+    {
+        var stats = Player.CombatStats;
+        var bonus = Player.EffectAmount(EffectKind.FarShotCritical);
+
+        return distance >= FarShotDistance && bonus > 0 ? stats.WithCritical(stats.Critical + bonus) : stats;
+    }
+
+    private void Hit(Enemy target, ItemInstance? weapon, Stats stats, HitOptions options, List<GameEvent> events)
+    {
+        var rolled = RollHit(stats, target);
+
+        if (!rolled.Missed && options.DamageMultiplier > 1)
+            rolled = rolled with { Damage = rolled.Damage * options.DamageMultiplier };
+
+        if (options.Glancing && !rolled.Missed)
             rolled = rolled with { Damage = Math.Max(DamageCalculator.MinimumDamage, rolled.Damage / GlancingBlowDivisor) };
 
         var result = ElementRules.Apply(
@@ -95,14 +193,71 @@ public sealed partial class Game
 
         target.TakeDamage(result.Damage);
         events.Add(new PlayerAttackedEnemy(target.Id, result));
+        DrainLife(result.Damage, events);
 
         if (target.IsDead)
-            events.Add(new EnemyDefeated(target.Id));
-        else
-            WakeUp(target, events);
+        {
+            if (_ambushStruck)
+                _ambushKilled = true;
 
-        if (triggersElement && !result.IsDodged && weapon?.Element is { } element)
-            TriggerElement(element, weapon.Rarity, target, result.Damage, events);
+            Defeat(target, events);
+        }
+        else
+        {
+            WakeUp(target, events);
+        }
+
+        if (options.TriggersElement && !result.Missed && weapon?.Element is { } element)
+            TriggerElement(element, weapon.Rarity, target, result.Damage, events, options.GuaranteedElement);
+    }
+
+    private AttackResult RollHit(Stats stats, Enemy target)
+    {
+        if (!_ambushReady)
+            return _damageCalculator.Calculate(stats, target.CombatStats);
+
+        _ambushReady = false;
+        _ambushStruck = true;
+
+        var multiplier = Player.EffectAmount(EffectKind.Ambush) > 0
+            ? AbilityRules.AmbushDamageMultiplier + 1
+            : AbilityRules.AmbushDamageMultiplier;
+
+        return new AttackResult(DamageCalculator.BaseDamage(stats, target.CombatStats) * multiplier, IsCritical: true);
+    }
+
+    private void DrainLife(int damage, List<GameEvent> events)
+    {
+        var percent = Player.EffectAmount(EffectKind.LifeSteal)
+            + (Player.FuryTurns > 0 ? Player.EffectAmount(EffectKind.FuryLifeSteal) : 0);
+
+        if (percent <= 0 || damage <= 0 || Player.Health == Player.Stats.MaxHealth)
+            return;
+
+        var amount = Math.Max(1, damage * percent / 100);
+        Player.Heal(amount);
+        events.Add(new LifeDrained(amount));
+    }
+
+    private void BeginAmbush()
+    {
+        _ambushReady = Player.IsInvisible;
+        _ambushStruck = false;
+        _ambushKilled = false;
+    }
+
+    private void EndAmbush(List<GameEvent> events)
+    {
+        _ambushReady = false;
+
+        if (!_ambushStruck)
+            return;
+
+        if (_ambushKilled && Player.EffectAmount(EffectKind.Phantom) > 0)
+            return;
+
+        Player.InvisibleTurns = 0;
+        events.Add(new AbilityEnded(ClassAbility.Invisibility));
     }
 
     private static void WakeUp(Enemy enemy, List<GameEvent> events)
@@ -120,4 +275,10 @@ public sealed partial class Game
         Direction.Left or Direction.Right => [Direction.Up, Direction.Down],
         _ => throw new ArgumentOutOfRangeException(nameof(facing), facing, "Unknown direction.")
     };
+
+    private sealed record HitOptions(
+        bool Glancing = false,
+        bool TriggersElement = true,
+        int DamageMultiplier = 1,
+        bool GuaranteedElement = false);
 }

@@ -1,9 +1,11 @@
-﻿namespace Vaultrift.Engine.Items;
+namespace Vaultrift.Engine.Items;
 
 public enum StatType
 {
     Attack,
     Defense,
     Evasion,
-    Critical
+    Critical,
+    Block,
+    Mana
 }

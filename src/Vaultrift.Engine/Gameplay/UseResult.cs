@@ -1,4 +1,4 @@
-﻿namespace Vaultrift.Engine.Gameplay;
+namespace Vaultrift.Engine.Gameplay;
 
 public enum UseResult
 {
@@ -6,5 +6,6 @@ public enum UseResult
     ItemNotFound,
     NotUsable,
     AlreadyAtFullHealth,
+    AlreadyAtFullMana,
     QuickSlotEmpty
 }

@@ -1,4 +1,4 @@
-﻿using Vaultrift.Engine.Items;
+using Vaultrift.Engine.Items;
 
 namespace Vaultrift.Engine.Combat;
 
@@ -45,7 +45,7 @@ public static class ElementRules
         if (element is not { } attackElement)
             return result;
 
-        if (result.IsDodged)
+        if (result.Missed)
             return result with { Element = attackElement };
 
         var effectiveness = EffectivenessOf(attackElement, weakness, resistance);

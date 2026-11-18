@@ -1,12 +1,14 @@
-﻿namespace Vaultrift.Engine.Gameplay;
+namespace Vaultrift.Engine.Gameplay;
 
 public enum EquipmentSlot
 {
-    Weapon,
+    MainHand,
+    OffHand,
     Head,
     Body,
     Feet,
     Ring1,
     Ring2,
-    Cloak
+    Cloak,
+    ClassMod
 }

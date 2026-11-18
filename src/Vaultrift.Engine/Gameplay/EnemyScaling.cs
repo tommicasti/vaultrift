@@ -5,8 +5,7 @@ namespace Vaultrift.Engine.Gameplay;
 
 public static class EnemyScaling
 {
-    public const double GrowthPerLevel = 0.10;
-
+    public const double GrowthPerLevel = 0.15;
     public static double RarityMultiplier(Rarity rarity) => rarity switch
     {
         Rarity.Common => 1.0,

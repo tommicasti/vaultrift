@@ -1,4 +1,5 @@
-﻿using Vaultrift.Api.Contracts;
+using Vaultrift.Api.Contracts;
+using Vaultrift.Engine.Gameplay;
 using Vaultrift.Infrastructure.Content;
 
 namespace Vaultrift.Api.Mapping;
@@ -22,6 +23,9 @@ public static class ClassMapper
             stats.Critical,
             playerClass.Speed,
             playerClass.Mastery.WeaponType,
-            new ModifierResponse(bonus.Stat, bonus.Amount));
+            new ModifierResponse(bonus.Stat, bonus.Amount),
+            stats.MaxMana,
+            playerClass.Ability,
+            playerClass.Ability is { } ability ? AbilityRules.Cooldown(ability) : 0);
     }
 }

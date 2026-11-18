@@ -1,12 +1,25 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { attack, consumeItem, consumeQuickSlot, createGame, equip, move, setQuickSlot } from './api/gamesApi'
-import type { Direction, GameState, TurnResponse } from './api/types'
+import {
+  activateAbility,
+  attack,
+  consumeItem,
+  consumeQuickSlot,
+  createGame,
+  discardItem,
+  equip,
+  move,
+  setQuickSlot,
+  spendPoint,
+  unequip,
+} from './api/gamesApi'
+import type { Direction, EquipmentSlot, GameState, StatPoint, TurnResponse } from './api/types'
 import { Board } from './components/Board'
 import { ClassSelect } from './components/ClassSelect'
 import { Controls } from './components/Controls'
 import { EventLog } from './components/EventLog'
 import { InventoryScreen } from './components/InventoryScreen'
 import { StatusBar } from './components/StatusBar'
+import { VictoryScreen } from './components/VictoryScreen'
 import { describeEvent } from './game/describeEvent'
 import { effectsDuration, effectsForTurn, type Effect } from './game/effects'
 import { useCompactLandscape } from './game/useCompactLandscape'
@@ -30,6 +43,7 @@ function App() {
   const [error, setError] = useState<string | null>(null)
   const [inventoryOpen, setInventoryOpen] = useState(false)
   const [effects, setEffects] = useState<Effect[]>([])
+  const [victoryDismissed, setVictoryDismissed] = useState(false)
   const turnCounter = useRef(0)
   const compact = useCompactLandscape()
   const view = compact ? compactView : standardView
@@ -43,6 +57,7 @@ function App() {
       setGame(await createGame(classId, name))
       setLog(['You enter the vault. It is dark.'])
       setInventoryOpen(false)
+      setVictoryDismissed(false)
     } catch {
       setError('Could not start a new game. Is the API running?')
     } finally {
@@ -94,7 +109,12 @@ function App() {
   const handleAttack = useCallback(() => void play(attack), [play])
 
   const handleEquip = useCallback(
-    (entryId: number) => void play(gameId => equip(gameId, entryId)),
+    (entryId: number, hand?: EquipmentSlot) => void play(gameId => equip(gameId, entryId, hand)),
+    [play],
+  )
+
+  const handleUnequip = useCallback(
+    (slot: EquipmentSlot) => void play(gameId => unequip(gameId, slot)),
     [play],
   )
 
@@ -109,6 +129,18 @@ function App() {
   )
 
   const handleUseQuickSlot = useCallback(() => void play(consumeQuickSlot), [play])
+
+  const handleUseAbility = useCallback(() => void play(activateAbility), [play])
+
+  const handleDiscard = useCallback(
+    (entryId: number) => void play(gameId => discardItem(gameId, entryId)),
+    [play],
+  )
+
+  const handleSpendPoint = useCallback(
+    (stat: StatPoint) => void play(gameId => spendPoint(gameId, stat)),
+    [play],
+  )
 
   useEffect(() => {
     if (effects.length === 0) return
@@ -148,12 +180,15 @@ function App() {
       } else if (event.code === 'KeyQ') {
         event.preventDefault()
         handleUseQuickSlot()
+      } else if (event.code === 'KeyE') {
+        event.preventDefault()
+        handleUseAbility()
       }
     }
 
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [hasGame, inventoryOpen, handleMove, handleAttack, handleUseQuickSlot])
+  }, [hasGame, inventoryOpen, handleMove, handleAttack, handleUseQuickSlot, handleUseAbility])
 
   if (!game) {
     return (
@@ -177,16 +212,25 @@ function App() {
           </button>
         </div>
       </header>
-      <StatusBar player={game.player} deaths={game.deaths} />
+      <StatusBar
+        player={game.player}
+        deaths={game.deaths}
+        floor={game.floor}
+        floorCount={game.floorCount}
+        biome={game.biome}
+        onOpenInventory={() => setInventoryOpen(true)}
+      />
       <Board game={game} viewColumns={view.columns} viewRows={view.rows} effects={effects} onAttack={handleAttack} />
-      <p className="keyboard-hint">WASD to move · Space or click to attack · Q quick slot · Tab backpack</p>
+      <p className="keyboard-hint">WASD to move · Space or click to attack · E ability · Q quick slot · Tab backpack</p>
       <Controls
         disabled={busy}
         quickSlot={game.player.quickSlot}
         quickSlotQuantity={game.player.quickSlotQuantity}
+        ability={game.player.ability}
         onMove={handleMove}
         onAttack={handleAttack}
         onUseQuickSlot={handleUseQuickSlot}
+        onUseAbility={handleUseAbility}
       />
       {error && <p className="error">{error}</p>}
       <EventLog entries={log} />
@@ -197,9 +241,20 @@ function App() {
           capacity={game.inventoryCapacity}
           disabled={busy}
           onEquip={handleEquip}
+          onUnequip={handleUnequip}
           onUse={handleUse}
           onAssignQuickSlot={handleAssignQuickSlot}
+          onSpendPoint={handleSpendPoint}
+          onDiscard={handleDiscard}
           onClose={() => setInventoryOpen(false)}
+        />
+      )}
+      {game.isConquered && !victoryDismissed && (
+        <VictoryScreen
+          heroName={game.player.name}
+          deaths={game.deaths}
+          onKeepExploring={() => setVictoryDismissed(true)}
+          onNewGame={returnToClassSelect}
         />
       )}
     </main>
