@@ -51,6 +51,9 @@ public sealed class Player : Creature
 
     public EquipResult Equip(int entryId)
     {
+        if (_equipment.Values.Any(equipped => equipped.Id == entryId))
+            return EquipResult.AlreadyEquipped;
+
         var entry = Inventory.Find(entryId);
 
         if (entry is null)
@@ -59,11 +62,26 @@ public sealed class Player : Creature
         if (entry.Item.Definition is not EquipmentDefinition equipment)
             return EquipResult.NotEquippable;
 
-        if (_equipment.ContainsValue(entry))
-            return EquipResult.AlreadyEquipped;
+        var slot = SlotFor(equipment.Kind);
+        Inventory.Take(entryId);
 
-        _equipment[SlotFor(equipment.Kind)] = entry;
+        if (_equipment.TryGetValue(slot, out var replaced))
+            Inventory.TryPut(replaced);
+
+        _equipment[slot] = entry;
         return EquipResult.Equipped;
+    }
+
+    public UnequipResult Unequip(EquipmentSlot slot)
+    {
+        if (!_equipment.TryGetValue(slot, out var entry))
+            return UnequipResult.SlotEmpty;
+
+        if (!Inventory.TryPut(entry))
+            return UnequipResult.BackpackFull;
+
+        _equipment.Remove(slot);
+        return UnequipResult.Unequipped;
     }
 
     public UseResult Use(int entryId)

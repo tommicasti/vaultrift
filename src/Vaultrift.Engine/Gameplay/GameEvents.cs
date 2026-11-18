@@ -34,6 +34,10 @@ public sealed record ItemEquipped(ItemInstance Item) : GameEvent;
 
 public sealed record EquipRejected(EquipResult Reason) : GameEvent;
 
+public sealed record ItemUnequipped(ItemInstance Item) : GameEvent;
+
+public sealed record UnequipRejected(UnequipResult Reason) : GameEvent;
+
 public sealed record ItemUsed(ItemInstance Item) : GameEvent;
 
 public sealed record UseRejected(UseResult Reason) : GameEvent;
@@ -57,3 +61,11 @@ public sealed record EnemyKnockedBack(int EnemyId, Position To) : GameEvent;
 public sealed record ArrowFlew(IReadOnlyList<Position> Path) : GameEvent;
 
 public sealed record PlayerSwept(IReadOnlyList<Position> Tiles) : GameEvent;
+
+public sealed record StairsSealed : GameEvent;
+
+public sealed record StairsOpened(Position At) : GameEvent;
+
+public sealed record FloorDescended(int Floor, Position At) : GameEvent;
+
+public sealed record VaultConquered : GameEvent;

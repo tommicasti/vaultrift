@@ -33,7 +33,7 @@ public sealed class GamesController : ControllerBase
             return ValidationProblem(ModelState);
         }
 
-        var game = StarterLevel.CreateGame(_random, playerClass, request.Name);
+        var game = VaultDungeon.CreateGame(_random, playerClass, request.Name);
         var id = _store.Add(game);
 
         return CreatedAtAction(nameof(Get), new { id }, GameMapper.ToResponse(id, game));
@@ -64,6 +64,10 @@ public sealed class GamesController : ControllerBase
     [HttpPost("{id:guid}/equip")]
     public ActionResult<TurnResponse> Equip(Guid id, EntryRequest request) =>
         Play(id, game => game.Equip(request.EntryId));
+
+    [HttpPost("{id:guid}/unequip")]
+    public ActionResult<TurnResponse> Unequip(Guid id, UnequipRequest request) =>
+        Play(id, game => game.Unequip(request.Slot));
 
     [HttpPost("{id:guid}/use")]
     public ActionResult<TurnResponse> Use(Guid id, EntryRequest request) =>

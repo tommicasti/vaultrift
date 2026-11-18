@@ -1,12 +1,13 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { attack, consumeItem, consumeQuickSlot, createGame, equip, move, setQuickSlot } from './api/gamesApi'
-import type { Direction, GameState, TurnResponse } from './api/types'
+import { attack, consumeItem, consumeQuickSlot, createGame, equip, move, setQuickSlot, unequip } from './api/gamesApi'
+import type { Direction, EquipmentSlot, GameState, TurnResponse } from './api/types'
 import { Board } from './components/Board'
 import { ClassSelect } from './components/ClassSelect'
 import { Controls } from './components/Controls'
 import { EventLog } from './components/EventLog'
 import { InventoryScreen } from './components/InventoryScreen'
 import { StatusBar } from './components/StatusBar'
+import { VictoryScreen } from './components/VictoryScreen'
 import { describeEvent } from './game/describeEvent'
 import { effectsDuration, effectsForTurn, type Effect } from './game/effects'
 import { useCompactLandscape } from './game/useCompactLandscape'
@@ -30,6 +31,7 @@ function App() {
   const [error, setError] = useState<string | null>(null)
   const [inventoryOpen, setInventoryOpen] = useState(false)
   const [effects, setEffects] = useState<Effect[]>([])
+  const [victoryDismissed, setVictoryDismissed] = useState(false)
   const turnCounter = useRef(0)
   const compact = useCompactLandscape()
   const view = compact ? compactView : standardView
@@ -43,6 +45,7 @@ function App() {
       setGame(await createGame(classId, name))
       setLog(['You enter the vault. It is dark.'])
       setInventoryOpen(false)
+      setVictoryDismissed(false)
     } catch {
       setError('Could not start a new game. Is the API running?')
     } finally {
@@ -95,6 +98,11 @@ function App() {
 
   const handleEquip = useCallback(
     (entryId: number) => void play(gameId => equip(gameId, entryId)),
+    [play],
+  )
+
+  const handleUnequip = useCallback(
+    (slot: EquipmentSlot) => void play(gameId => unequip(gameId, slot)),
     [play],
   )
 
@@ -177,7 +185,7 @@ function App() {
           </button>
         </div>
       </header>
-      <StatusBar player={game.player} deaths={game.deaths} />
+      <StatusBar player={game.player} deaths={game.deaths} floor={game.floor} floorCount={game.floorCount} />
       <Board game={game} viewColumns={view.columns} viewRows={view.rows} effects={effects} onAttack={handleAttack} />
       <p className="keyboard-hint">WASD to move · Space or click to attack · Q quick slot · Tab backpack</p>
       <Controls
@@ -197,9 +205,18 @@ function App() {
           capacity={game.inventoryCapacity}
           disabled={busy}
           onEquip={handleEquip}
+          onUnequip={handleUnequip}
           onUse={handleUse}
           onAssignQuickSlot={handleAssignQuickSlot}
           onClose={() => setInventoryOpen(false)}
+        />
+      )}
+      {game.isConquered && !victoryDismissed && (
+        <VictoryScreen
+          heroName={game.player.name}
+          deaths={game.deaths}
+          onKeepExploring={() => setVictoryDismissed(true)}
+          onNewGame={returnToClassSelect}
         />
       )}
     </main>

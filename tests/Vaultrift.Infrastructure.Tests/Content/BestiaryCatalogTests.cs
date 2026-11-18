@@ -31,6 +31,15 @@ public class BestiaryCatalogTests
     }
 
     [Fact]
+    public void Bosses_AreMarked_AndLeftOutOfTheMonsters()
+    {
+        var bossIds = BestiaryCatalog.All.Where(kind => kind.IsBoss).Select(kind => kind.Id);
+
+        Assert.Equal(new[] { "rat-king", "spider-queen", "troll" }, bossIds);
+        Assert.DoesNotContain(BestiaryCatalog.Monsters, kind => kind.IsBoss);
+    }
+
+    [Fact]
     public void EveryElement_IsSomeKindsWeakness()
     {
         foreach (var element in Enum.GetValues<Element>())

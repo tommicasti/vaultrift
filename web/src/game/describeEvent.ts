@@ -1,10 +1,15 @@
-import type { EquipRejectReason, GameEvent, UseRejectReason } from '../api/types'
+import type { EquipRejectReason, GameEvent, UnequipRejectReason, UseRejectReason } from '../api/types'
 import { elementNames } from './items'
 
 const equipRejectMessages: Record<EquipRejectReason, string> = {
   ItemNotFound: 'That item is no longer in your backpack.',
   NotEquippable: "You can't equip that.",
   AlreadyEquipped: 'That item is already equipped.',
+}
+
+const unequipRejectMessages: Record<UnequipRejectReason, string> = {
+  SlotEmpty: 'There is nothing to take off there.',
+  BackpackFull: 'Your backpack is full. Make some room first.',
 }
 
 const useRejectMessages: Record<UseRejectReason, string> = {
@@ -65,6 +70,10 @@ export function describeEvent(event: GameEvent, enemyNames: ReadonlyMap<number, 
       return `You equip ${event.item?.name}.`
     case 'EquipRejected':
       return equipRejectMessages[event.reason as EquipRejectReason]
+    case 'ItemUnequipped':
+      return `You take off ${event.item?.name}.`
+    case 'UnequipRejected':
+      return unequipRejectMessages[event.reason as UnequipRejectReason]
     case 'ItemUsed':
       return `You use ${event.item?.name}.`
     case 'UseRejected':
@@ -85,5 +94,13 @@ export function describeEvent(event: GameEvent, enemyNames: ReadonlyMap<number, 
       return `Lightning jumps to ${enemyLower} for ${event.damage} damage.${note}`
     case 'EnemyKnockedBack':
       return `The wind pushes ${enemyLower} back.`
+    case 'StairsSealed':
+      return 'The stairs are sealed. Defeat the guardian of this floor first.'
+    case 'StairsOpened':
+      return 'A deep rumble echoes through the floor. The stairs are open!'
+    case 'FloorDescended':
+      return `You descend to floor ${event.floor}.`
+    case 'VaultConquered':
+      return 'The last guardian falls. The vault is yours!'
   }
 }

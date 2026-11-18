@@ -251,7 +251,58 @@
   display: flex;
   transform: translateX(-50%);
 }
+.crown {
+  width: 0.7em;
+  height: 0.7em;
+}
 
+.actor.boss {
+  transform: scale(1.4);
+  filter: drop-shadow(0 0 3px var(--danger));
+}
+
+.boss ~ .rarity-stars {
+  top: -22%;
+}
+
+.boss ~ .rarity-stars .crown {
+  width: 0.9em;
+  height: 0.9em;
+}
+
+.stairs {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.victory-screen {
+  width: min(26rem, 100%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 1.5rem;
+  border-radius: 12px;
+  background: var(--bg);
+  text-align: center;
+}
+
+.victory-screen h2,
+.victory-screen p {
+  margin: 0;
+}
+
+.victory-crown {
+  width: 4rem;
+  height: 4rem;
+}
+
+.victory-actions {
+  display: flex;
+  gap: 0.5rem;
+}
 .star {
   width: 0.62em;
   height: 0.62em;
@@ -647,7 +698,29 @@
   width: 75%;
   height: 75%;
 }
+.hero {
+  position: relative;
+  display: inline-block;
+}
 
+.hero-layer {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.glow-aegis {
+  filter: drop-shadow(0 0 2px #b55088) drop-shadow(0 0 4px #b55088);
+}
+
+.glow-bramble {
+  filter: drop-shadow(0 0 2px #38b764) drop-shadow(0 0 4px #38b764);
+}
+
+.glow-lifewell {
+  filter: drop-shadow(0 0 2px #41a6f6) drop-shadow(0 0 4px #41a6f6);
+}
 .held-weapon {
   position: absolute;
   left: 62%;
@@ -699,15 +772,14 @@
   font-weight: 600;
 }
 
-.slot-equipped {
+.slot-duplicate {
   position: absolute;
-  left: 3px;
+  right: 3px;
   top: 1px;
   font-size: 0.65rem;
-  font-weight: 600;
-  color: var(--accent);
+  font-weight: 700;
+  color: var(--danger);
 }
-
 .combat-stats {
   display: grid;
   grid-template-columns: 1fr auto;

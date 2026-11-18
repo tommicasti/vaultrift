@@ -46,6 +46,27 @@ public sealed class Inventory
     public InventoryEntry? Find(int entryId) =>
         _entries.FirstOrDefault(entry => entry.Id == entryId);
 
+    internal InventoryEntry? Take(int entryId)
+    {
+        var entry = Find(entryId);
+
+        if (entry is not null)
+            _entries.Remove(entry);
+
+        return entry;
+    }
+
+    internal bool TryPut(InventoryEntry entry)
+    {
+        ArgumentNullException.ThrowIfNull(entry);
+
+        if (IsFull)
+            return false;
+
+        _entries.Add(entry);
+        return true;
+    }
+
     public void RemoveOne(int entryId)
     {
         var entry = Find(entryId)

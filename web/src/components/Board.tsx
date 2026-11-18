@@ -1,8 +1,9 @@
 import type { CSSProperties, PointerEvent, ReactElement } from 'react'
 import type { Direction, GameState } from '../api/types'
 import type { Effect } from '../game/effects'
-import { classSprite } from '../game/sprites'
+import { sheets, stairsSprites } from '../game/sprites'
 import { EnemyMarker } from './EnemyMarker'
+import { HeroSprite } from './HeroSprite'
 import { ItemIcon } from './ItemIcon'
 import { LevelBadge } from './LevelBadge'
 import { Sprite } from './Sprite'
@@ -27,7 +28,6 @@ export function Board({ game, viewColumns, viewRows, effects, onAttack }: BoardP
   const top = game.player.y - Math.floor(viewRows / 2)
   const enemiesByTile = new Map(game.enemies.map(enemy => [`${enemy.x},${enemy.y}`, enemy]))
   const itemsByTile = new Map(game.floorItems.map(floorItem => [`${floorItem.x},${floorItem.y}`, floorItem.item]))
-  const playerSprite = classSprite(game.player.classId)
   const effectsByTile = new Map<string, Effect[]>()
 
   for (const effect of effects) {
@@ -51,12 +51,21 @@ export function Board({ game, viewColumns, viewRows, effects, onAttack }: BoardP
       const isPlayer = game.player.x === x && game.player.y === y
       const enemy = enemiesByTile.get(key)
       const floorItem = itemsByTile.get(key)
+      const stairs = game.stairs && game.stairs.x === x && game.stairs.y === y ? game.stairs : undefined
 
       tiles.push(
         <div key={`${column},${row}`} className={tileClass(symbol)}>
+          {stairs && (
+            <Sprite
+              sheet={sheets.vault}
+              index={stairs.isOpen ? stairsSprites.open : stairsSprites.sealed}
+              className="stairs"
+              label={stairs.isOpen ? 'Stairs down' : 'Sealed stairs'}
+            />
+          )}
           {isPlayer && (
             <>
-              <Sprite sheet={playerSprite.sheet} index={playerSprite.index} className="actor" label={game.player.name} />
+              <HeroSprite player={game.player} className="actor" />
               <span className={`facing facing-${game.player.facing.toLowerCase()}`} aria-hidden="true">
                 {facingArrows[game.player.facing]}
               </span>

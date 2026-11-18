@@ -13,7 +13,8 @@ public sealed record EnemyKind
         bool passesThroughWalls = false,
         Element? weakness = null,
         Element? resistance = null,
-        Element? attackElement = null)
+        Element? attackElement = null,
+        bool isBoss = false)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(id);
         ArgumentException.ThrowIfNullOrWhiteSpace(name);
@@ -30,6 +31,7 @@ public sealed record EnemyKind
         Weakness = weakness;
         Resistance = resistance;
         AttackElement = attackElement;
+        IsBoss = isBoss;
     }
 
     public string Id { get; }
@@ -47,4 +49,6 @@ public sealed record EnemyKind
     public Element? Resistance { get; }
 
     public Element? AttackElement { get; }
+
+    public bool IsBoss { get; }
 }

@@ -1,9 +1,8 @@
 import { useState } from 'react'
-import type { EquipmentSlot, InventoryEntryState, PlayerState } from '../api/types'
+import type { EquipmentSlot, InventoryEntryState, ItemInfo, PlayerState } from '../api/types'
 import { describeElement, describeItem, describeWeaponTrait, elementNames, slotLabels } from '../game/items'
-import { classSprite } from '../game/sprites'
+import { HeroSprite } from './HeroSprite'
 import { ItemIcon } from './ItemIcon'
-import { Sprite } from './Sprite'
 
 const slotOrder: EquipmentSlot[] = ['Head', 'Weapon', 'Body', 'Ring1', 'Feet', 'Ring2', 'Cloak']
 
@@ -13,9 +12,14 @@ interface InventoryScreenProps {
   capacity: number
   disabled: boolean
   onEquip: (entryId: number) => void
+  onUnequip: (slot: EquipmentSlot) => void
   onUse: (entryId: number) => void
   onAssignQuickSlot: (entryId: number) => void
   onClose: () => void
+}
+
+function duplicateKey(item: ItemInfo): string {
+  return `${item.id}|${item.element ?? ''}`
 }
 
 export function InventoryScreen({
@@ -24,25 +28,41 @@ export function InventoryScreen({
   capacity,
   disabled,
   onEquip,
+  onUnequip,
   onUse,
   onAssignQuickSlot,
   onClose,
 }: InventoryScreenProps) {
   const [selectedId, setSelectedId] = useState<number | null>(null)
 
-  const entriesById = new Map(entries.map(entry => [entry.id, entry]))
-  const equippedBySlot = new Map(player.equipment.map(item => [item.slot, item.entryId]))
-  const equippedIds = new Set(player.equipment.map(item => item.entryId))
-  const selected = selectedId === null ? undefined : entriesById.get(selectedId)
-  const weaponEntryId = equippedBySlot.get('Weapon')
-  const weapon = weaponEntryId === undefined ? undefined : entriesById.get(weaponEntryId)
-  const portrait = classSprite(player.classId)
+  const equippedBySlot = new Map(player.equipment.map(equipped => [equipped.slot, equipped]))
+  const slotByEntryId = new Map(player.equipment.map(equipped => [equipped.entryId, equipped.slot]))
+  const allEntries = new Map<number, InventoryEntryState>([
+    ...entries.map(entry => [entry.id, entry] as const),
+    ...player.equipment.map(equipped => [equipped.entryId, { id: equipped.entryId, item: equipped.item, quantity: 1 }] as const),
+  ])
+  const copies = new Map<string, number>()
 
-  function handleDoubleClick(entry: InventoryEntryState) {
+  for (const entry of allEntries.values()) {
+    if (entry.item.category === 'Potion') continue
+
+    const key = duplicateKey(entry.item)
+    copies.set(key, (copies.get(key) ?? 0) + 1)
+  }
+
+  const selected = selectedId === null ? undefined : allEntries.get(selectedId)
+  const selectedSlot = selectedId === null ? undefined : slotByEntryId.get(selectedId)
+  const weapon = equippedBySlot.get('Weapon')?.item
+
+  function handleBackpackDoubleClick(entry: InventoryEntryState) {
     if (disabled) return
 
     if (entry.item.category === 'Potion') onUse(entry.id)
-    else if (!equippedIds.has(entry.id)) onEquip(entry.id)
+    else onEquip(entry.id)
+  }
+
+  function handleSlotDoubleClick(slot: EquipmentSlot) {
+    if (!disabled) onUnequip(slot)
   }
 
   return (
@@ -58,14 +78,13 @@ export function InventoryScreen({
         <div className="inventory-body">
           <div className="character-panel">
             <div className="character-portrait">
-              <Sprite sheet={portrait.sheet} index={portrait.index} className="portrait-sprite" label={player.name} />
-              {weapon && <ItemIcon item={weapon.item} className="held-weapon" />}
+              <HeroSprite player={player} className="portrait-sprite" />
+              {weapon && <ItemIcon item={weapon} className="held-weapon" />}
             </div>
             <div className="hero-name">{player.name}</div>
             <div className="equipment-slots">
               {slotOrder.map(slot => {
-                const entryId = equippedBySlot.get(slot)
-                const entry = entryId === undefined ? undefined : entriesById.get(entryId)
+                const equipped = equippedBySlot.get(slot)
 
                 return (
                   <button
@@ -73,13 +92,15 @@ export function InventoryScreen({
                     className={[
                       'slot',
                       `slot-${slot.toLowerCase()}`,
-                      entry ? `rarity-${entry.item.rarity.toLowerCase()}` : '',
+                      equipped ? `rarity-${equipped.item.rarity.toLowerCase()}` : '',
+                      equipped && equipped.entryId === selectedId ? 'selected' : '',
                     ].join(' ')}
-                    disabled={!entry}
-                    aria-label={entry ? `${slotLabels[slot]}: ${entry.item.name}` : `${slotLabels[slot]}: empty`}
-                    onClick={() => entry && setSelectedId(entry.id)}
+                    disabled={!equipped}
+                    aria-label={equipped ? `${slotLabels[slot]}: ${equipped.item.name}` : `${slotLabels[slot]}: empty`}
+                    onClick={() => equipped && setSelectedId(equipped.entryId)}
+                    onDoubleClick={() => equipped && handleSlotDoubleClick(slot)}
                   >
-                    {entry ? <ItemIcon item={entry.item} /> : <span className="slot-label">{slotLabels[slot]}</span>}
+                    {equipped ? <ItemIcon item={equipped.item} /> : <span className="slot-label">{slotLabels[slot]}</span>}
                   </button>
                 )
               })}
@@ -112,6 +133,7 @@ export function InventoryScreen({
 
                 if (!entry) return <div key={`empty-${index}`} className="slot" />
 
+                const isDuplicate = (copies.get(duplicateKey(entry.item)) ?? 0) > 1
                 const classes = [
                   'slot',
                   `rarity-${entry.item.rarity.toLowerCase()}`,
@@ -122,13 +144,13 @@ export function InventoryScreen({
                   <button
                     key={entry.id}
                     className={classes}
-                    aria-label={entry.item.name}
+                    aria-label={isDuplicate ? `${entry.item.name}, duplicate` : entry.item.name}
                     onClick={() => setSelectedId(entry.id)}
-                    onDoubleClick={() => handleDoubleClick(entry)}
+                    onDoubleClick={() => handleBackpackDoubleClick(entry)}
                   >
                     <ItemIcon item={entry.item} />
                     {entry.quantity > 1 && <span className="slot-quantity">{entry.quantity}</span>}
-                    {equippedIds.has(entry.id) && <span className="slot-equipped">E</span>}
+                    {isDuplicate && <span className="slot-duplicate">D</span>}
                   </button>
                 )
               })}
@@ -138,10 +160,11 @@ export function InventoryScreen({
 
         <ItemDetails
           entry={selected}
-          equipped={selected !== undefined && equippedIds.has(selected.id)}
+          equippedSlot={selectedSlot}
           inQuickSlot={selected !== undefined && player.quickSlot?.id === selected.item.id}
           disabled={disabled}
           onEquip={onEquip}
+          onUnequip={onUnequip}
           onUse={onUse}
           onAssignQuickSlot={onAssignQuickSlot}
         />
@@ -152,19 +175,29 @@ export function InventoryScreen({
 
 interface ItemDetailsProps {
   entry?: InventoryEntryState
-  equipped: boolean
+  equippedSlot?: EquipmentSlot
   inQuickSlot: boolean
   disabled: boolean
   onEquip: (entryId: number) => void
+  onUnequip: (slot: EquipmentSlot) => void
   onUse: (entryId: number) => void
   onAssignQuickSlot: (entryId: number) => void
 }
 
-function ItemDetails({ entry, equipped, inQuickSlot, disabled, onEquip, onUse, onAssignQuickSlot }: ItemDetailsProps) {
+function ItemDetails({
+  entry,
+  equippedSlot,
+  inQuickSlot,
+  disabled,
+  onEquip,
+  onUnequip,
+  onUse,
+  onAssignQuickSlot,
+}: ItemDetailsProps) {
   if (!entry) {
     return (
       <div className="item-details">
-        <span className="label">Select an item to see its details.</span>
+        <span className="label">Select an item to see its details. Double-click to equip, use or take off.</span>
       </div>
     )
   }
@@ -201,8 +234,10 @@ function ItemDetails({ entry, equipped, inQuickSlot, disabled, onEquip, onUse, o
             </button>
           ))}
         {!isPotion &&
-          (equipped ? (
-            <span className="equipped-tag">Equipped</span>
+          (equippedSlot ? (
+            <button disabled={disabled} onClick={() => onUnequip(equippedSlot)}>
+              Unequip
+            </button>
           ) : (
             <button disabled={disabled} onClick={() => onEquip(entry.id)}>
               Equip

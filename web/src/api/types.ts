@@ -18,6 +18,8 @@ export type WeaponType = 'Sword' | 'Axe' | 'Bow' | 'Dagger'
 
 export type EquipRejectReason = 'ItemNotFound' | 'NotEquippable' | 'AlreadyEquipped'
 
+export type UnequipRejectReason = 'SlotEmpty' | 'BackpackFull'
+
 export type UseRejectReason = 'ItemNotFound' | 'NotUsable' | 'AlreadyAtFullHealth' | 'QuickSlotEmpty'
 
 export interface StatModifierInfo {
@@ -56,6 +58,7 @@ export interface ClassInfo {
 export interface EquippedItem {
   slot: EquipmentSlot
   entryId: number
+  item: ItemInfo
 }
 
 export interface ActiveBoostInfo {
@@ -101,6 +104,13 @@ export interface EnemyState {
   attackElement?: Element
   isBurning: boolean
   isFrozen: boolean
+  isBoss: boolean
+}
+
+export interface StairsState {
+  x: number
+  y: number
+  isOpen: boolean
 }
 
 export interface FloorItemState {
@@ -124,6 +134,10 @@ export interface GameState {
   inventory: InventoryEntryState[]
   inventoryCapacity: number
   deaths: number
+  floor: number
+  floorCount: number
+  stairs?: StairsState
+  isConquered: boolean
 }
 
 export type GameEventType =
@@ -141,6 +155,8 @@ export type GameEventType =
   | 'InventoryFull'
   | 'ItemEquipped'
   | 'EquipRejected'
+  | 'ItemUnequipped'
+  | 'UnequipRejected'
   | 'ItemUsed'
   | 'UseRejected'
   | 'QuickSlotAssigned'
@@ -153,6 +169,10 @@ export type GameEventType =
   | 'EnemyKnockedBack'
   | 'ArrowFlew'
   | 'PlayerSwept'
+  | 'StairsSealed'
+  | 'StairsOpened'
+  | 'FloorDescended'
+  | 'VaultConquered'
 
 export interface TilePosition {
   x: number
@@ -172,6 +192,7 @@ export interface GameEvent {
   element?: Element
   effectiveness?: Effectiveness
   tiles?: TilePosition[]
+  floor?: number
 }
 
 export interface TurnResponse {

@@ -6,9 +6,11 @@ import { ItemIcon } from './ItemIcon'
 interface StatusBarProps {
   player: PlayerState
   deaths: number
+  floor: number
+  floorCount: number
 }
 
-export function StatusBar({ player, deaths }: StatusBarProps) {
+export function StatusBar({ player, deaths, floor, floorCount }: StatusBarProps) {
   const healthPercent = (player.health / player.maxHealth) * 100
   const hasExtras =
     player.quickSlot !== undefined || player.boosts.length > 0 || player.resistance !== undefined || player.freeSteps > 0
@@ -26,7 +28,9 @@ export function StatusBar({ player, deaths }: StatusBarProps) {
       <div className="label stats">
         ATK {player.attack} · DEF {player.defense} · EVA {player.evasion}% · CRIT {player.critical}%
       </div>
-      <div className="label">Deaths: {deaths}</div>
+      <div className="label">
+        Floor {floor} / {floorCount} · Deaths: {deaths}
+      </div>
       {hasExtras && (
         <div className="status-extras">
           {player.quickSlot && (

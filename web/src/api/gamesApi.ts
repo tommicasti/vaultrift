@@ -1,4 +1,4 @@
-import type { ClassInfo, Direction, GameState, TurnResponse } from './types'
+import type { ClassInfo, Direction, EquipmentSlot, GameState, TurnResponse } from './types'
 
 async function request<T>(method: 'GET' | 'POST', path: string, body?: unknown): Promise<T> {
   const response = await fetch(`/api${path}`, {
@@ -32,6 +32,10 @@ export function attack(gameId: string): Promise<TurnResponse> {
 
 export function equip(gameId: string, entryId: number): Promise<TurnResponse> {
   return request<TurnResponse>('POST', `/games/${gameId}/equip`, { entryId })
+}
+
+export function unequip(gameId: string, slot: EquipmentSlot): Promise<TurnResponse> {
+  return request<TurnResponse>('POST', `/games/${gameId}/unequip`, { slot })
 }
 
 export function consumeItem(gameId: string, entryId: number): Promise<TurnResponse> {

@@ -13,7 +13,13 @@ public sealed record GameStateResponse(
     IReadOnlyList<FloorItemResponse> FloorItems,
     IReadOnlyList<InventoryEntryResponse> Inventory,
     int InventoryCapacity,
-    int Deaths);
+    int Deaths,
+    int Floor,
+    int FloorCount,
+    StairsResponse? Stairs,
+    bool IsConquered);
+
+public sealed record StairsResponse(int X, int Y, bool IsOpen);
 
 public sealed record PlayerResponse(
     string? ClassId,
@@ -48,8 +54,7 @@ public sealed record ClassResponse(
     WeaponType MasteryWeapon,
     ModifierResponse MasteryBonus);
 
-public sealed record EquippedItemResponse(EquipmentSlot Slot, int EntryId);
-
+public sealed record EquippedItemResponse(EquipmentSlot Slot, int EntryId, ItemResponse Item);
 public sealed record ActiveBoostResponse(ItemResponse Item, ModifierResponse Modifier, int RemainingTurns);
 
 public sealed record EnemyResponse(
@@ -67,7 +72,8 @@ public sealed record EnemyResponse(
     Element? Resistance,
     Element? AttackElement,
     bool IsBurning,
-    bool IsFrozen);
+    bool IsFrozen,
+    bool IsBoss);
 
 public sealed record ModifierResponse(StatType Stat, int Amount);
 
@@ -102,6 +108,7 @@ public sealed record EventResponse(
     string? Reason = null,
     Element? Element = null,
     Effectiveness? Effectiveness = null,
-    IReadOnlyList<PositionResponse>? Tiles = null);
+    IReadOnlyList<PositionResponse>? Tiles = null,
+    int? Floor = null);
 
 public sealed record PositionResponse(int X, int Y);

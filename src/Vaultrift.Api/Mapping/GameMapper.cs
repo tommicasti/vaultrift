@@ -24,7 +24,11 @@ public static class GameMapper
                 .Select(entry => new InventoryEntryResponse(entry.Id, ToItemResponse(entry.Item), entry.Quantity))
                 .ToList(),
             game.Player.Inventory.Capacity,
-            game.Deaths);
+            game.Deaths,
+            game.FloorNumber,
+            game.FloorCount,
+            game.Stairs is { } stairs ? new StairsResponse(stairs.X, stairs.Y, game.StairsOpen) : null,
+            game.IsConquered);
 
     public static TurnResponse ToResponse(Guid id, Game game, TurnResult result) =>
         new(
@@ -52,7 +56,7 @@ public static class GameMapper
             Math.Min(combat.Critical, DamageCalculator.MaxCritical),
             freeSteps,
             player.Equipment
-                .Select(pair => new EquippedItemResponse(pair.Key, pair.Value.Id))
+                .Select(pair => new EquippedItemResponse(pair.Key, pair.Value.Id, ToItemResponse(pair.Value.Item)))
                 .ToList(),
             quickSlot is null ? null : ToItemResponse(new ItemInstance(quickSlot)),
             quickSlot is null ? 0 : player.Inventory.Entries
@@ -83,7 +87,8 @@ public static class GameMapper
             enemy.Kind.Resistance,
             enemy.Kind.AttackElement,
             enemy.IsBurning,
-            enemy.IsFrozen);
+            enemy.IsFrozen,
+            enemy.Kind.IsBoss);
 
     private static EventResponse ToResponse(GameEvent gameEvent) => gameEvent switch
     {
@@ -101,6 +106,8 @@ public static class GameMapper
         InventoryFull e => new("InventoryFull", Item: ToItemResponse(e.Item)),
         ItemEquipped e => new("ItemEquipped", Item: ToItemResponse(e.Item)),
         EquipRejected e => new("EquipRejected", Reason: e.Reason.ToString()),
+        ItemUnequipped e => new("ItemUnequipped", Item: ToItemResponse(e.Item)),
+        UnequipRejected e => new("UnequipRejected", Reason: e.Reason.ToString()),
         ItemUsed e => new("ItemUsed", Item: ToItemResponse(e.Item)),
         UseRejected e => new("UseRejected", Reason: e.Reason.ToString()),
         QuickSlotAssigned e => new("QuickSlotAssigned", Item: ToItemResponse(new ItemInstance(e.Item))),
@@ -113,6 +120,10 @@ public static class GameMapper
         EnemyKnockedBack e => new("EnemyKnockedBack", EnemyId: e.EnemyId, X: e.To.X, Y: e.To.Y, Element: Element.Wind),
         ArrowFlew e => new("ArrowFlew", Tiles: ToPositions(e.Path)),
         PlayerSwept e => new("PlayerSwept", Tiles: ToPositions(e.Tiles)),
+        StairsSealed => new("StairsSealed"),
+        StairsOpened e => new("StairsOpened", X: e.At.X, Y: e.At.Y),
+        FloorDescended e => new("FloorDescended", X: e.At.X, Y: e.At.Y, Floor: e.Floor),
+        VaultConquered => new("VaultConquered"),
         _ => throw new ArgumentOutOfRangeException(nameof(gameEvent), gameEvent.GetType().Name, "Unknown game event.")
     };
 
