@@ -31,7 +31,16 @@ public static class ClassCatalog
                 new Stats(maxHealth: 26, attack: 3, defense: 1, evasion: 12),
                 new WeaponMastery(WeaponType.Bow, new StatModifier(StatType.Attack, 2))),
             "Light on their feet and deadly with a bow.",
-            ["bow-common", "potion-healing", "potion-healing"])
+            ["bow-common", "potion-healing", "potion-healing"]),
+        new(
+            new CharacterClass(
+                "rogue",
+                "Rogue",
+                new Stats(maxHealth: 24, attack: 3, defense: 1, evasion: 15, critical: 20),
+                new WeaponMastery(WeaponType.Dagger, new StatModifier(StatType.Critical, 10)),
+                Speed.Fast),
+            "Two steps ahead of everyone. A dagger finds the gaps others miss.",
+            ["dagger-common", "potion-healing", "potion-healing"])
     ];
 
     public static ClassDefinition? Find(string id) =>

@@ -1,15 +1,11 @@
 import type { Element, EquipmentSlot, ItemCategory, ItemInfo, StatModifierInfo, StatType } from '../api/types'
-import { sheets, type SpriteSheet } from './sprites'
-
-export interface SpriteRef {
-  sheet: SpriteSheet
-  index: number
-}
+import { sheets, type SpriteRef } from './sprites'
 
 const categorySprites: Record<ItemCategory, SpriteRef> = {
   Sword: { sheet: sheets.dungeon, index: 104 },
   Axe: { sheet: sheets.dungeon, index: 119 },
   Bow: { sheet: sheets.town, index: 118 },
+  Dagger: { sheet: sheets.dungeon, index: 103 },
   Head: { sheet: sheets.items, index: 0 },
   Body: { sheet: sheets.items, index: 1 },
   Feet: { sheet: sheets.items, index: 2 },
@@ -50,6 +46,9 @@ const legendarySprites: Record<string, number> = {
   'cloak-cinderweave': 31,
   'cloak-rimeveil': 32,
   'cloak-stormshroud': 33,
+  'dagger-whisperthorn': 38,
+  'dagger-last-breath': 39,
+  'dagger-gutterstar': 40,
 }
 
 export function itemSprite(item: ItemInfo): SpriteRef {
@@ -72,10 +71,11 @@ const statLabels: Record<StatType, string> = {
   Attack: 'attack',
   Defense: 'defense',
   Evasion: 'evasion',
+  Critical: 'critical',
 }
 
 export function describeModifier(modifier: StatModifierInfo): string {
-  const suffix = modifier.stat === 'Evasion' ? '%' : ''
+  const suffix = modifier.stat === 'Evasion' || modifier.stat === 'Critical' ? '%' : ''
   return `+${modifier.amount}${suffix} ${statLabels[modifier.stat]}`
 }
 
@@ -92,7 +92,14 @@ const elementEffects: Record<Element, string> = {
   Lightning: 'chain',
   Wind: 'knockback',
 }
+const weaponTraits: Partial<Record<ItemCategory, string>> = {
+  Axe: 'Sweeps the target and both tiles beside it',
+  Bow: 'Shoots up to 6 tiles · half damage up close',
+}
 
+export function describeWeaponTrait(item: ItemInfo): string | null {
+  return weaponTraits[item.category] ?? null
+}
 export function describeElement(item: ItemInfo): string | null {
   if (!item.element) return null
   if (item.category === 'Cloak') return `Resists ${elementNames[item.element]}`

@@ -107,4 +107,26 @@ public class DamageCalculatorTests
     {
         Assert.Throws<ArgumentNullException>(() => new DamageCalculator(null!));
     }
+
+    [Theory]
+    [InlineData(0.39, true)]
+    [InlineData(0.40, false)]
+    public void Calculate_UsesTheAttackersCriticalStat(double roll, bool expectedCritical)
+    {
+        var calculator = new DamageCalculator(new FixedRandom(roll));
+        var attacker = new Stats(maxHealth: 30, attack: 8, defense: 0, critical: 40);
+
+        Assert.Equal(expectedCritical, calculator.Calculate(attacker, Defender(3)).IsCritical);
+    }
+
+    [Theory]
+    [InlineData(0.49, true)]
+    [InlineData(0.55, false)]
+    public void Calculate_CriticalAboveCap_IsCappedAtFiftyPercent(double roll, bool expectedCritical)
+    {
+        var calculator = new DamageCalculator(new FixedRandom(roll));
+        var attacker = new Stats(maxHealth: 30, attack: 8, defense: 0, critical: 80);
+
+        Assert.Equal(expectedCritical, calculator.Calculate(attacker, Defender(3)).IsCritical);
+    }
 }

@@ -10,20 +10,21 @@ interface StatusBarProps {
 
 export function StatusBar({ player, deaths }: StatusBarProps) {
   const healthPercent = (player.health / player.maxHealth) * 100
-  const hasExtras = player.quickSlot !== undefined || player.boosts.length > 0 || player.resistance !== undefined
+  const hasExtras =
+    player.quickSlot !== undefined || player.boosts.length > 0 || player.resistance !== undefined || player.freeSteps > 0
 
   return (
     <section className="status-bar">
       <div className="health">
         <div className="label">
-          Health {player.health} / {player.maxHealth}
+          <strong className="hero-name">{player.name}</strong> · Health {player.health} / {player.maxHealth}
         </div>
         <div className="health-track">
           <div className="health-fill" style={{ width: `${healthPercent}%` }} />
         </div>
       </div>
       <div className="label stats">
-        ATK {player.attack} · DEF {player.defense} · EVA {player.evasion}%
+        ATK {player.attack} · DEF {player.defense} · EVA {player.evasion}% · CRIT {player.critical}%
       </div>
       <div className="label">Deaths: {deaths}</div>
       {hasExtras && (
@@ -38,6 +39,7 @@ export function StatusBar({ player, deaths }: StatusBarProps) {
               Resists <ElementIcon element={player.resistance} /> {elementNames[player.resistance]}
             </span>
           )}
+          {player.freeSteps > 0 && <span className="boost-tag free-step-tag">Free step</span>}
           {player.boosts.map(boost => (
             <span key={boost.item.id} className="boost-tag">
               {describeModifier(boost.modifier)} · {boost.remainingTurns}

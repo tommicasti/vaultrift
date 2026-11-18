@@ -6,25 +6,30 @@ namespace Vaultrift.Engine.Gameplay;
 
 public sealed class Player : Creature
 {
+    public const int MaxNameLength = 16;
+    public const string DefaultName = "Hero";
+
     private readonly Dictionary<EquipmentSlot, InventoryEntry> _equipment = [];
     private readonly Dictionary<string, ActiveBoost> _boosts = [];
 
-    public Player(Position position, Stats stats)
+    public Player(Position position, Stats stats, string? name = null)
         : base(position, stats)
     {
         Facing = Direction.Down;
+        Name = NormalizeName(name, DefaultName);
     }
 
-    public Player(Position position, CharacterClass characterClass)
-        : this(position, characterClass?.BaseStats ?? throw new ArgumentNullException(nameof(characterClass)))
+    public Player(Position position, CharacterClass characterClass, string? name = null)
+        : this(position, characterClass?.BaseStats ?? throw new ArgumentNullException(nameof(characterClass)), name)
     {
         Class = characterClass;
+        Name = NormalizeName(name, characterClass.Name);
     }
 
+    public string Name { get; }
+
     public CharacterClass? Class { get; }
-
     public int Level { get; internal set; } = 1;
-
     public Direction Facing { get; internal set; }
 
     public Inventory Inventory { get; } = new();
@@ -34,6 +39,8 @@ public sealed class Player : Creature
     public IReadOnlyCollection<ActiveBoost> Boosts => _boosts.Values;
 
     public PotionDefinition? QuickSlot { get; private set; }
+
+    public int StepsPerTurn => Class?.Speed == Speed.Fast ? 2 : 1;
 
     public ItemInstance? Weapon => EquippedIn(EquipmentSlot.Weapon);
 
@@ -120,6 +127,19 @@ public sealed class Player : Creature
     }
 
     internal void ClearBoosts() => _boosts.Clear();
+
+    private static string NormalizeName(string? name, string fallback)
+    {
+        var trimmed = name?.Trim();
+
+        if (string.IsNullOrEmpty(trimmed))
+            return fallback;
+
+        if (trimmed.Length > MaxNameLength)
+            throw new ArgumentException($"A name cannot be longer than {MaxNameLength} characters.", nameof(name));
+
+        return trimmed;
+    }
 
     private ItemInstance? EquippedIn(EquipmentSlot slot) =>
         _equipment.TryGetValue(slot, out var entry) ? entry.Item : null;

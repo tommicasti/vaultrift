@@ -18,8 +18,8 @@ export function getClasses(): Promise<ClassInfo[]> {
   return request<ClassInfo[]>('GET', '/classes')
 }
 
-export function createGame(classId: string): Promise<GameState> {
-  return request<GameState>('POST', '/games', { classId })
+export function createGame(classId: string, name: string): Promise<GameState> {
+  return request<GameState>('POST', '/games', { classId, name })
 }
 
 export function move(gameId: string, direction: Direction): Promise<TurnResponse> {

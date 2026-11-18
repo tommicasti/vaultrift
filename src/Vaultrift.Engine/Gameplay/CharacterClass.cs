@@ -5,4 +5,9 @@ namespace Vaultrift.Engine.Gameplay;
 
 public sealed record WeaponMastery(WeaponType WeaponType, StatModifier Bonus);
 
-public sealed record CharacterClass(string Id, string Name, Stats BaseStats, WeaponMastery Mastery);
+public sealed record CharacterClass(
+    string Id,
+    string Name,
+    Stats BaseStats,
+    WeaponMastery Mastery,
+    Speed Speed = Speed.Normal);

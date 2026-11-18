@@ -2,17 +2,19 @@ export type Direction = 'Up' | 'Down' | 'Left' | 'Right'
 
 export type Rarity = 'Common' | 'Rare' | 'Epic' | 'Legendary'
 
-export type ItemCategory = 'Sword' | 'Axe' | 'Bow' | 'Head' | 'Body' | 'Feet' | 'Ring' | 'Cloak' | 'Potion'
+export type ItemCategory = 'Sword' | 'Axe' | 'Bow' | 'Dagger' | 'Head' | 'Body' | 'Feet' | 'Ring' | 'Cloak' | 'Potion'
 
 export type EquipmentSlot = 'Weapon' | 'Head' | 'Body' | 'Feet' | 'Ring1' | 'Ring2' | 'Cloak'
 
-export type StatType = 'Attack' | 'Defense' | 'Evasion'
+export type StatType = 'Attack' | 'Defense' | 'Evasion' | 'Critical'
+
+export type Speed = 'Slow' | 'Normal' | 'Fast'
 
 export type Element = 'Fire' | 'Ice' | 'Lightning' | 'Wind'
 
 export type Effectiveness = 'Neutral' | 'Effective' | 'Resisted'
 
-export type WeaponType = 'Sword' | 'Axe' | 'Bow'
+export type WeaponType = 'Sword' | 'Axe' | 'Bow' | 'Dagger'
 
 export type EquipRejectReason = 'ItemNotFound' | 'NotEquippable' | 'AlreadyEquipped'
 
@@ -45,6 +47,8 @@ export interface ClassInfo {
   attack: number
   defense: number
   evasion: number
+  critical: number
+  speed: Speed
   masteryWeapon: WeaponType
   masteryBonus: StatModifierInfo
 }
@@ -62,6 +66,7 @@ export interface ActiveBoostInfo {
 
 export interface PlayerState {
   classId?: string
+  name: string
   level: number
   x: number
   y: number
@@ -71,6 +76,8 @@ export interface PlayerState {
   attack: number
   defense: number
   evasion: number
+  critical: number
+  freeSteps: number
   equipment: EquippedItem[]
   quickSlot?: ItemInfo
   quickSlotQuantity: number
@@ -144,6 +151,13 @@ export type GameEventType =
   | 'EnemyThawed'
   | 'EnemyShocked'
   | 'EnemyKnockedBack'
+  | 'ArrowFlew'
+  | 'PlayerSwept'
+
+export interface TilePosition {
+  x: number
+  y: number
+}
 
 export interface GameEvent {
   type: GameEventType
@@ -157,6 +171,7 @@ export interface GameEvent {
   reason?: string
   element?: Element
   effectiveness?: Effectiveness
+  tiles?: TilePosition[]
 }
 
 export interface TurnResponse {

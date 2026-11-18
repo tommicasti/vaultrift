@@ -12,7 +12,7 @@ public static class GameMapper
         new(
             id,
             ToRows(game.Map),
-            ToPlayerResponse(game.Player),
+            ToPlayerResponse(game.Player, game.FreeStepsLeft),
             game.Enemies
                 .Where(enemy => !enemy.IsDead)
                 .Select(ToEnemyResponse)
@@ -32,13 +32,14 @@ public static class GameMapper
             result.Events.Select(ToResponse).ToList(),
             ToResponse(id, game));
 
-    private static PlayerResponse ToPlayerResponse(Player player)
+    private static PlayerResponse ToPlayerResponse(Player player, int freeSteps)
     {
         var combat = player.CombatStats;
         var quickSlot = player.QuickSlot;
 
         return new PlayerResponse(
             player.Class?.Id,
+            player.Name,
             player.Level,
             player.Position.X,
             player.Position.Y,
@@ -48,6 +49,8 @@ public static class GameMapper
             combat.Attack,
             combat.Defense,
             Math.Min(combat.Evasion, DamageCalculator.MaxEvasion),
+            Math.Min(combat.Critical, DamageCalculator.MaxCritical),
+            freeSteps,
             player.Equipment
                 .Select(pair => new EquippedItemResponse(pair.Key, pair.Value.Id))
                 .ToList(),
@@ -108,6 +111,8 @@ public static class GameMapper
         EnemyThawed e => new("EnemyThawed", EnemyId: e.EnemyId, Element: Element.Ice),
         EnemyShocked e => Attack("EnemyShocked", e.EnemyId, e.Result),
         EnemyKnockedBack e => new("EnemyKnockedBack", EnemyId: e.EnemyId, X: e.To.X, Y: e.To.Y, Element: Element.Wind),
+        ArrowFlew e => new("ArrowFlew", Tiles: ToPositions(e.Path)),
+        PlayerSwept e => new("PlayerSwept", Tiles: ToPositions(e.Tiles)),
         _ => throw new ArgumentOutOfRangeException(nameof(gameEvent), gameEvent.GetType().Name, "Unknown game event.")
     };
 
@@ -120,6 +125,9 @@ public static class GameMapper
             IsDodged: result.IsDodged,
             Element: result.Element,
             Effectiveness: result.Element is null ? null : result.Effectiveness);
+
+    private static IReadOnlyList<PositionResponse> ToPositions(IEnumerable<Position> positions) =>
+        positions.Select(position => new PositionResponse(position.X, position.Y)).ToList();
 
     private static ItemResponse ToItemResponse(ItemInstance instance)
     {

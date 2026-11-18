@@ -53,3 +53,7 @@ public sealed record EnemyThawed(int EnemyId) : GameEvent;
 public sealed record EnemyShocked(int EnemyId, AttackResult Result) : GameEvent;
 
 public sealed record EnemyKnockedBack(int EnemyId, Position To) : GameEvent;
+
+public sealed record ArrowFlew(IReadOnlyList<Position> Path) : GameEvent;
+
+public sealed record PlayerSwept(IReadOnlyList<Position> Tiles) : GameEvent;

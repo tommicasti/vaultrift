@@ -17,6 +17,7 @@ public sealed record GameStateResponse(
 
 public sealed record PlayerResponse(
     string? ClassId,
+    string Name,
     int Level,
     int X,
     int Y,
@@ -26,6 +27,8 @@ public sealed record PlayerResponse(
     int Attack,
     int Defense,
     int Evasion,
+    int Critical,
+    int FreeSteps,
     IReadOnlyList<EquippedItemResponse> Equipment,
     ItemResponse? QuickSlot,
     int QuickSlotQuantity,
@@ -40,6 +43,8 @@ public sealed record ClassResponse(
     int Attack,
     int Defense,
     int Evasion,
+    int Critical,
+    Speed Speed,
     WeaponType MasteryWeapon,
     ModifierResponse MasteryBonus);
 
@@ -96,4 +101,7 @@ public sealed record EventResponse(
     ItemResponse? Item = null,
     string? Reason = null,
     Element? Element = null,
-    Effectiveness? Effectiveness = null);
+    Effectiveness? Effectiveness = null,
+    IReadOnlyList<PositionResponse>? Tiles = null);
+
+public sealed record PositionResponse(int X, int Y);

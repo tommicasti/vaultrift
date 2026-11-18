@@ -4,7 +4,9 @@ namespace Vaultrift.Engine.Combat;
 
 public sealed record Stats
 {
-    public Stats(int maxHealth, int attack, int defense, int evasion = 0)
+    public const int DefaultCritical = 10;
+
+    public Stats(int maxHealth, int attack, int defense, int evasion = 0, int critical = DefaultCritical)
     {
         if (maxHealth <= 0)
             throw new ArgumentOutOfRangeException(nameof(maxHealth), maxHealth, "Max health must be positive.");
@@ -18,10 +20,14 @@ public sealed record Stats
         if (evasion is < 0 or > 100)
             throw new ArgumentOutOfRangeException(nameof(evasion), evasion, "Evasion must be between 0 and 100.");
 
+        if (critical is < 0 or > 100)
+            throw new ArgumentOutOfRangeException(nameof(critical), critical, "Critical must be between 0 and 100.");
+
         MaxHealth = maxHealth;
         Attack = attack;
         Defense = defense;
         Evasion = evasion;
+        Critical = critical;
     }
 
     public int MaxHealth { get; }
@@ -32,6 +38,8 @@ public sealed record Stats
 
     public int Evasion { get; }
 
+    public int Critical { get; }
+
     public Stats Apply(IEnumerable<StatModifier> modifiers)
     {
         ArgumentNullException.ThrowIfNull(modifiers);
@@ -39,6 +47,7 @@ public sealed record Stats
         var attack = Attack;
         var defense = Defense;
         var evasion = Evasion;
+        var critical = Critical;
 
         foreach (var modifier in modifiers)
         {
@@ -53,11 +62,19 @@ public sealed record Stats
                 case StatType.Evasion:
                     evasion += modifier.Amount;
                     break;
+                case StatType.Critical:
+                    critical += modifier.Amount;
+                    break;
                 default:
                     throw new ArgumentOutOfRangeException(nameof(modifiers), modifier.Stat, "Unknown stat type.");
             }
         }
 
-        return new Stats(MaxHealth, Math.Max(0, attack), Math.Max(0, defense), Math.Clamp(evasion, 0, 100));
+        return new Stats(
+            MaxHealth,
+            Math.Max(0, attack),
+            Math.Max(0, defense),
+            Math.Clamp(evasion, 0, 100),
+            Math.Clamp(critical, 0, 100));
     }
 }

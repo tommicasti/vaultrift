@@ -4,5 +4,6 @@ public enum StatType
 {
     Attack,
     Defense,
-    Evasion
+    Evasion,
+    Critical
 }

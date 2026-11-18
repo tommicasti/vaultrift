@@ -16,6 +16,7 @@ public sealed partial class Game
     private readonly DamageCalculator _damageCalculator;
     private readonly IRandom _random;
     private readonly Position _playerStart;
+    private int _stepsThisTurn;
 
     public Game(
         DungeonMap map,
@@ -72,6 +73,8 @@ public sealed partial class Game
 
     public int TurnNumber { get; private set; }
 
+    public int FreeStepsLeft => Player.StepsPerTurn - 1 - _stepsThisTurn;
+
     public TurnResult MovePlayer(Direction direction)
     {
         var events = new List<GameEvent>();
@@ -89,6 +92,12 @@ public sealed partial class Game
         events.Add(new PlayerMoved(target));
         PickUpItemAt(target, events);
 
+        if (FreeStepsLeft > 0)
+        {
+            _stepsThisTurn++;
+            return new TurnResult(TurnPassed: false, events);
+        }
+
         EndTurn(events);
         return new TurnResult(TurnPassed: true, events);
     }
@@ -96,30 +105,19 @@ public sealed partial class Game
     public TurnResult Attack()
     {
         var events = new List<GameEvent>();
-        var target = FindLivingEnemyAt(Player.Position.Move(Player.Facing));
+        var weapon = Player.Weapon;
 
-        if (target is null)
+        switch ((weapon?.Definition as WeaponDefinition)?.WeaponType)
         {
-            events.Add(new PlayerAttackedNothing());
-        }
-        else
-        {
-            var weapon = Player.Weapon;
-            var result = ElementRules.Apply(
-                _damageCalculator.Calculate(Player.CombatStats, target.CombatStats),
-                weapon?.Element,
-                target.Kind.Weakness,
-                target.Kind.Resistance,
-                weapon?.Rarity ?? Rarity.Common);
-
-            target.TakeDamage(result.Damage);
-            events.Add(new PlayerAttackedEnemy(target.Id, result));
-
-            if (target.IsDead)
-                events.Add(new EnemyDefeated(target.Id));
-
-            if (!result.IsDodged && weapon?.Element is { } element)
-                TriggerElement(element, weapon.Rarity, target, result.Damage, events);
+            case WeaponType.Bow:
+                Shoot(weapon!, events);
+                break;
+            case WeaponType.Axe:
+                Sweep(weapon!, events);
+                break;
+            default:
+                Strike(weapon, events);
+                break;
         }
 
         EndTurn(events);
@@ -200,6 +198,7 @@ public sealed partial class Game
 
     private void EndTurn(List<GameEvent> events)
     {
+        _stepsThisTurn = 0;
         EnemiesAct(events);
         BurnEnemies(events);
         TurnNumber++;
