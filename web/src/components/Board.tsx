@@ -1,5 +1,6 @@
 import type { CSSProperties, PointerEvent, ReactElement } from 'react'
 import type { Direction, GameState } from '../api/types'
+import type { Effect } from '../game/effects'
 import { classSprite } from '../game/sprites'
 import { EnemyMarker } from './EnemyMarker'
 import { ItemIcon } from './ItemIcon'
@@ -17,15 +18,22 @@ interface BoardProps {
   game: GameState
   viewColumns: number
   viewRows: number
+  effects: Effect[]
   onAttack: () => void
 }
 
-export function Board({ game, viewColumns, viewRows, onAttack }: BoardProps) {
+export function Board({ game, viewColumns, viewRows, effects, onAttack }: BoardProps) {
   const left = game.player.x - Math.floor(viewColumns / 2)
   const top = game.player.y - Math.floor(viewRows / 2)
   const enemiesByTile = new Map(game.enemies.map(enemy => [`${enemy.x},${enemy.y}`, enemy]))
   const itemsByTile = new Map(game.floorItems.map(floorItem => [`${floorItem.x},${floorItem.y}`, floorItem.item]))
   const playerSprite = classSprite(game.player.classId)
+  const effectsByTile = new Map<string, Effect[]>()
+
+  for (const effect of effects) {
+    const tileKey = `${effect.x},${effect.y}`
+    effectsByTile.set(tileKey, [...(effectsByTile.get(tileKey) ?? []), effect])
+  }
 
   function handlePointerDown(event: PointerEvent<HTMLDivElement>) {
     if (event.pointerType === 'mouse' && event.button === 0)
@@ -57,6 +65,14 @@ export function Board({ game, viewColumns, viewRows, onAttack }: BoardProps) {
           )}
           {enemy && <EnemyMarker enemy={enemy} />}
           {!isPlayer && !enemy && floorItem && <ItemIcon item={floorItem} />}
+          {effectsByTile.get(key)?.map(effect => (
+            <span
+              key={effect.key}
+              className={`effect effect-${effect.kind} toward-${effect.facing.toLowerCase()}`}
+              style={{ animationDelay: `${effect.delayMs}ms` }}
+              aria-hidden="true"
+            />
+          ))}
         </div>,
       )
     }

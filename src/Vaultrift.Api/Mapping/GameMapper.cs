@@ -111,6 +111,8 @@ public static class GameMapper
         EnemyThawed e => new("EnemyThawed", EnemyId: e.EnemyId, Element: Element.Ice),
         EnemyShocked e => Attack("EnemyShocked", e.EnemyId, e.Result),
         EnemyKnockedBack e => new("EnemyKnockedBack", EnemyId: e.EnemyId, X: e.To.X, Y: e.To.Y, Element: Element.Wind),
+        ArrowFlew e => new("ArrowFlew", Tiles: ToPositions(e.Path)),
+        PlayerSwept e => new("PlayerSwept", Tiles: ToPositions(e.Tiles)),
         _ => throw new ArgumentOutOfRangeException(nameof(gameEvent), gameEvent.GetType().Name, "Unknown game event.")
     };
 
@@ -123,6 +125,9 @@ public static class GameMapper
             IsDodged: result.IsDodged,
             Element: result.Element,
             Effectiveness: result.Element is null ? null : result.Effectiveness);
+
+    private static IReadOnlyList<PositionResponse> ToPositions(IEnumerable<Position> positions) =>
+        positions.Select(position => new PositionResponse(position.X, position.Y)).ToList();
 
     private static ItemResponse ToItemResponse(ItemInstance instance)
     {

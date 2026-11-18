@@ -36,13 +36,15 @@ export function describeEvent(event: GameEvent, enemyNames: ReadonlyMap<number, 
     case 'PlayerMoved':
     case 'PlayerTurned':
     case 'EnemyMoved':
+    case 'ArrowFlew':
+    case 'PlayerSwept':
       return null
     case 'PlayerAttackedEnemy':
       return event.isDodged
         ? `${enemy} dodges your attack!`
         : `You hit ${enemyLower}${withElement} for ${event.damage} damage.${critical}${note}`
     case 'PlayerAttackedNothing':
-      return 'You swing at the empty air.'
+      return 'Your attack hits nothing.'
     case 'EnemyDefeated':
       return `${enemy} is defeated.`
     case 'EnemyAttackedPlayer':

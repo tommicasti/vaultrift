@@ -92,7 +92,14 @@ const elementEffects: Record<Element, string> = {
   Lightning: 'chain',
   Wind: 'knockback',
 }
+const weaponTraits: Partial<Record<ItemCategory, string>> = {
+  Axe: 'Sweeps the target and both tiles beside it',
+  Bow: 'Shoots up to 6 tiles · half damage up close',
+}
 
+export function describeWeaponTrait(item: ItemInfo): string | null {
+  return weaponTraits[item.category] ?? null
+}
 export function describeElement(item: ItemInfo): string | null {
   if (!item.element) return null
   if (item.category === 'Cloak') return `Resists ${elementNames[item.element]}`

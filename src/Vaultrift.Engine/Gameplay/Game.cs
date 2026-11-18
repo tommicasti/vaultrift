@@ -105,30 +105,19 @@ public sealed partial class Game
     public TurnResult Attack()
     {
         var events = new List<GameEvent>();
-        var target = FindLivingEnemyAt(Player.Position.Move(Player.Facing));
+        var weapon = Player.Weapon;
 
-        if (target is null)
+        switch ((weapon?.Definition as WeaponDefinition)?.WeaponType)
         {
-            events.Add(new PlayerAttackedNothing());
-        }
-        else
-        {
-            var weapon = Player.Weapon;
-            var result = ElementRules.Apply(
-                _damageCalculator.Calculate(Player.CombatStats, target.CombatStats),
-                weapon?.Element,
-                target.Kind.Weakness,
-                target.Kind.Resistance,
-                weapon?.Rarity ?? Rarity.Common);
-
-            target.TakeDamage(result.Damage);
-            events.Add(new PlayerAttackedEnemy(target.Id, result));
-
-            if (target.IsDead)
-                events.Add(new EnemyDefeated(target.Id));
-
-            if (!result.IsDodged && weapon?.Element is { } element)
-                TriggerElement(element, weapon.Rarity, target, result.Damage, events);
+            case WeaponType.Bow:
+                Shoot(weapon!, events);
+                break;
+            case WeaponType.Axe:
+                Sweep(weapon!, events);
+                break;
+            default:
+                Strike(weapon, events);
+                break;
         }
 
         EndTurn(events);

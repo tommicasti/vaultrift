@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import type { EquipmentSlot, InventoryEntryState, PlayerState } from '../api/types'
-import { describeElement, describeItem, elementNames, slotLabels } from '../game/items'
+import { describeElement, describeItem, describeWeaponTrait, elementNames, slotLabels } from '../game/items'
 import { classSprite } from '../game/sprites'
 import { ItemIcon } from './ItemIcon'
 import { Sprite } from './Sprite'
@@ -172,6 +172,7 @@ function ItemDetails({ entry, equipped, inQuickSlot, disabled, onEquip, onUse, o
   const { item } = entry
   const isPotion = item.category === 'Potion'
   const element = describeElement(item)
+  const trait = describeWeaponTrait(item)
 
   return (
     <div className={`item-details rarity-${item.rarity.toLowerCase()}`}>
@@ -181,6 +182,7 @@ function ItemDetails({ entry, equipped, inQuickSlot, disabled, onEquip, onUse, o
         <div className="label">
           {item.rarity} · {describeItem(item)}
         </div>
+        {trait && <div className="label">{trait}</div>}
         {element && <div className={`item-element element-${item.element?.toLowerCase()}`}>{element}</div>}
         {item.description && <p className="item-description">{item.description}</p>}
       </div>

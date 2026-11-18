@@ -151,6 +151,13 @@ export type GameEventType =
   | 'EnemyThawed'
   | 'EnemyShocked'
   | 'EnemyKnockedBack'
+  | 'ArrowFlew'
+  | 'PlayerSwept'
+
+export interface TilePosition {
+  x: number
+  y: number
+}
 
 export interface GameEvent {
   type: GameEventType
@@ -164,6 +171,7 @@ export interface GameEvent {
   reason?: string
   element?: Element
   effectiveness?: Effectiveness
+  tiles?: TilePosition[]
 }
 
 export interface TurnResponse {

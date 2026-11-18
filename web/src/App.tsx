@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { attack, consumeItem, consumeQuickSlot, createGame, equip, move, setQuickSlot } from './api/gamesApi'
 import type { Direction, GameState, TurnResponse } from './api/types'
 import { Board } from './components/Board'
@@ -8,6 +8,7 @@ import { EventLog } from './components/EventLog'
 import { InventoryScreen } from './components/InventoryScreen'
 import { StatusBar } from './components/StatusBar'
 import { describeEvent } from './game/describeEvent'
+import { effectsDuration, effectsForTurn, type Effect } from './game/effects'
 import { useCompactLandscape } from './game/useCompactLandscape'
 import './App.css'
 
@@ -28,6 +29,8 @@ function App() {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [inventoryOpen, setInventoryOpen] = useState(false)
+  const [effects, setEffects] = useState<Effect[]>([])
+  const turnCounter = useRef(0)
   const compact = useCompactLandscape()
   const view = compact ? compactView : standardView
   const hasGame = game !== null
@@ -70,6 +73,8 @@ function App() {
           .map(gameEvent => describeEvent(gameEvent, enemyNames))
           .filter((message): message is string => message !== null)
 
+        turnCounter.current++
+        setEffects(effectsForTurn(turn.events, game.enemies, turn.state.enemies, turn.state.player, turnCounter.current))
         setGame(turn.state)
         setLog(previous => [...messages.reverse(), ...previous].slice(0, maxLogEntries))
       } catch {
@@ -104,6 +109,13 @@ function App() {
   )
 
   const handleUseQuickSlot = useCallback(() => void play(consumeQuickSlot), [play])
+
+  useEffect(() => {
+    if (effects.length === 0) return
+
+    const timer = window.setTimeout(() => setEffects([]), effectsDuration(effects))
+    return () => window.clearTimeout(timer)
+  }, [effects])
 
   useEffect(() => {
     function handleKeyDown(event: KeyboardEvent) {
@@ -166,7 +178,7 @@ function App() {
         </div>
       </header>
       <StatusBar player={game.player} deaths={game.deaths} />
-      <Board game={game} viewColumns={view.columns} viewRows={view.rows} onAttack={handleAttack} />
+      <Board game={game} viewColumns={view.columns} viewRows={view.rows} effects={effects} onAttack={handleAttack} />
       <p className="keyboard-hint">WASD to move · Space or click to attack · Q quick slot · Tab backpack</p>
       <Controls
         disabled={busy}

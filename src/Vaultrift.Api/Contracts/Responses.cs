@@ -101,4 +101,7 @@ public sealed record EventResponse(
     ItemResponse? Item = null,
     string? Reason = null,
     Element? Element = null,
-    Effectiveness? Effectiveness = null);
+    Effectiveness? Effectiveness = null,
+    IReadOnlyList<PositionResponse>? Tiles = null);
+
+public sealed record PositionResponse(int X, int Y);

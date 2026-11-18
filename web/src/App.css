@@ -171,6 +171,74 @@
   top: 50%;
   transform: translateY(-50%);
 }
+.effect {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  opacity: 0;
+  pointer-events: none;
+  background-image: url('/assets/tilesets/vaultrift-effects.png');
+  background-repeat: no-repeat;
+  background-size: 400% 600%;
+  image-rendering: pixelated;
+  animation:
+    effect-frames 450ms steps(4, jump-none) both,
+    effect-visible 450ms linear;
+}
+
+.effect-fire {
+  background-position-y: 0%;
+}
+
+.effect-ice {
+  background-position-y: 20%;
+}
+
+.effect-lightning {
+  background-position-y: 40%;
+}
+
+.effect-wind {
+  background-position-y: 60%;
+}
+
+.effect-arrow {
+  background-position-y: 80%;
+  animation-duration: 90ms, 90ms;
+}
+
+.effect-sweep {
+  background-position-y: 100%;
+}
+
+:is(.effect-arrow, .effect-wind, .effect-sweep).toward-up {
+  transform: rotate(-90deg);
+}
+
+:is(.effect-arrow, .effect-wind, .effect-sweep).toward-down {
+  transform: rotate(90deg);
+}
+
+:is(.effect-arrow, .effect-wind, .effect-sweep).toward-left {
+  transform: scaleX(-1);
+}
+
+@keyframes effect-frames {
+  from {
+    background-position-x: 0%;
+  }
+
+  to {
+    background-position-x: 100%;
+  }
+}
+
+@keyframes effect-visible {
+  from,
+  to {
+    opacity: 1;
+  }
+}
 
 .actor.sleeping {
   opacity: 0.45;
