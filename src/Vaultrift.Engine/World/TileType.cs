@@ -6,5 +6,11 @@ public enum TileType
     Floor,
     Obstacle,
     Lava,
-    Water
+    Water,
+    Crystal,
+    Spores,
+    CurrentUp,
+    CurrentDown,
+    CurrentLeft,
+    CurrentRight
 }

@@ -44,7 +44,16 @@ public static class ClassCatalog
                 Speed.Fast,
                 ClassAbility.Invisibility),
             "Two steps ahead of everyone. Invisibility hides you for five turns; the first strike from the shadows is always critical.",
-            ["dagger-common", "potion-healing", "potion-healing"])
+            ["dagger-common", "potion-healing", "potion-healing"]),
+        new(
+            new CharacterClass(
+                "mage",
+                "Mage",
+                new Stats(maxHealth: 22, attack: 3, defense: 0, evasion: 5, maxMana: 30),
+                new WeaponMastery(WeaponType.Staff, new StatModifier(StatType.Attack, 2)),
+                Ability: ClassAbility.Overload),
+            "Fragile but devastating from afar. Spells cost one less mana with a staff. Overload makes the next spell free and wider.",
+            ["staff-oak", "potion-healing", "potion-mana"])
     ];
 
     public static ClassDefinition? Find(string id) =>

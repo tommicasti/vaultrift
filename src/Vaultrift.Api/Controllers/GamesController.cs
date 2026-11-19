@@ -81,17 +81,33 @@ public sealed class GamesController : ControllerBase
     public ActionResult<TurnResponse> Discard(Guid id, EntryRequest request) =>
         Play(id, game => game.Discard(request.EntryId));
 
+    [HttpPost("{id:guid}/discard-junk")]
+    public ActionResult<TurnResponse> DiscardJunk(Guid id) =>
+        Play(id, game => game.DiscardJunk());
+
+    [HttpPost("{id:guid}/mark")]
+    public ActionResult<TurnResponse> Mark(Guid id, MarkRequest request) =>
+        Play(id, game => game.Mark(request.EntryId, request.Mark));
+
     [HttpPost("{id:guid}/use")]
     public ActionResult<TurnResponse> Use(Guid id, EntryRequest request) =>
         Play(id, game => game.UseItem(request.EntryId));
 
     [HttpPost("{id:guid}/quick-slot")]
-    public ActionResult<TurnResponse> AssignQuickSlot(Guid id, EntryRequest request) =>
-        Play(id, game => game.AssignQuickSlot(request.EntryId));
+    public ActionResult<TurnResponse> AssignQuickSlot(Guid id, QuickSlotRequest request) =>
+        Play(id, game => game.AssignQuickSlot(request.EntryId ?? 0, request.Slot));
 
     [HttpPost("{id:guid}/quick-slot/use")]
-    public ActionResult<TurnResponse> UseQuickSlot(Guid id) =>
-        Play(id, game => game.UseQuickSlot());
+    public ActionResult<TurnResponse> UseQuickSlot(Guid id, QuickSlotRequest request) =>
+        Play(id, game => game.UseQuickSlot(request.Slot));
+
+    [HttpPost("{id:guid}/spell")]
+    public ActionResult<TurnResponse> SelectSpell(Guid id, SpellRequest request) =>
+        Play(id, game => game.SelectSpell(request.Index));
+
+    [HttpPost("{id:guid}/learn")]
+    public ActionResult<TurnResponse> LearnSpell(Guid id, EntryRequest request) =>
+        Play(id, game => game.LearnSpell(request.EntryId));
 
     private ActionResult<TurnResponse> Play(Guid id, Func<Game, TurnResult> action)
     {

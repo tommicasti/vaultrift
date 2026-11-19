@@ -15,7 +15,8 @@ export function HeroSprite({ player, className }: HeroSpriteProps) {
   const outfit = body ? legendaryOutfits[body.id] : undefined
   const sprite = outfitSprite(player.classId, body?.id) ?? classSprite(player.classId)
   const active = player.ability && player.ability.activeTurns > 0 ? `status-${player.ability.kind.toLowerCase()}` : ''
-  const classes = ['hero', className, outfit ? `glow-${outfit.glow}` : '', active].filter(Boolean).join(' ')
+  const poisoned = player.poisonTurns > 0 ? 'poisoned' : ''
+  const classes = ['hero', className, outfit ? `glow-${outfit.glow}` : '', active, poisoned].filter(Boolean).join(' ')
 
   return (
     <span className={classes} role="img" aria-label={player.name}>

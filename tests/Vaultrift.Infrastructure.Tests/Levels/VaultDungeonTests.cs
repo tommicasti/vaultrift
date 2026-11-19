@@ -16,6 +16,7 @@ public class VaultDungeonTests
     [InlineData("berserker")]
     [InlineData("ranger")]
     [InlineData("rogue")]
+    [InlineData("mage")]
     public void CreateGame_BuildsAValidGameForEveryClass(string classId)
     {
         var game = VaultDungeon.CreateGame(Seeded(1), ClassCatalog.Find(classId)!);
@@ -24,6 +25,9 @@ public class VaultDungeonTests
         Assert.True(game.Player.Equipment.ContainsKey(EquipmentSlot.MainHand));
         Assert.DoesNotContain(game.Player.Inventory.Entries, entry => entry.Item.Definition is EquipmentDefinition);
         Assert.Equal("potion-healing", game.Player.QuickSlot?.Id);
+
+        if (classId == "mage")
+            Assert.Equal("potion-mana", game.Player.QuickSlots[1]?.Id);
         Assert.Equal(1, game.FloorNumber);
         Assert.Equal(VaultFloors.FloorCount, game.FloorCount);
         Assert.NotNull(game.Biome);
@@ -251,6 +255,31 @@ public class VaultDungeonTests
             if (floor.Stairs is { } stairs)
                 Assert.Contains(stairs, reachable);
         }
+    }
+
+    [Theory]
+    [InlineData("mines")]
+    [InlineData("fungal")]
+    [InlineData("sky")]
+    public void NewBiomes_ShapeTheirFloorsWithTheirTerrain(string biomeId)
+    {
+        var floors = Enumerable.Range(1, 300)
+            .Select(seed => new VaultFloors(Seeded(seed)))
+            .First(candidate => candidate.Biomes[0].Id == biomeId);
+        var floor = floors.Create(1);
+        var terrain = floors.Biomes[0].Terrain!;
+        var tiles = new List<TileType>();
+
+        for (var y = 0; y < floor.Map.Height; y++)
+        {
+            for (var x = 0; x < floor.Map.Width; x++)
+                tiles.Add(floor.Map.GetTile(new Position(x, y)));
+        }
+
+        if (terrain.Shape == TerrainShape.Stream)
+            Assert.Contains(tiles, tile => Tiles.CurrentDirection(tile) is not null);
+        else
+            Assert.Contains(terrain.Tile, tiles);
     }
 
     [Fact]

@@ -10,10 +10,10 @@ public sealed partial class Game
 
     private static readonly Direction[] ChainDirections = [Direction.Up, Direction.Right, Direction.Down, Direction.Left];
 
-    private void TriggerElement(Element element, Rarity rarity, Enemy target, int damage, List<GameEvent> events, bool guaranteed = false)
+    private void TriggerElement(Element element, Rarity rarity, Enemy target, int damage, List<GameEvent> events, bool guaranteed = false, int extraChance = 0)
     {
         var boost = Player.EffectAmount(BoostFor(element));
-        var chance = guaranteed ? 1.0 : ElementRules.EffectChance(element, rarity) + boost / 100.0;
+        var chance = guaranteed ? 1.0 : ElementRules.EffectChance(element, rarity) + (boost + extraChance) / 100.0;
 
         if (!Rolls(chance))
             return;

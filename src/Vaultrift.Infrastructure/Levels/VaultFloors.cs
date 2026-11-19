@@ -14,6 +14,7 @@ public sealed class VaultFloors : IFloorProvider
     private const int IdsPerFloor = 1000;
     private const int GearPerFloor = 6;
     private const int PotionsPerFloor = 5;
+    private const int ScrollsPerFloor = 1;
     private const int MinChestsPerFloor = 2;
     private const int MaxChestsPerFloor = 3;
     private const int ChestPlacementAttempts = 30;
@@ -102,9 +103,11 @@ public sealed class VaultFloors : IFloorProvider
         var lootRooms = layout.Rooms.Where(room => room != layout.BossRoom).ToList();
         var items = new List<FloorItem>();
 
-        for (var index = 0; index < GearPerFloor + PotionsPerFloor; index++)
+        for (var index = 0; index < GearPerFloor + PotionsPerFloor + ScrollsPerFloor; index++)
         {
-            var definition = index < GearPerFloor ? RollGear(number) : ItemCatalog.Get(_random.Pick(Potions));
+            var definition = index < GearPerFloor ? RollGear(number)
+                : index < GearPerFloor + PotionsPerFloor ? ItemCatalog.Get(_random.Pick(Potions))
+                : _random.Pick(ItemCatalog.Scrolls);
 
             if (FreeTile(map, _random.Pick(lootRooms), occupied) is not { } position)
                 continue;

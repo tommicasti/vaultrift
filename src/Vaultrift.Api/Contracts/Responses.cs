@@ -45,10 +45,17 @@ public sealed record PlayerResponse(
     int FreeSteps,
     AbilityResponse? Ability,
     IReadOnlyList<EquippedItemResponse> Equipment,
-    ItemResponse? QuickSlot,
-    int QuickSlotQuantity,
+    IReadOnlyList<QuickSlotResponse> QuickSlots,
+    IReadOnlyList<SpellResponse> Spells,
+    int ActiveSpell,
+    bool IsOverloaded,
     IReadOnlyList<ActiveBoostResponse> Boosts,
-    Element? Resistance);
+    Element? Resistance,
+    int PoisonTurns);
+
+public sealed record QuickSlotResponse(ItemResponse? Item, int Quantity);
+
+public sealed record SpellResponse(string Id, string Name, Element Element, SpellShape Shape, int Power, int ManaCost, int Size);
 
 public sealed record ClassResponse(
     string Id,
@@ -68,7 +75,7 @@ public sealed record ClassResponse(
 
 public sealed record AbilityResponse(ClassAbility Kind, int Cooldown, int MaxCooldown, int ActiveTurns);
 
-public sealed record EquippedItemResponse(EquipmentSlot Slot, int EntryId, ItemResponse Item);
+public sealed record EquippedItemResponse(EquipmentSlot Slot, int EntryId, ItemResponse Item, ItemMark Mark);
 
 public sealed record ActiveBoostResponse(ItemResponse Item, ModifierResponse Modifier, int RemainingTurns);
 
@@ -108,11 +115,12 @@ public sealed record ItemResponse(
     IReadOnlyList<EffectResponse> Effects,
     bool TwoHanded,
     string? ClassId,
-    int? ManaRestore);
+    int? ManaRestore,
+    SpellResponse? Spell);
 
 public sealed record FloorItemResponse(int X, int Y, ItemResponse Item);
 
-public sealed record InventoryEntryResponse(int Id, ItemResponse Item, int Quantity);
+public sealed record InventoryEntryResponse(int Id, ItemResponse Item, int Quantity, ItemMark Mark);
 
 public sealed record TurnResponse(bool TurnPassed, IReadOnlyList<EventResponse> Events, GameStateResponse State);
 
@@ -135,6 +143,9 @@ public sealed record EventResponse(
     int? Level = null,
     StatPoint? Stat = null,
     bool? Powered = null,
-    ClassAbility? Ability = null);
+    ClassAbility? Ability = null,
+    IReadOnlyList<PositionResponse>? Path = null,
+    SpellResponse? Spell = null,
+    int? Slot = null);
 
 public sealed record PositionResponse(int X, int Y);

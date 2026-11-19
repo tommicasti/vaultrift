@@ -74,6 +74,13 @@ public sealed class Inventory
         return entry is not null && _entries.Remove(entry);
     }
 
+    public IReadOnlyList<InventoryEntry> RemoveJunk()
+    {
+        var junk = _entries.Where(entry => entry.Mark == ItemMark.Junk).ToList();
+        _entries.RemoveAll(entry => entry.Mark == ItemMark.Junk);
+        return junk;
+    }
+
     public void RemoveOne(int entryId)
     {
         var entry = Find(entryId)
@@ -85,5 +92,5 @@ public sealed class Inventory
             _entries.Remove(entry);
     }
 
-    private static bool IsStackable(ItemInstance item) => item.Definition is PotionDefinition;
+    private static bool IsStackable(ItemInstance item) => item.Definition is PotionDefinition or ScrollDefinition;
 }

@@ -179,14 +179,33 @@ public class AbilityTests
     }
 
     [Fact]
-    public void PowerShot_NeedsABow()
+    public void PowerShot_WithAMeleeWeapon_BecomesADoubleDamageStrike()
     {
         var player = NewPlayer(ClassAbility.PowerShot);
         player.Give(TestItems.Sword);
-        var game = NewGame(player);
+        var brute = Brute(1, 3);
+        var game = NewGame(player, brute);
 
-        Assert.Contains(new AbilityRejected(AbilityResult.NeedsBow), game.UseAbility().Events);
-        Assert.Equal(0, player.AbilityCooldown);
+        var result = game.UseAbility();
+
+        Assert.True(result.TurnPassed);
+        Assert.Contains(new AbilityUsed(ClassAbility.PowerShot), result.Events);
+        var hit = Assert.Single(result.Events.OfType<PlayerAttackedEnemy>()).Result;
+        Assert.Equal(2 * DamageCalculator.BaseDamage(player.CombatStats, brute.CombatStats), hit.Damage);
+        Assert.Equal(AbilityRules.Cooldown(ClassAbility.PowerShot) - 1, player.AbilityCooldown);
+    }
+
+    [Fact]
+    public void PowerShot_WithASpear_DoublesBothThrusts()
+    {
+        var player = NewPlayer(ClassAbility.PowerShot);
+        player.Give(TestGear.Spear);
+        var game = NewGame(player, Brute(1, 3), Brute(2, 4));
+
+        var result = game.UseAbility();
+
+        var damage = DamageCalculator.BaseDamage(player.CombatStats, new Stats(maxHealth: 50, attack: 11, defense: 0)) * 2;
+        Assert.Equal(new[] { damage, damage }, result.Events.OfType<PlayerAttackedEnemy>().Select(hit => hit.Result.Damage).ToArray());
     }
 
     [Fact]
@@ -205,7 +224,7 @@ public class AbilityTests
     }
 
     [Fact]
-    public void Volley_HalvesThePowerShotCooldown()
+    public void Volley_ShortensThePowerShotCooldownByThirtyPercent()
     {
         var player = NewPlayer(ClassAbility.PowerShot);
         player.Give(TestGear.Bow);
@@ -214,19 +233,36 @@ public class AbilityTests
 
         game.UseAbility();
 
-        Assert.Equal(AbilityRules.Cooldown(ClassAbility.PowerShot) / 2 - 1, player.AbilityCooldown);
+        Assert.Equal(AbilityRules.ReducedCooldown(ClassAbility.PowerShot, 30) - 1, player.AbilityCooldown);
+        Assert.Equal(12, AbilityRules.ReducedCooldown(ClassAbility.PowerShot, 30));
     }
 
     [Fact]
     public void Haste_ShortensTheCooldown()
     {
         var player = NewPlayer(ClassAbility.Fury);
-        player.Give(TestGear.Ring(EffectKind.Haste, 2));
+        player.Give(TestGear.Ring(EffectKind.Haste, 20));
         var game = NewGame(player);
 
         game.UseAbility();
 
-        Assert.Equal(AbilityRules.Cooldown(ClassAbility.Fury) - 2, player.AbilityCooldown);
+        Assert.Equal(16, player.AbilityCooldown);
+    }
+
+    [Fact]
+    public void Haste_StacksOnlyUpToFortyPercent()
+    {
+        var player = NewPlayer(ClassAbility.PowerShot);
+        player.Give(TestGear.Bow);
+        player.Give(TestGear.Ring(EffectKind.Haste, 20));
+        player.Give(TestGear.Ring(EffectKind.Haste, 20));
+        player.Give(TestGear.ClassMod("hero", EffectKind.PowerShotMastery, 1));
+        var game = NewGame(player, Brute(1, 5));
+
+        game.UseAbility();
+
+        Assert.Equal(AbilityRules.ReducedCooldown(ClassAbility.PowerShot, 100) - 1, player.AbilityCooldown);
+        Assert.Equal(10, AbilityRules.ReducedCooldown(ClassAbility.PowerShot, 100));
     }
 
     [Fact]

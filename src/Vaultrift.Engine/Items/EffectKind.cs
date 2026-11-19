@@ -8,7 +8,7 @@ public enum EffectKind
     WindBoost,
     LifeSteal,
     Thorns,
-    BowRange,
+    DoubleShot,
     Luck,
     Wisdom,
     ManaFlow,
@@ -23,5 +23,7 @@ public enum EffectKind
     PowerShotMastery,
     Stealth,
     Ambush,
-    Phantom
+    Phantom,
+    ManaSiphon,
+    SpellMastery
 }

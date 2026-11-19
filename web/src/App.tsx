@@ -6,14 +6,19 @@ import {
   consumeQuickSlot,
   createGame,
   discardItem,
+  discardJunk,
   equip,
+  learnSpell,
+  markItem,
   move,
+  selectSpell,
   setQuickSlot,
   spendPoint,
   unequip,
 } from './api/gamesApi'
-import type { Direction, EquipmentSlot, GameState, StatPoint, TurnResponse } from './api/types'
+import type { Direction, EquipmentSlot, GameState, ItemMark, StatPoint, TurnResponse } from './api/types'
 import { Board } from './components/Board'
+import { SpellBar } from './components/SpellBar'
 import { ClassSelect } from './components/ClassSelect'
 import { Controls } from './components/Controls'
 import { EventLog } from './components/EventLog'
@@ -124,16 +129,38 @@ function App() {
   )
 
   const handleAssignQuickSlot = useCallback(
-    (entryId: number) => void play(gameId => setQuickSlot(gameId, entryId)),
+    (entryId: number, slot: number) => void play(gameId => setQuickSlot(gameId, entryId, slot)),
     [play],
   )
 
-  const handleUseQuickSlot = useCallback(() => void play(consumeQuickSlot), [play])
+  const handleUseQuickSlot = useCallback(
+    (slot: number) => void play(gameId => consumeQuickSlot(gameId, slot)),
+    [play],
+  )
+
+  const handleSelectSpell = useCallback(
+    (index: number) => void play(gameId => selectSpell(gameId, index)),
+    [play],
+  )
+
+  const handleLearn = useCallback(
+    (entryId: number) => void play(gameId => learnSpell(gameId, entryId)),
+    [play],
+  )
+
+  const spellCount = game?.player.spells.length ?? 0
 
   const handleUseAbility = useCallback(() => void play(activateAbility), [play])
 
   const handleDiscard = useCallback(
     (entryId: number) => void play(gameId => discardItem(gameId, entryId)),
+    [play],
+  )
+
+  const handleDiscardJunk = useCallback(() => void play(discardJunk), [play])
+
+  const handleMark = useCallback(
+    (entryId: number, mark: ItemMark) => void play(gameId => markItem(gameId, entryId, mark)),
     [play],
   )
 
@@ -179,7 +206,13 @@ function App() {
         handleAttack()
       } else if (event.code === 'KeyQ') {
         event.preventDefault()
-        handleUseQuickSlot()
+        handleUseQuickSlot(0)
+      } else if (event.code === 'KeyR') {
+        event.preventDefault()
+        handleUseQuickSlot(1)
+      } else if (/^Digit[1-4]$/.test(event.code) && Number(event.code.slice(5)) <= spellCount) {
+        event.preventDefault()
+        handleSelectSpell(Number(event.code.slice(5)) - 1)
       } else if (event.code === 'KeyE') {
         event.preventDefault()
         handleUseAbility()
@@ -188,7 +221,7 @@ function App() {
 
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [hasGame, inventoryOpen, handleMove, handleAttack, handleUseQuickSlot, handleUseAbility])
+  }, [hasGame, inventoryOpen, spellCount, handleMove, handleAttack, handleUseQuickSlot, handleUseAbility, handleSelectSpell])
 
   if (!game) {
     return (
@@ -220,12 +253,19 @@ function App() {
         biome={game.biome}
         onOpenInventory={() => setInventoryOpen(true)}
       />
+      <SpellBar
+        spells={game.player.spells}
+        active={game.player.activeSpell}
+        mana={game.player.mana}
+        overloaded={game.player.isOverloaded}
+        disabled={busy}
+        onSelect={handleSelectSpell}
+      />
       <Board game={game} viewColumns={view.columns} viewRows={view.rows} effects={effects} onAttack={handleAttack} />
-      <p className="keyboard-hint">WASD to move · Space or click to attack · E ability · Q quick slot · Tab backpack</p>
+      <p className="keyboard-hint">WASD to move · Space or click to attack · E ability · Q R quick slots · 1–4 spells · Tab backpack</p>
       <Controls
         disabled={busy}
-        quickSlot={game.player.quickSlot}
-        quickSlotQuantity={game.player.quickSlotQuantity}
+        quickSlots={game.player.quickSlots}
         ability={game.player.ability}
         onMove={handleMove}
         onAttack={handleAttack}
@@ -246,6 +286,9 @@ function App() {
           onAssignQuickSlot={handleAssignQuickSlot}
           onSpendPoint={handleSpendPoint}
           onDiscard={handleDiscard}
+          onDiscardJunk={handleDiscardJunk}
+          onLearn={handleLearn}
+          onMark={handleMark}
           onClose={() => setInventoryOpen(false)}
         />
       )}

@@ -36,7 +36,8 @@ public class BestiaryCatalogTests
         var bossIds = BestiaryCatalog.All.Where(kind => kind.IsBoss).Select(kind => kind.Id).ToList();
 
         Assert.Equal(
-            new List<string> { "rat-king", "spider-queen", "troll", "dune-scorpion", "frost-yeti", "black-knight", "magma-golem", "kraken" },
+            new List<string> { "rat-king", "spider-queen", "troll", "dune-scorpion", "frost-yeti", "black-knight", "magma-golem", "kraken",
+                "crystal-golem", "mushroom-king", "storm-griffin" },
             bossIds);
         Assert.DoesNotContain(BestiaryCatalog.Monsters, kind => kind.IsBoss);
     }
@@ -70,6 +71,9 @@ public class BestiaryCatalogTests
     [Theory]
     [InlineData("magma-golem", BossPower.LavaRing)]
     [InlineData("kraken", BossPower.TentaclePull)]
+    [InlineData("crystal-golem", BossPower.CrystalBloom)]
+    [InlineData("mushroom-king", BossPower.SummonMinions)]
+    [InlineData("storm-griffin", BossPower.Gust)]
     public void NewBosses_HaveTheirSpecialPower(string bossId, BossPower power)
     {
         Assert.Equal(power, BestiaryCatalog.Get(bossId).Power);
@@ -82,5 +86,12 @@ public class BestiaryCatalogTests
 
         Assert.All(volcano.MonsterIds.Where(id => id != "bat"), id => Assert.True(BestiaryCatalog.Get(id).IsFireproof));
         Assert.True(BestiaryCatalog.Get(volcano.BossId).IsFireproof);
+    }
+
+    [Fact]
+    public void TheMushroomKing_SummonsSporelings_WhichNeverSpawnOnTheirOwn()
+    {
+        Assert.Equal("sporeling", BestiaryCatalog.Get("mushroom-king").Minion?.Id);
+        Assert.DoesNotContain(BiomeCatalog.All, biome => biome.MonsterIds.Contains("sporeling"));
     }
 }

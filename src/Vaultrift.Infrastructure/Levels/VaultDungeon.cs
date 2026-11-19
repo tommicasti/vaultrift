@@ -1,4 +1,4 @@
-﻿using Vaultrift.Engine.Gameplay;
+using Vaultrift.Engine.Gameplay;
 using Vaultrift.Engine.Items;
 using Vaultrift.Engine.Randomness;
 using Vaultrift.Engine.World;
@@ -28,8 +28,19 @@ public static class VaultDungeon
         {
             if (entry.Item.Definition is EquipmentDefinition)
                 player.Equip(entry.Id);
-            else if (entry.Item.Definition is PotionDefinition && player.QuickSlot is null)
-                player.AssignQuickSlot(entry.Id);
+            else if (entry.Item.Definition is PotionDefinition && FreeQuickSlot(player) is { } free)
+                player.AssignQuickSlot(entry.Id, free);
         }
+    }
+
+    private static int? FreeQuickSlot(Player player)
+    {
+        for (var slot = 0; slot < player.QuickSlots.Count; slot++)
+        {
+            if (player.QuickSlots[slot] is null)
+                return slot;
+        }
+
+        return null;
     }
 }

@@ -1,6 +1,6 @@
 import type { PlayerState } from '../api/types'
 import { biomeNames } from '../game/biomes'
-import { abilityNames, describeModifier, elementNames } from '../game/items'
+import { abilityNames, describeModifier, elementNames, quickSlotKeys } from '../game/items'
 import { ElementIcon } from './ElementIcon'
 import { ItemIcon } from './ItemIcon'
 
@@ -20,10 +20,11 @@ export function StatusBar({ player, deaths, floor, floorCount, biome, onOpenInve
   const ability = player.ability
   const hasExtras =
     ability !== undefined ||
-    player.quickSlot !== undefined ||
+    player.quickSlots.some(quickSlot => quickSlot.item !== undefined) ||
     player.boosts.length > 0 ||
     player.resistance !== undefined ||
     player.freeSteps > 0 ||
+    player.poisonTurns > 0 ||
     player.unspentPoints > 0
 
   return (
@@ -82,16 +83,20 @@ export function StatusBar({ player, deaths, floor, floorCount, biome, onOpenInve
               {player.unspentPoints} {player.unspentPoints === 1 ? 'point' : 'points'} to spend
             </button>
           )}
-          {player.quickSlot && (
-            <span className="label quick-slot-info">
-              Quick slot <ItemIcon item={player.quickSlot} /> ×{player.quickSlotQuantity}
-            </span>
+          {player.quickSlots.map(
+            (quickSlot, slot) =>
+              quickSlot.item && (
+                <span key={slot} className="label quick-slot-info">
+                  {quickSlotKeys[slot]} <ItemIcon item={quickSlot.item} /> ×{quickSlot.quantity}
+                </span>
+              ),
           )}
           {player.resistance && (
             <span className="label resistance-info">
               Resists <ElementIcon element={player.resistance} /> {elementNames[player.resistance]}
             </span>
           )}
+          {player.poisonTurns > 0 && <span className="boost-tag poison-tag">Poisoned · {player.poisonTurns}</span>}
           {player.freeSteps > 0 && <span className="boost-tag free-step-tag">Free step</span>}
           {player.boosts.map(boost => (
             <span key={boost.item.id} className="boost-tag">

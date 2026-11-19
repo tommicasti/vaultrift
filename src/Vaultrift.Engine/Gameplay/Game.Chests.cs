@@ -9,17 +9,6 @@ public sealed partial class Game
 
     public IReadOnlyCollection<Position> Chests => _chests.Keys;
 
-    public TurnResult Discard(int entryId)
-    {
-        var item = Player.Inventory.Find(entryId)?.Item;
-
-        GameEvent outcome = item is not null && Player.Inventory.Remove(entryId)
-            ? new ItemDiscarded(item)
-            : new UseRejected(UseResult.ItemNotFound);
-
-        return new TurnResult(TurnPassed: false, [outcome]);
-    }
-
     private bool TryOpenChest(List<GameEvent> events)
     {
         var front = Player.Position.Move(Player.Facing);

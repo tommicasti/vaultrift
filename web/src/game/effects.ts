@@ -14,6 +14,9 @@ export type EffectKind =
   | 'fury'
   | 'bulwark'
   | 'smoke'
+  | 'shards'
+  | 'spores'
+  | 'overload'
 
 export interface Effect {
   key: string
@@ -34,6 +37,7 @@ const abilityEffects: Record<ClassAbility, EffectKind | null> = {
   Fury: 'fury',
   PowerShot: null,
   Invisibility: 'smoke',
+  Overload: 'overload',
 }
 
 const elementEffects: Record<Element, EffectKind> = {
@@ -72,10 +76,12 @@ export function effectsForTurn(
     const landed = !event.isDodged && event.element !== undefined
 
     switch (event.type) {
-      case 'ArrowFlew':
-        event.tiles?.forEach((tile, index) => add(tile, event.powered ? 'power' : 'arrow', index * arrowStepMs))
-        impactDelayMs = (event.tiles?.length ?? 0) * arrowStepMs
+      case 'ArrowFlew': {
+        const start = impactDelayMs
+        event.tiles?.forEach((tile, index) => add(tile, event.powered ? 'power' : 'arrow', start + index * arrowStepMs))
+        impactDelayMs = start + (event.tiles?.length ?? 0) * arrowStepMs
         break
+      }
       case 'PlayerSwept':
         event.tiles?.forEach(tile => add(tile, 'sweep', 0))
         break
@@ -90,8 +96,44 @@ export function effectsForTurn(
       case 'LavaSpread':
         event.tiles?.forEach(tile => add(tile, 'fire', 0))
         break
+      case 'SpellCast': {
+        const kind = event.element ? elementEffects[event.element] : 'impact'
+        const start = impactDelayMs
+        event.path?.forEach((tile, index) => add(tile, kind, start + index * arrowStepMs))
+        impactDelayMs = start + (event.path?.length ?? 0) * arrowStepMs
+        event.tiles?.forEach(tile => add(tile, kind, impactDelayMs))
+        break
+      }
+      case 'EnemyPulled':
+        if (event.enemyId !== undefined) add(positionsAfter.get(event.enemyId), 'wind', impactDelayMs + chainDelayMs)
+        break
       case 'PlayerPulled':
+      case 'PlayerBlownAway':
         add(player, 'wind', 0)
+        break
+      case 'CrystalShattered':
+        add(event.x !== undefined && event.y !== undefined ? { x: event.x, y: event.y } : undefined, 'shards', impactDelayMs)
+        break
+      case 'CrystalsGrew':
+      case 'CrystalsBurst':
+        event.tiles?.forEach(tile => add(tile, 'shards', 0))
+        break
+      case 'EnemyShardHit':
+        if (event.enemyId !== undefined)
+          add(positionsAfter.get(event.enemyId) ?? positionsBefore.get(event.enemyId), 'impact', impactDelayMs + chainDelayMs)
+        break
+      case 'PlayerShardHit':
+        add(player, 'impact', chainDelayMs)
+        break
+      case 'PlayerPoisoned':
+      case 'PlayerPoisonDamaged':
+        add(player, 'spores', burnDelayMs)
+        break
+      case 'EnemySummoned':
+        add(event.x !== undefined && event.y !== undefined ? { x: event.x, y: event.y } : undefined, 'spores', 0)
+        break
+      case 'EnemyWithered':
+        if (event.enemyId !== undefined) add(positionsBefore.get(event.enemyId), 'spores', impactDelayMs + chainDelayMs)
         break
       case 'PlayerScorched':
         add(player, 'fire', impactDelayMs + burnDelayMs)

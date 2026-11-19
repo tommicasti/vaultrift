@@ -12,6 +12,9 @@ public sealed partial class Game
     public const int PullMinDistance = 2;
     public const int PullMaxDistance = 5;
     public const int WaterLightningMultiplier = 2;
+    public const int LavaCoolingTurns = 3;
+
+    private readonly Dictionary<Position, int> _coolingLava = [];
 
     private static readonly Position[] Surroundings =
         [new(-1, -1), new(0, -1), new(1, -1), new(-1, 0), new(1, 0), new(-1, 1), new(0, 1), new(1, 1)];
@@ -83,6 +86,15 @@ public sealed partial class Game
             case BossPower.TentaclePull:
                 PullPlayer(enemy, events);
                 break;
+            case BossPower.CrystalBloom:
+                BloomCrystals(enemy, events);
+                break;
+            case BossPower.SummonMinions:
+                SummonMinions(enemy, events);
+                break;
+            case BossPower.Gust:
+                BlowAway(enemy, events);
+                break;
             default:
                 throw new ArgumentOutOfRangeException(nameof(enemy), enemy.Kind.Power, "Unknown boss power.");
         }
@@ -100,9 +112,30 @@ public sealed partial class Game
             return;
 
         foreach (var tile in tiles)
+        {
             Map.SetTile(tile, TileType.Lava);
+            _coolingLava[tile] = LavaCoolingTurns;
+        }
 
         events.Add(new LavaSpread(enemy.Id, tiles));
+    }
+
+    private void CoolLava(List<GameEvent> events)
+    {
+        var cooled = new List<Position>();
+
+        foreach (var tile in _coolingLava.Keys.ToList())
+        {
+            if (--_coolingLava[tile] > 0)
+                continue;
+
+            _coolingLava.Remove(tile);
+            Map.SetTile(tile, TileType.Floor);
+            cooled.Add(tile);
+        }
+
+        if (cooled.Count > 0)
+            events.Add(new LavaCooled(cooled));
     }
 
     private void PullPlayer(Enemy enemy, List<GameEvent> events)

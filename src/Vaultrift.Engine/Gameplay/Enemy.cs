@@ -51,6 +51,10 @@ public sealed class Enemy : Creature
 
     public int PowerCharge { get; internal set; }
 
+    public int? SummonerId { get; init; }
+
+    public bool IsSummoned => SummonerId is not null;
+
     internal void ReturnToStart()
     {
         Position = StartPosition;

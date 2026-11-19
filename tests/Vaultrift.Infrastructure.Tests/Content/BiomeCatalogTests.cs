@@ -46,8 +46,17 @@ public class BiomeCatalogTests
     [Theory]
     [InlineData("volcano", TileType.Lava)]
     [InlineData("ruins", TileType.Water)]
+    [InlineData("mines", TileType.Crystal)]
+    [InlineData("fungal", TileType.Spores)]
     public void TerrainBiomes_BringTheirOwnTerrain(string biomeId, TileType tile)
     {
         Assert.Equal(tile, BiomeCatalog.Get(biomeId).Terrain?.Tile);
+    }
+
+    [Fact]
+    public void CrystalsGrowInClusters_AndTheSkyBlowsInStreams()
+    {
+        Assert.Equal(TerrainShape.Cluster, BiomeCatalog.Get("mines").Terrain?.Shape);
+        Assert.Equal(TerrainShape.Stream, BiomeCatalog.Get("sky").Terrain?.Shape);
     }
 }

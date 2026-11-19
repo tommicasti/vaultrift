@@ -61,14 +61,30 @@ public static class ItemCatalog
         Weapon("bow-epic", "Whisperwind", WeaponType.Bow, Rarity.Epic, Attack(8), Evasion(5)),
         Weapon("bow-longbow", "Marcher's Longbow", WeaponType.Bow, Rarity.Epic, Attack(9), Critical(2)),
         LegendaryWeapon("bow-starshot", "Starshot", WeaponType.Bow,
-            "Aim for one. Hit the one behind him too. Reaches two tiles farther.",
-            Attack(12), Evasion(8), Defense(1)) with { Effects = [Effect(EffectKind.BowRange, 2)] },
+            "Aim for one. The second arrow is already on its way.",
+            Attack(12), Evasion(8), Defense(1)) with { Effects = [Effect(EffectKind.DoubleShot, 25)] },
         LegendaryWeapon("bow-nightglass", "Nightglass", WeaponType.Bow,
             "Sleep is just a slower kind of surrender. Its frost holds longer.",
             Element.Ice, Attack(13), Evasion(6), Defense(1)) with { Effects = [Effect(EffectKind.IceBoost, 10)] },
         LegendaryWeapon("bow-galecaller", "Galecaller", WeaponType.Bow,
             "Ask the wind nicely. Then pull. Its gusts push twice as far.",
             Element.Wind, Attack(11), Evasion(10), Defense(1)) with { Effects = [Effect(EffectKind.WindBoost, 10)] },
+
+        Staff("staff-oak", "Oak Staff", Rarity.Common, SpellCatalog.FireBolt, Attack(3)),
+        Staff("staff-ash", "Ash Wand", Rarity.Common, SpellCatalog.IceShard, Attack(2), Mana(5)),
+        Staff("staff-copper", "Copper Rod", Rarity.Rare, SpellCatalog.Spark, Attack(5)),
+        Staff("staff-willow", "Willow Staff", Rarity.Rare, SpellCatalog.Gust, Attack(4), Mana(5)),
+        Staff("staff-emberwood", "Emberwood Staff", Rarity.Epic, SpellCatalog.FireBolt, Attack(8), Mana(5)),
+        Staff("staff-frostspire", "Frostspire", Rarity.Epic, SpellCatalog.IceShard, Attack(7), Mana(10)),
+        LegendaryStaff("staff-riftheart", "Riftheart", SpellCatalog.Spark,
+            "A shard of the rift on a stick. Spells cost one less mana and catch more often.",
+            [Effect(EffectKind.SpellMastery, 15)], Attack(11), Mana(10)),
+        LegendaryStaff("staff-everflame", "Everflame", SpellCatalog.FireBolt,
+            "It has never gone out. Its fire catches more often and burns hotter.",
+            [Effect(EffectKind.FireBoost, 10)], Attack(12), Mana(5)),
+        LegendaryStaff("staff-whirlwind", "Whirlwind Crook", SpellCatalog.Gust,
+            "The shepherd of storms. Mana flows back faster.",
+            [Effect(EffectKind.ManaFlow, 1)], Attack(11), Mana(10)),
 
         Weapon("spear-common", "Wooden Spear", WeaponType.Spear, Rarity.Common, Attack(4)),
         Weapon("spear-boar", "Boar Spear", WeaponType.Spear, Rarity.Common, Attack(3), Defense(1)),
@@ -101,7 +117,7 @@ public static class ItemCatalog
             Defense(4), Block(25)) with { Effects = [Effect(EffectKind.Thorns, 3)] },
         LegendaryGear("shield-stormguard", "Stormguard", EquipmentKind.Shield,
             "Hold the line a little longer. Your abilities return sooner.",
-            Defense(4), Block(22), Evasion(2)) with { Effects = [Effect(EffectKind.Haste, 2)] },
+            Defense(4), Block(22), Evasion(2)) with { Effects = [Effect(EffectKind.Haste, 15)] },
 
         Gear("head-common", "Leather Cap", EquipmentKind.Head, Rarity.Common, Defense(1)),
         Gear("head-rare", "Iron Helm", EquipmentKind.Head, Rarity.Rare, Defense(2)),
@@ -140,7 +156,7 @@ public static class ItemCatalog
             Evasion(7), Attack(2), Defense(2)) with { Effects = [Effect(EffectKind.FireBoost, 5)] },
         LegendaryGear("feet-galeheels", "Galeheels", EquipmentKind.Feet,
             "Faster when it matters most.",
-            Evasion(9), Defense(1), Attack(1)) with { Effects = [Effect(EffectKind.Haste, 1)] },
+            Evasion(9), Defense(1), Attack(1)) with { Effects = [Effect(EffectKind.Haste, 10)] },
 
         Gear("ring-common", "Copper Band", EquipmentKind.Ring, Rarity.Common, Attack(1)),
         Gear("ring-rare", "Silver Band", EquipmentKind.Ring, Rarity.Rare, Defense(2)),
@@ -150,15 +166,15 @@ public static class ItemCatalog
         Ring("ring-storm", "Storm Ring", Rarity.Rare, Effect(EffectKind.LightningBoost, 15), Evasion(2)),
         Ring("ring-gale", "Gale Ring", Rarity.Rare, Effect(EffectKind.WindBoost, 15), Evasion(2)),
         Ring("ring-thorns", "Thorn Ring", Rarity.Rare, Effect(EffectKind.Thorns, 2), Defense(1)),
-        Ring("ring-hunter", "Hunter's Ring", Rarity.Rare, Effect(EffectKind.BowRange, 2), Critical(2)),
+        Ring("ring-hunter", "Hunter's Ring", Rarity.Rare, Effect(EffectKind.DoubleShot, 15), Critical(2)),
         Ring("ring-flow", "Ring of Flow", Rarity.Rare, Effect(EffectKind.ManaFlow, 1), Mana(5)),
         Ring("ring-vampire", "Vampire Ring", Rarity.Epic, Effect(EffectKind.LifeSteal, 15), Attack(1)),
         Ring("ring-fortune", "Ring of Fortune", Rarity.Epic, Effect(EffectKind.Luck, 50)),
         Ring("ring-sage", "Sage's Ring", Rarity.Epic, Effect(EffectKind.Wisdom, 20)),
-        Ring("ring-time", "Ring of Time", Rarity.Epic, Effect(EffectKind.Haste, 2)),
+        Ring("ring-time", "Ring of Time", Rarity.Epic, Effect(EffectKind.Haste, 15)),
         LegendaryGear("ring-band-of-second-dawn", "Band of Second Dawn", EquipmentKind.Ring,
             "Not today. Ask again tomorrow. Your abilities come back sooner.",
-            Defense(3), Evasion(3), Attack(1)) with { Effects = [Effect(EffectKind.Haste, 3)] },
+            Defense(3), Evasion(3), Attack(1)) with { Effects = [Effect(EffectKind.Haste, 20)] },
         LegendaryGear("ring-ouroboros", "Ouroboros Ring", EquipmentKind.Ring,
             "What heals, heals again.",
             Defense(2), Attack(2), Evasion(2)) with { Effects = [Effect(EffectKind.LifeSteal, 20)] },
@@ -198,13 +214,13 @@ public static class ItemCatalog
             "Every kill during Fury makes it last one more turn.",
             [Effect(EffectKind.FuryExtension, 1)], Attack(3)),
         ClassMod("mod-ranger-hawkeye", "Hawkeye", "ranger", Rarity.Rare,
-            "Your bow reaches two tiles farther.",
-            [Effect(EffectKind.BowRange, 2)], Critical(2)),
+            "One arrow in five flies twice.",
+            [Effect(EffectKind.DoubleShot, 20)], Critical(2)),
         ClassMod("mod-ranger-sniper", "Sniper", "ranger", Rarity.Epic,
             "+15% critical against targets 4 or more tiles away.",
             [Effect(EffectKind.FarShotCritical, 15)], Attack(1)),
         ClassMod("mod-ranger-volley", "Volley", "ranger", Rarity.Legendary,
-            "Power Shot recharges twice as fast and always triggers your bow's element.",
+            "Power Shot recharges 30% faster and always triggers your bow's element.",
             [Effect(EffectKind.PowerShotMastery, 1)], Attack(2)),
         ClassMod("mod-rogue-shadow", "Shadow", "rogue", Rarity.Rare,
             "Monsters wake up only when you are 3 tiles away.",
@@ -215,14 +231,34 @@ public static class ItemCatalog
         ClassMod("mod-rogue-phantom", "Phantom", "rogue", Rarity.Legendary,
             "Invisibility lasts 2 more turns, and a killing blow keeps you hidden.",
             [Effect(EffectKind.Phantom, 2)], Evasion(5)),
+        ClassMod("mod-mage-archmage", "Archmage", "mage", Rarity.Rare,
+            "A deeper well: 20 more mana, and it flows back faster.",
+            [Effect(EffectKind.ManaFlow, 1)], Mana(20)),
+        ClassMod("mod-mage-siphon", "Siphon", "mage", Rarity.Epic,
+            "Every kill gives back 5 mana.",
+            [Effect(EffectKind.ManaSiphon, 5)], Attack(1)),
+        ClassMod("mod-mage-elementalist", "Elementalist", "mage", Rarity.Legendary,
+            "Spells cost one less mana and their element catches 20% more often.",
+            [Effect(EffectKind.SpellMastery, 20)], Attack(2), Mana(10)),
 
         new PotionDefinition("potion-healing", "Healing Potion", Rarity.Common, Healing: 10),
         new PotionDefinition("potion-greater-healing", "Greater Healing Potion", Rarity.Rare, Healing: 25),
         new PotionDefinition("potion-mana", "Mana Potion", Rarity.Common, ManaRestore: 10),
         new PotionDefinition("potion-greater-mana", "Greater Mana Potion", Rarity.Rare, ManaRestore: 25),
         new PotionDefinition("potion-strength", "Strength Potion", Rarity.Rare, Boost: Attack(3), BoostTurns: 10),
-        new PotionDefinition("potion-protection", "Protection Potion", Rarity.Rare, Boost: Defense(3), BoostTurns: 10)
+        new PotionDefinition("potion-protection", "Protection Potion", Rarity.Rare, Boost: Defense(3), BoostTurns: 10),
+
+        Scroll("fireball", Rarity.Rare, "Explodes where it lands, burning everything around."),
+        Scroll("frost-nova", Rarity.Rare, "A ring of frost that freezes every enemy next to you."),
+        Scroll("chain-lightning", Rarity.Rare, "Leaps from enemy to enemy, up to three of them."),
+        Scroll("squall", Rarity.Rare, "A blast down the whole row that hurls enemies two tiles back."),
+        Scroll("fire-rain", Rarity.Epic, "Fire falls on a 5×5 area and sets every enemy alight."),
+        Scroll("blizzard", Rarity.Epic, "A storm of ice two tiles around you."),
+        Scroll("tempest", Rarity.Epic, "Lightning strikes every enemy within five tiles."),
+        Scroll("tornado", Rarity.Epic, "A whirlwind where it lands that drags enemies to its heart.")
     ];
+
+    public static IReadOnlyList<ScrollDefinition> Scrolls { get; } = All.OfType<ScrollDefinition>().ToList();
 
     public static IReadOnlyList<EquipmentDefinition> Equipment { get; } =
         All.OfType<EquipmentDefinition>().Where(item => item.Kind != EquipmentKind.ClassMod).ToList();
@@ -256,6 +292,24 @@ public static class ItemCatalog
 
     private static WeaponDefinition LegendaryWeapon(string id, string name, WeaponType type, string description, Element element, params StatModifier[] modifiers) =>
         new(id, name, Rarity.Legendary, type, modifiers, description, element);
+
+    private static WeaponDefinition Staff(string id, string name, Rarity rarity, SpellDefinition spell, params StatModifier[] modifiers) =>
+        new(id, name, rarity, WeaponType.Staff, modifiers, FixedElement: spell.Element) { Spell = spell };
+
+    private static WeaponDefinition LegendaryStaff(
+        string id,
+        string name,
+        SpellDefinition spell,
+        string description,
+        ItemEffect[] effects,
+        params StatModifier[] modifiers) =>
+        new(id, name, Rarity.Legendary, WeaponType.Staff, modifiers, description, spell.Element) { Spell = spell, Effects = effects };
+
+    private static ScrollDefinition Scroll(string spellId, Rarity rarity, string description)
+    {
+        var spell = SpellCatalog.Get(spellId);
+        return new ScrollDefinition("scroll-" + spellId, "Scroll of " + spell.Name, rarity, spell, description);
+    }
 
     private static GearDefinition Gear(string id, string name, EquipmentKind kind, Rarity rarity, params StatModifier[] modifiers) =>
         new(id, name, rarity, kind, modifiers);

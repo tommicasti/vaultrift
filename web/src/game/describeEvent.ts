@@ -1,4 +1,5 @@
 import type {
+  SpellRejectReason,
   AbilityRejectReason,
   ClassAbility,
   EquipRejectReason,
@@ -33,12 +34,14 @@ const useRejectMessages: Record<UseRejectReason, string> = {
   AlreadyAtFullHealth: 'You are already at full health.',
   AlreadyAtFullMana: 'Your mana is already full.',
   QuickSlotEmpty: 'Your quick slot is empty.',
+  ItemIsFavorite: 'That item is a favorite. Remove the star to throw it away.',
+  NoJunk: 'Nothing is marked as junk.',
+  NotEnoughMana: 'Not enough mana to read that scroll.',
 }
 
 const abilityRejectMessages: Record<AbilityRejectReason, string> = {
   NoAbility: 'You have no special ability.',
   OnCooldown: 'Your ability is still recharging.',
-  NeedsBow: 'Power Shot needs a bow in your main hand.',
 }
 
 const abilityUsedMessages: Record<ClassAbility, string> = {
@@ -46,6 +49,7 @@ const abilityUsedMessages: Record<ClassAbility, string> = {
   Fury: 'Fury takes over. Your blows grow heavier!',
   PowerShot: 'You loose a Power Shot!',
   Invisibility: 'You melt into the shadows.',
+  Overload: 'Arcane power surges. Your next spell is free and wider!',
 }
 
 const abilityEndedMessages: Record<ClassAbility, string> = {
@@ -53,6 +57,17 @@ const abilityEndedMessages: Record<ClassAbility, string> = {
   Fury: 'Your fury fades.',
   PowerShot: '',
   Invisibility: 'You are visible again.',
+  Overload: '',
+}
+
+const spellRejectMessages: Record<SpellRejectReason, string> = {
+  ItemNotFound: 'That scroll is no longer in your backpack.',
+  NotAScroll: 'Only scrolls can be learned.',
+  NoStaff: 'Hold a staff to learn a spell.',
+  AlreadyKnown: 'You already know that spell.',
+  SpellbookFull: 'Your spellbook is full: three learned spells at most.',
+  UnknownSpell: 'There is no spell in that place of your spellbook.',
+  NotEnoughMana: 'Not enough mana. You swing the staff instead.',
 }
 
 function effectivenessNote(event: GameEvent): string {
@@ -81,6 +96,9 @@ export function describeEvent(event: GameEvent, enemyNames: ReadonlyMap<number, 
     case 'ArrowFlew':
     case 'PlayerSwept':
     case 'PlayerThrust':
+    case 'PlayerDrifted':
+    case 'EnemyDrifted':
+    case 'LavaCooled':
       return null
     case 'PlayerAttackedEnemy':
       return event.isDodged
@@ -124,6 +142,20 @@ export function describeEvent(event: GameEvent, enemyNames: ReadonlyMap<number, 
       return `You pick up ${event.item?.name}.`
     case 'ItemDropped':
       return `${enemy} drops ${event.item?.name} (${event.item?.rarity})!`
+    case 'ItemMarked':
+    case 'SpellSelected':
+    case 'EnemyPulled':
+      return null
+    case 'SpellCast':
+      return event.spell ? `You cast ${event.spell.name}!` : null
+    case 'SpellLearned':
+      return event.spell ? `You learn ${event.spell.name}. It joins your spellbook.` : null
+    case 'SpellRejected':
+      return spellRejectMessages[event.reason as SpellRejectReason]
+    case 'ManaSiphoned':
+      return `You siphon ${event.amount} mana.`
+    case 'JunkDiscarded':
+      return `You throw away ${event.amount} junk ${event.amount === 1 ? 'item' : 'items'}.`
     case 'ItemDiscarded':
       return `You throw away ${event.item?.name}.`
     case 'ChestOpened':
@@ -174,6 +206,28 @@ export function describeEvent(event: GameEvent, enemyNames: ReadonlyMap<number, 
       return `${enemy} cracks the ground. Lava pours out!`
     case 'PlayerPulled':
       return `A tentacle drags you toward ${enemyLower}!`
+    case 'CrystalShattered':
+      return 'The crystal shatters into a spray of shards!'
+    case 'EnemyShardHit':
+      return `Shards cut ${enemyLower} for ${event.damage} damage.`
+    case 'PlayerShardHit':
+      return `Crystal shards cut you for ${event.damage} damage!`
+    case 'CrystalsGrew':
+      return `${enemy} hums. Crystals sprout all around it!`
+    case 'CrystalsBurst':
+      return `${enemy} roars and its crystals burst!`
+    case 'PlayerPoisoned':
+      return 'You breathe in the spores. You are poisoned!'
+    case 'PlayerPoisonDamaged':
+      return `The poison deals ${event.damage} damage.`
+    case 'PlayerBlownAway':
+      return event.damage
+        ? `A gust from ${enemyLower} slams you into the wall for ${event.damage} damage!`
+        : `A gust from ${enemyLower} blows you away!`
+    case 'EnemySummoned':
+      return `A ${enemyNames.get(event.enemyId ?? -1) ?? 'minion'} springs from the ground!`
+    case 'EnemyWithered':
+      return `${enemy} withers away.`
     case 'VaultConquered':
       return 'The last guardian falls. The vault is yours!'
   }

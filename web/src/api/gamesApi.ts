@@ -1,4 +1,4 @@
-import type { ClassInfo, Direction, EquipmentSlot, GameState, StatPoint, TurnResponse } from './types'
+import type { ClassInfo, Direction, EquipmentSlot, GameState, ItemMark, StatPoint, TurnResponse } from './types'
 
 async function request<T>(method: 'GET' | 'POST', path: string, body?: unknown): Promise<T> {
   const response = await fetch(`/api${path}`, {
@@ -50,14 +50,30 @@ export function discardItem(gameId: string, entryId: number): Promise<TurnRespon
   return request<TurnResponse>('POST', `/games/${gameId}/discard`, { entryId })
 }
 
+export function discardJunk(gameId: string): Promise<TurnResponse> {
+  return request<TurnResponse>('POST', `/games/${gameId}/discard-junk`)
+}
+
+export function markItem(gameId: string, entryId: number, mark: ItemMark): Promise<TurnResponse> {
+  return request<TurnResponse>('POST', `/games/${gameId}/mark`, { entryId, mark })
+}
+
 export function consumeItem(gameId: string, entryId: number): Promise<TurnResponse> {
   return request<TurnResponse>('POST', `/games/${gameId}/use`, { entryId })
 }
 
-export function setQuickSlot(gameId: string, entryId: number): Promise<TurnResponse> {
-  return request<TurnResponse>('POST', `/games/${gameId}/quick-slot`, { entryId })
+export function setQuickSlot(gameId: string, entryId: number, slot: number): Promise<TurnResponse> {
+  return request<TurnResponse>('POST', `/games/${gameId}/quick-slot`, { entryId, slot })
 }
 
-export function consumeQuickSlot(gameId: string): Promise<TurnResponse> {
-  return request<TurnResponse>('POST', `/games/${gameId}/quick-slot/use`)
+export function consumeQuickSlot(gameId: string, slot: number): Promise<TurnResponse> {
+  return request<TurnResponse>('POST', `/games/${gameId}/quick-slot/use`, { slot })
+}
+
+export function selectSpell(gameId: string, index: number): Promise<TurnResponse> {
+  return request<TurnResponse>('POST', `/games/${gameId}/spell`, { index })
+}
+
+export function learnSpell(gameId: string, entryId: number): Promise<TurnResponse> {
+  return request<TurnResponse>('POST', `/games/${gameId}/learn`, { entryId })
 }

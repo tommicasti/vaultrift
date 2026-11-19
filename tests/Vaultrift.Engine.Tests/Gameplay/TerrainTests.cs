@@ -157,6 +157,32 @@ public class TerrainTests
     }
 
     [Fact]
+    public void TheBossLava_CoolsDownAfterThreeTurns_ButNaturalLavaStays()
+    {
+        var golemKind = new EnemyKind("test-golem", "Golem", new Stats(maxHealth: 60, attack: 1, defense: 0), Speed.Slow,
+            resistance: Element.Fire, isBoss: true, isStationary: true, power: BossPower.LavaRing);
+        var golem = new Enemy(1, new Position(5, 2), golemKind) { IsAwake = true };
+        var player = NewPlayer(1, 2);
+        var game = NewGame(["#########", "#L......#", "#.......#", "#.......#", "#########"], player, golem);
+        var events = new List<GameEvent>();
+
+        for (var turn = 0; turn < 5; turn++)
+            events.AddRange(game.MovePlayer(turn % 2 == 0 ? Direction.Down : Direction.Up).Events);
+
+        var spread = Assert.Single(events.OfType<LavaSpread>());
+        events.Clear();
+
+        for (var turn = 0; turn < 3; turn++)
+            events.AddRange(game.MovePlayer(turn % 2 == 0 ? Direction.Up : Direction.Down).Events);
+
+        var cooled = Assert.Single(events.OfType<LavaCooled>());
+
+        Assert.Equal(spread.Tiles.Count, cooled.Tiles.Count);
+        Assert.All(spread.Tiles, tile => Assert.False(game.Map.IsLava(tile)));
+        Assert.True(game.Map.IsLava(new Position(1, 1)));
+    }
+
+    [Fact]
     public void TentaclePull_DragsTheHeroCloser()
     {
         var krakenKind = new EnemyKind("test-kraken", "Kraken", new Stats(maxHealth: 60, attack: 1, defense: 0),

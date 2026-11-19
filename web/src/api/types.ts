@@ -16,6 +16,8 @@ export type ItemCategory =
   | 'Cloak'
   | 'ClassMod'
   | 'Potion'
+  | 'Staff'
+  | 'Scroll'
 
 export type EquipmentSlot = 'MainHand' | 'OffHand' | 'Head' | 'Body' | 'Feet' | 'Ring1' | 'Ring2' | 'Cloak' | 'ClassMod'
 
@@ -28,7 +30,7 @@ export type EffectKind =
   | 'WindBoost'
   | 'LifeSteal'
   | 'Thorns'
-  | 'BowRange'
+  | 'DoubleShot'
   | 'Luck'
   | 'Wisdom'
   | 'ManaFlow'
@@ -44,10 +46,35 @@ export type EffectKind =
   | 'Stealth'
   | 'Ambush'
   | 'Phantom'
+  | 'ManaSiphon'
+  | 'SpellMastery'
 
-export type ClassAbility = 'Bulwark' | 'Fury' | 'PowerShot' | 'Invisibility'
+export type ClassAbility = 'Bulwark' | 'Fury' | 'PowerShot' | 'Invisibility' | 'Overload'
 
-export type AbilityRejectReason = 'NoAbility' | 'OnCooldown' | 'NeedsBow'
+export type SpellShape = 'Bolt' | 'Burst' | 'Line' | 'Chain' | 'Nova' | 'Storm'
+
+export type SpellRejectReason =
+  | 'ItemNotFound'
+  | 'NotAScroll'
+  | 'NoStaff'
+  | 'AlreadyKnown'
+  | 'SpellbookFull'
+  | 'UnknownSpell'
+  | 'NotEnoughMana'
+
+export interface SpellInfo {
+  id: string
+  name: string
+  element: Element
+  shape: SpellShape
+  power: number
+  manaCost: number
+  size: number
+}
+
+export type AbilityRejectReason = 'NoAbility' | 'OnCooldown'
+
+export type ItemMark = 'None' | 'Favorite' | 'Junk'
 
 export type Speed = 'Slow' | 'Normal' | 'Fast'
 
@@ -55,7 +82,7 @@ export type Element = 'Fire' | 'Ice' | 'Lightning' | 'Wind'
 
 export type Effectiveness = 'Neutral' | 'Effective' | 'Resisted'
 
-export type WeaponType = 'Sword' | 'Axe' | 'Bow' | 'Dagger' | 'Spear'
+export type WeaponType = 'Sword' | 'Axe' | 'Bow' | 'Dagger' | 'Spear' | 'Staff'
 
 export type EquipRejectReason = 'ItemNotFound' | 'NotEquippable' | 'AlreadyEquipped' | 'BackpackFull' | 'WrongClass'
 
@@ -65,7 +92,15 @@ export type SpendRejectReason = 'NoPointsLeft' | 'StatAtCap'
 
 export type StatPoint = 'Health' | 'Attack' | 'Defense' | 'Evasion' | 'Critical' | 'Mana'
 
-export type UseRejectReason = 'ItemNotFound' | 'NotUsable' | 'AlreadyAtFullHealth' | 'AlreadyAtFullMana' | 'QuickSlotEmpty'
+export type UseRejectReason =
+  | 'ItemNotFound'
+  | 'NotUsable'
+  | 'AlreadyAtFullHealth'
+  | 'AlreadyAtFullMana'
+  | 'QuickSlotEmpty'
+  | 'ItemIsFavorite'
+  | 'NoJunk'
+  | 'NotEnoughMana'
 
 export interface StatModifierInfo {
   stat: StatType
@@ -93,6 +128,12 @@ export interface ItemInfo {
   twoHanded: boolean
   classId?: string
   manaRestore?: number
+  spell?: SpellInfo
+}
+
+export interface QuickSlotInfo {
+  item?: ItemInfo
+  quantity: number
 }
 
 export interface ClassInfo {
@@ -123,6 +164,7 @@ export interface EquippedItem {
   slot: EquipmentSlot
   entryId: number
   item: ItemInfo
+  mark: ItemMark
 }
 
 export interface ActiveBoostInfo {
@@ -153,10 +195,13 @@ export interface PlayerState {
   freeSteps: number
   ability?: AbilityInfo
   equipment: EquippedItem[]
-  quickSlot?: ItemInfo
-  quickSlotQuantity: number
+  quickSlots: QuickSlotInfo[]
+  spells: SpellInfo[]
+  activeSpell: number
+  isOverloaded: boolean
   boosts: ActiveBoostInfo[]
   resistance?: Element
+  poisonTurns: number
 }
 
 export interface EnemyState {
@@ -194,6 +239,7 @@ export interface InventoryEntryState {
   id: number
   item: ItemInfo
   quantity: number
+  mark: ItemMark
 }
 
 export interface GameState {
@@ -233,6 +279,14 @@ export type GameEventType =
   | 'InventoryFull'
   | 'ItemDropped'
   | 'ItemDiscarded'
+  | 'ItemMarked'
+  | 'SpellCast'
+  | 'SpellSelected'
+  | 'SpellLearned'
+  | 'SpellRejected'
+  | 'ManaSiphoned'
+  | 'EnemyPulled'
+  | 'JunkDiscarded'
   | 'ChestOpened'
   | 'MimicRevealed'
   | 'LifeDrained'
@@ -265,7 +319,20 @@ export type GameEventType =
   | 'PlayerScorched'
   | 'EnemyScorched'
   | 'LavaSpread'
+  | 'LavaCooled'
   | 'PlayerPulled'
+  | 'CrystalShattered'
+  | 'EnemyShardHit'
+  | 'PlayerShardHit'
+  | 'CrystalsGrew'
+  | 'CrystalsBurst'
+  | 'PlayerPoisoned'
+  | 'PlayerPoisonDamaged'
+  | 'PlayerDrifted'
+  | 'EnemyDrifted'
+  | 'PlayerBlownAway'
+  | 'EnemySummoned'
+  | 'EnemyWithered'
 
 export interface TilePosition {
   x: number
@@ -292,6 +359,9 @@ export interface GameEvent {
   stat?: StatPoint
   powered?: boolean
   ability?: ClassAbility
+  path?: TilePosition[]
+  spell?: SpellInfo
+  slot?: number
 }
 
 export interface TurnResponse {

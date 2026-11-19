@@ -1,4 +1,4 @@
-﻿namespace Vaultrift.Engine.Items;
+namespace Vaultrift.Engine.Items;
 
 public sealed class InventoryEntry
 {
@@ -14,4 +14,6 @@ public sealed class InventoryEntry
     public ItemInstance Item { get; }
 
     public int Quantity { get; internal set; }
+
+    public ItemMark Mark { get; internal set; }
 }

@@ -116,6 +116,11 @@
   transition: width 0.3s;
 }
 
+.boost-tag.poison-tag {
+  color: #a3ce27;
+  border-color: #a3ce27;
+}
+
 .boost-tag.points-tag {
   border: none;
   font: inherit;
@@ -283,7 +288,7 @@
   pointer-events: none;
   background-image: url('/assets/tilesets/vaultrift-effects.png');
   background-repeat: no-repeat;
-  background-size: 400% 1300%;
+  background-size: 400% 1500%;
   image-rendering: pixelated;
   animation:
     effect-frames 450ms steps(4, jump-none) both,
@@ -295,55 +300,64 @@
 }
 
 .effect-ice {
-  background-position-y: 8.333%;
+  background-position-y: 7.143%;
 }
 
 .effect-lightning {
-  background-position-y: 16.667%;
+  background-position-y: 14.286%;
 }
 
 .effect-wind {
-  background-position-y: 25%;
+  background-position-y: 21.429%;
 }
 
 .effect-arrow {
-  background-position-y: 33.333%;
+  background-position-y: 28.571%;
   animation-duration: 90ms, 90ms;
 }
 
 .effect-sweep {
-  background-position-y: 41.667%;
+  background-position-y: 35.714%;
 }
 
 .effect-thrust {
-  background-position-y: 50%;
+  background-position-y: 42.857%;
   animation-duration: 260ms, 260ms;
 }
 
 .effect-power {
-  background-position-y: 58.333%;
+  background-position-y: 50%;
   animation-duration: 90ms, 90ms;
   filter: drop-shadow(0 0 2px #fee761);
 }
 
 .effect-impact {
-  background-position-y: 66.667%;
+  background-position-y: 57.143%;
 }
 
 .effect-block {
-  background-position-y: 75%;
+  background-position-y: 64.286%;
 }
 
 .effect-fury {
-  background-position-y: 83.333%;
+  background-position-y: 71.429%;
 }
 
 .effect-bulwark {
-  background-position-y: 91.667%;
+  background-position-y: 78.571%;
+}
+
+.effect-shards {
+  background-position-y: 92.857%;
+}
+
+.effect-spores {
+  background-position-y: 100%;
+  animation-duration: 600ms, 600ms;
 }
 
 .effect-smoke {
-  background-position-y: 100%;
+  background-position-y: 85.714%;
 }
 
 :is(.effect-arrow, .effect-wind, .effect-sweep, .effect-thrust, .effect-power).toward-up {
@@ -409,7 +423,7 @@
 .terrain {
   background-image: url('/assets/tilesets/vaultrift-terrain.png');
   background-repeat: no-repeat;
-  background-size: 200% 200%;
+  background-size: 200% 500%;
   image-rendering: pixelated;
   animation: terrain-flow 1.2s linear infinite;
 }
@@ -419,8 +433,38 @@
 }
 
 .terrain-water {
-  background-position-y: 100%;
+  background-position-y: 25%;
   opacity: 0.85;
+}
+
+.terrain-crystal {
+  background-position-y: 50%;
+  animation-duration: 2.4s;
+}
+
+.terrain-spores {
+  background-position-y: 75%;
+  animation-duration: 1.8s;
+}
+
+.terrain-current-up,
+.terrain-current-down,
+.terrain-current-left,
+.terrain-current-right {
+  background-position-y: 100%;
+  animation-duration: 0.6s;
+}
+
+.terrain-current-up {
+  transform: rotate(-90deg);
+}
+
+.terrain-current-down {
+  transform: rotate(90deg);
+}
+
+.terrain-current-left {
+  transform: scaleX(-1);
 }
 
 @keyframes terrain-flow {
@@ -675,6 +719,15 @@
   font-weight: 600;
 }
 
+.item-kind {
+  margin-bottom: 0.15rem;
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
 .equipped-tag {
   font-size: 0.8rem;
   font-weight: 600;
@@ -732,6 +785,11 @@
   flex-direction: column;
   align-items: center;
   gap: 0.75rem;
+}
+
+.quick-slots {
+  display: flex;
+  gap: 0.5rem;
 }
 
 .use {
@@ -825,7 +883,7 @@
 .class-select {
   width: 100%;
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(10.5rem, 1fr));
   column-gap: 1rem;
   row-gap: 1rem;
 }
@@ -908,6 +966,10 @@
   padding: 1rem;
   border-radius: 12px;
   background: var(--bg);
+}
+
+.inventory-screen > * {
+  flex-shrink: 0;
 }
 
 .inventory-header {
@@ -1004,6 +1066,92 @@
   opacity: 0.4;
 }
 
+.hero.status-overload {
+  filter: drop-shadow(0 0 2px #c37fd4) drop-shadow(0 0 4px #9b4ca3);
+}
+
+.effect-overload {
+  background-position-y: 78.571%;
+  filter: hue-rotate(150deg) saturate(1.4);
+}
+
+.spell-bar {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.4rem;
+}
+
+.spell {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.2rem 0.55rem 0.2rem 0.35rem;
+  font-size: 0.8rem;
+  border-color: color-mix(in srgb, var(--element) 55%, transparent);
+}
+
+.spell.active {
+  border-color: var(--element);
+  box-shadow: 0 0 0 1px var(--element), 0 0 8px color-mix(in srgb, var(--element) 60%, transparent);
+}
+
+.spell.too-costly {
+  opacity: 0.55;
+}
+
+.spell-key {
+  min-width: 1rem;
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: var(--muted);
+}
+
+.spell-icon {
+  width: 1rem;
+  height: 1rem;
+}
+
+.spell-cost {
+  font-weight: 700;
+  color: #2ce8f5;
+}
+
+.spell-bar.overloaded .spell-cost {
+  color: #c37fd4;
+}
+
+.quick-slot-picker {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+.quick-slot-picker > .label {
+  font-size: 0.75rem;
+}
+
+.quick-slot-picker > button {
+  flex: 1;
+  padding-inline: 0.4rem;
+  font-size: 0.8rem;
+}
+
+.quick-slot-picker > button.active {
+  color: var(--bg);
+  background: var(--accent);
+  border-color: var(--accent);
+}
+
+.hero.poisoned {
+  filter: drop-shadow(0 0 2px #a3ce27) sepia(0.4) hue-rotate(40deg);
+}
+
+.hero.poisoned.status-fury,
+.hero.poisoned.status-bulwark {
+  filter: drop-shadow(0 0 2px #a3ce27) drop-shadow(0 0 4px #a3ce27);
+}
+
 .held-weapon {
   position: absolute;
   left: 62%;
@@ -1049,6 +1197,115 @@
   bottom: 1px;
   font-size: 0.7rem;
   font-weight: 600;
+}
+
+.slot-mark {
+  position: absolute;
+  left: 2px;
+  top: 2px;
+  width: 0.8rem;
+  height: 0.8rem;
+  display: flex;
+}
+
+.mark-icon {
+  width: 100%;
+  height: 100%;
+}
+
+.mark-favorite {
+  color: #fee761;
+}
+
+.mark-junk {
+  color: #e86a5c;
+}
+
+.backpack-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem 0.6rem;
+}
+
+.sort-control {
+  display: inline-flex;
+  margin-left: auto;
+  border: 1px solid var(--muted);
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.sort-option {
+  padding: 0.15rem 0.55rem;
+  font-size: 0.78rem;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: var(--muted);
+}
+
+.sort-option + .sort-option {
+  border-left: 1px solid var(--muted);
+}
+
+.sort-option.active {
+  color: var(--bg);
+  background: var(--accent);
+}
+
+.junk-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.15rem 0.55rem;
+  font-size: 0.78rem;
+  color: #e86a5c;
+  border-color: #e86a5c;
+}
+
+.junk-button .mark-icon {
+  width: 0.8rem;
+  height: 0.8rem;
+}
+
+.junk-button.confirming {
+  color: #ffffff;
+  background: var(--danger);
+  border-color: var(--danger);
+}
+
+.item-title {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.mark-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.05rem 0.45rem;
+  font-size: 0.72rem;
+  color: var(--muted);
+  border-color: color-mix(in srgb, var(--muted) 50%, transparent);
+  border-radius: 999px;
+}
+
+.mark-toggle .mark-icon {
+  width: 0.75rem;
+  height: 0.75rem;
+}
+
+.mark-toggle.mark-favorite.active {
+  color: #fee761;
+  border-color: #fee761;
+}
+
+.mark-toggle.mark-junk.active {
+  color: #e86a5c;
+  border-color: #e86a5c;
 }
 
 .slot-duplicate {
@@ -1106,6 +1363,7 @@
 .item-details {
   min-height: 4.5rem;
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 0.75rem;
   padding: 0.75rem;
@@ -1119,7 +1377,9 @@
 }
 
 .item-details-text {
-  flex: 1;
+  flex: 1 1 14rem;
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 
 .item-description {
@@ -1151,6 +1411,15 @@
 
   .backpack-grid {
     grid-template-columns: repeat(6, minmax(0, 1fr));
+  }
+
+  .item-actions {
+    flex: 1 1 100%;
+    flex-direction: row;
+  }
+
+  .item-actions > * {
+    flex: 1;
   }
 }
 

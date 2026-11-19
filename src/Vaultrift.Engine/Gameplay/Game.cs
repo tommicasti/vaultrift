@@ -172,22 +172,29 @@ public sealed partial class Game
 
     public TurnResult UseItem(int entryId)
     {
-        var item = Player.Inventory.Find(entryId)?.Item;
-        return ResolveUse(item, Player.Use(entryId));
+        var entry = Player.Inventory.Find(entryId);
+
+        if (entry?.Item.Definition is ScrollDefinition scroll)
+            return ReadScroll(entry, scroll);
+
+        return ResolveUse(entry?.Item, Player.Use(entryId));
     }
 
-    public TurnResult UseQuickSlot()
+    public TurnResult UseQuickSlot(int slot = 0)
     {
-        var item = Player.QuickSlot is { } potion ? new ItemInstance(potion) : null;
-        return ResolveUse(item, Player.UseQuickSlot());
+        if (Player.QuickSlotEntry(slot) is { Item.Definition: ScrollDefinition } scrollEntry)
+            return UseItem(scrollEntry.Id);
+
+        var item = Player.QuickSlots.ElementAtOrDefault(slot) is { } definition ? new ItemInstance(definition) : null;
+        return ResolveUse(item, Player.UseQuickSlot(slot));
     }
 
-    public TurnResult AssignQuickSlot(int entryId)
+    public TurnResult AssignQuickSlot(int entryId, int slot = 0)
     {
         var item = Player.Inventory.Find(entryId)?.Item.Definition;
 
-        GameEvent outcome = Player.AssignQuickSlot(entryId)
-            ? new QuickSlotAssigned(item!)
+        GameEvent outcome = Player.AssignQuickSlot(entryId, slot)
+            ? new QuickSlotAssigned(item!, slot)
             : new UseRejected(item is null ? UseResult.ItemNotFound : UseResult.NotUsable);
 
         return new TurnResult(TurnPassed: false, [outcome]);
@@ -228,9 +235,13 @@ public sealed partial class Game
     private void EndTurn(List<GameEvent> events)
     {
         _stepsThisTurn = 0;
+        CoolLava(events);
         EnemiesAct(events);
+        DriftCreatures(events);
         BurnEnemies(events);
         ScorchCreatures(events);
+        BreatheSpores(events);
+        SufferPoison(events);
         AnnounceBossDefeat(events);
         TurnNumber++;
 
@@ -252,6 +263,12 @@ public sealed partial class Game
     {
         events.Add(new EnemyDefeated(enemy.Id));
 
+        if (enemy.Kind.Power == BossPower.SummonMinions)
+            WitherMinions(enemy, events);
+
+        if (enemy.IsSummoned)
+            return;
+
         var experience = Progression.ExperienceFor(enemy, Player.EffectAmount(EffectKind.Wisdom));
         var levelBefore = Player.Level;
         events.Add(new ExperienceGained(experience));
@@ -264,6 +281,8 @@ public sealed partial class Game
         if (Player.FuryTurns > 0)
             Player.FuryTurns += Player.EffectAmount(EffectKind.FuryExtension);
 
+        SiphonMana(events);
+
         DropLoot(enemy, events);
     }
 
@@ -274,6 +293,7 @@ public sealed partial class Game
         Player.Facing = Direction.Down;
         Player.RestoreFullHealth();
         Player.RestoreFullMana();
+        Player.PoisonTurns = 0;
         events.Add(new FloorDescended(FloorNumber, Player.Position));
     }
 
@@ -313,6 +333,7 @@ public sealed partial class Game
         Stairs = floor.Stairs;
         Biome = floor.Biome;
         LoadChests(floor);
+        _coolingLava.Clear();
         FloorNumber = number;
         _bossDefeatAnnounced = false;
     }
@@ -368,7 +389,7 @@ public sealed partial class Game
 
     private void EnemiesAct(List<GameEvent> events)
     {
-        foreach (var enemy in _enemies)
+        foreach (var enemy in _enemies.ToList())
         {
             if (Player.IsDead)
                 break;
@@ -477,6 +498,8 @@ public sealed partial class Game
         Deaths++;
         events.Add(new PlayerDefeated());
 
+        DismissMinions();
+
         foreach (var enemy in _enemies.Where(enemy => !enemy.IsDead))
             enemy.ReturnToStart();
 
@@ -485,7 +508,7 @@ public sealed partial class Game
         Player.RestoreFullHealth();
         Player.RestoreFullMana();
         Player.ClearBoosts();
-        Player.ClearAbilityStatuses();
+        Player.ClearStatuses();
         events.Add(new PlayerRespawned(_playerStart));
     }
 

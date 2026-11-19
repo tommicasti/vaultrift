@@ -119,6 +119,9 @@ function tileClass(symbol: string | undefined): string {
 
   if (symbol === 'L') return 'tile floor lava'
   if (symbol === '~') return 'tile floor water'
+  if (symbol === 'C') return 'tile floor obstacle crystal'
+  if (symbol === 'S') return 'tile floor spores'
+  if ('^v<>'.includes(symbol)) return 'tile floor current'
 
   return symbol === 'o' ? 'tile floor obstacle' : 'tile floor'
 }

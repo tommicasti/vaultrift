@@ -107,8 +107,7 @@ public static class FloorGenerator
             CarveCorridor(tiles, rooms[index - 2].Center, rooms[index].Center, random);
 
         var startRoom = rooms[0];
-        var distances = WalkingDistances(new DungeonMap(tiles), startRoom.Center);
-        var bossRoom = rooms.Skip(1).MaxBy(room => distances[room.Center])!;
+        var bossRoom = random.Pick(rooms.Skip(1).ToList());
 
         if (obstacleDensity > 0)
             PlaceObstacles(tiles, rooms, startRoom, bossRoom, obstacleDensity, random);
@@ -171,6 +170,7 @@ public static class FloorGenerator
             bossRoom.Center,
             bossRoom.Center with { X = bossRoom.Center.X - 1 }
         };
+        var walkable = CountReachable(tiles, startRoom.Center);
 
         foreach (var room in rooms.Where(room => room != startRoom))
         {
@@ -179,20 +179,94 @@ public static class FloorGenerator
                 .Where(tile => tile.Y > room.Y && tile.Y < room.Y + room.Height - 1)
                 .Where(tile => tiles[tile.Y, tile.X] == TileType.Floor && !reserved.Contains(tile))
                 .ToHashSet();
-            var budget = (int)Math.Round(interior.Count * terrain.Density);
 
-            while (budget > 0 && interior.Count > 0)
+            switch (terrain.Shape)
             {
-                var pool = GrowPool(random.Pick(interior.ToList()), interior, random.Next(TerrainSpec.MinPoolSize, TerrainSpec.MaxPoolSize + 1), random);
-
-                foreach (var tile in pool.Take(budget))
-                {
-                    tiles[tile.Y, tile.X] = terrain.Tile;
-                    interior.Remove(tile);
-                    budget--;
-                }
+                case TerrainShape.Pool:
+                    PlacePools(tiles, interior, terrain, random);
+                    break;
+                case TerrainShape.Cluster:
+                    walkable = PlaceClusters(tiles, interior, terrain, startRoom.Center, walkable, random);
+                    break;
+                case TerrainShape.Stream:
+                    PlaceStream(tiles, room, interior, terrain, random);
+                    break;
+                default:
+                    throw new ArgumentOutOfRangeException(nameof(terrain), terrain.Shape, "Unknown terrain shape.");
             }
         }
+    }
+
+    private static void PlacePools(TileType[,] tiles, HashSet<Position> interior, TerrainSpec terrain, IRandom random)
+    {
+        var budget = (int)Math.Round(interior.Count * terrain.Density);
+
+        while (budget > 0 && interior.Count > 0)
+        {
+            var pool = GrowPool(random.Pick(interior.ToList()), interior, random.Next(TerrainSpec.MinPoolSize, TerrainSpec.MaxPoolSize + 1), random);
+
+            foreach (var tile in pool.Take(budget))
+            {
+                tiles[tile.Y, tile.X] = terrain.Tile;
+                interior.Remove(tile);
+                budget--;
+            }
+        }
+    }
+
+    private static int PlaceClusters(
+        TileType[,] tiles,
+        HashSet<Position> interior,
+        TerrainSpec terrain,
+        Position start,
+        int walkable,
+        IRandom random)
+    {
+        var budget = (int)Math.Round(interior.Count * terrain.Density);
+
+        while (budget > 0 && interior.Count > 0)
+        {
+            var cluster = GrowPool(random.Pick(interior.ToList()), interior, random.Next(TerrainSpec.MinClusterSize, TerrainSpec.MaxClusterSize + 1), random);
+
+            foreach (var tile in cluster.Take(budget))
+            {
+                interior.Remove(tile);
+                budget--;
+                tiles[tile.Y, tile.X] = terrain.Tile;
+
+                if (CountReachable(tiles, start) == walkable - 1)
+                    walkable--;
+                else
+                    tiles[tile.Y, tile.X] = TileType.Floor;
+            }
+        }
+
+        return walkable;
+    }
+
+    private static void PlaceStream(TileType[,] tiles, Room room, HashSet<Position> interior, TerrainSpec terrain, IRandom random)
+    {
+        if (random.NextDouble() >= terrain.Density)
+            return;
+
+        var horizontal = random.NextDouble() < 0.5;
+        var lines = interior
+            .GroupBy(tile => horizontal ? tile.Y : tile.X)
+            .Select(line => line.ToList())
+            .Where(line => line.Count >= TerrainSpec.MinStreamLength)
+            .ToList();
+
+        if (lines.Count == 0)
+            return;
+
+        var forward = random.NextDouble() < 0.5;
+        var direction = horizontal
+            ? forward ? Direction.Right : Direction.Left
+            : forward ? Direction.Down : Direction.Up;
+        var current = Tiles.Current(direction);
+
+        foreach (var tile in random.Pick(lines))
+            tiles[tile.Y, tile.X] = current;
     }
 
     private static List<Position> GrowPool(Position seed, HashSet<Position> allowed, int size, IRandom random)
@@ -243,7 +317,7 @@ public static class FloorGenerator
                 if (next.X < 0 || next.Y < 0 || next.X >= width || next.Y >= height)
                     continue;
 
-                if (visited[next.Y, next.X] || tiles[next.Y, next.X] != TileType.Floor)
+                if (visited[next.Y, next.X] || !Tiles.IsWalkable(tiles[next.Y, next.X]))
                     continue;
 
                 visited[next.Y, next.X] = true;

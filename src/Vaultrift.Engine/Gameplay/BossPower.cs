@@ -4,5 +4,8 @@ public enum BossPower
 {
     None,
     LavaRing,
-    TentaclePull
+    TentaclePull,
+    CrystalBloom,
+    SummonMinions,
+    Gust
 }
