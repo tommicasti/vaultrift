@@ -15,12 +15,12 @@ export interface SpriteRef {
 export const sheets = {
   dungeon: { src: '/assets/tilesets/tiny-dungeon.png', columns: 12, rows: 11 },
   town: { src: '/assets/tilesets/tiny-town.png', columns: 12, rows: 11 },
-  items: { src: '/assets/tilesets/vaultrift-items.png', columns: 8, rows: 9 },
+  items: { src: '/assets/tilesets/vaultrift-items.png', columns: 8, rows: 10 },
   world: { src: '/assets/tilesets/vaultrift-world.png', columns: 8, rows: 1 },
   heroes: { src: '/assets/tilesets/vaultrift-heroes.png', columns: 8, rows: 1 },
-  vault: { src: '/assets/tilesets/vaultrift-dungeon.png', columns: 8, rows: 2 },
+  vault: { src: '/assets/tilesets/vaultrift-dungeon.png', columns: 8, rows: 5 },
   outfits: { src: '/assets/tilesets/vaultrift-outfits.png', columns: 8, rows: 6 },
-  biomes: { src: '/assets/tilesets/vaultrift-biomes.png', columns: 8, rows: 6 },
+  biomes: { src: '/assets/tilesets/vaultrift-biomes.png', columns: 8, rows: 11 },
 } satisfies Record<string, SpriteSheet>
 
 const classSprites: Record<string, SpriteRef> = {
@@ -51,6 +51,22 @@ const enemySprites: Record<string, SpriteRef> = {
   'frost-yeti': { sheet: sheets.vault, index: 4 },
   'black-knight': { sheet: sheets.vault, index: 5 },
   mimic: { sheet: sheets.dungeon, index: 92 },
+  salamander: { sheet: sheets.vault, index: 16 },
+  'fire-imp': { sheet: sheets.vault, index: 17 },
+  crab: { sheet: sheets.vault, index: 18 },
+  eel: { sheet: sheets.vault, index: 19 },
+  'magma-golem': { sheet: sheets.vault, index: 20 },
+  kraken: { sheet: sheets.vault, index: 21 },
+  'gem-beetle': { sheet: sheets.vault, index: 22 },
+  shardling: { sheet: sheets.vault, index: 23 },
+  'crystal-golem': { sheet: sheets.vault, index: 24 },
+  myconid: { sheet: sheets.vault, index: 25 },
+  puffball: { sheet: sheets.vault, index: 26 },
+  sporeling: { sheet: sheets.vault, index: 27 },
+  'mushroom-king': { sheet: sheets.vault, index: 28 },
+  harpy: { sheet: sheets.vault, index: 29 },
+  gargoyle: { sheet: sheets.vault, index: 30 },
+  'storm-griffin': { sheet: sheets.vault, index: 31 },
 }
 
 const defaultEnemySprite = enemySprites.rat
@@ -106,6 +122,10 @@ export function outfitSprite(classId: string | undefined, bodyItemId: string | u
 export const crownSprite = 29
 
 export const chestSprite = { sheet: sheets.dungeon, index: 89 }
+
+export const merchantSprite = { sheet: sheets.vault, index: 32 }
+
+export const coinSprite = { sheet: sheets.items, index: 78 }
 
 export const stairsSprites = {
   open: 8,

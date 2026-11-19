@@ -70,15 +70,40 @@ public class ItemEffectTests
     }
 
     [Fact]
-    public void BowRange_LetsArrowsFlyFarther()
+    public void DoubleShot_SometimesLoosesASecondArrow()
     {
-        var player = NewPlayer(TestGear.Ring(EffectKind.BowRange, 2));
+        var player = NewPlayer(TestGear.Ring(EffectKind.DoubleShot, 15));
         player.Give(TestGear.Bow);
-        var game = NewGame(player, [Dummy(1, 1 + Game.BowRange + 2)]);
+        var game = NewGame(player, [Dummy(1, 6)], Enumerable.Repeat(Succeeds, 6).ToArray());
 
         var result = game.Attack();
 
-        Assert.Single(result.Events.OfType<PlayerAttackedEnemy>());
+        Assert.Equal(2, result.Events.OfType<ArrowFlew>().Count());
+        Assert.Equal(2, result.Events.OfType<PlayerAttackedEnemy>().Count());
+    }
+
+    [Fact]
+    public void DoubleShot_WhenTheRollFails_LoosesASingleArrow()
+    {
+        var player = NewPlayer(TestGear.Ring(EffectKind.DoubleShot, 15));
+        player.Give(TestGear.Bow);
+        var game = NewGame(player, [Dummy(1, 6)]);
+
+        var result = game.Attack();
+
+        Assert.Single(result.Events.OfType<ArrowFlew>());
+    }
+
+    [Fact]
+    public void WithoutDoubleShot_TheBowNeverRollsForIt()
+    {
+        var player = NewPlayer();
+        player.Give(TestGear.Bow);
+        var game = NewGame(player, [Dummy(1, 6)], Enumerable.Repeat(Succeeds, 6).ToArray());
+
+        var result = game.Attack();
+
+        Assert.Single(result.Events.OfType<ArrowFlew>());
     }
 
     [Fact]

@@ -60,7 +60,7 @@ public sealed record ItemUsed(ItemInstance Item) : GameEvent;
 
 public sealed record UseRejected(UseResult Reason) : GameEvent;
 
-public sealed record QuickSlotAssigned(ItemDefinition Item) : GameEvent;
+public sealed record QuickSlotAssigned(ItemDefinition Item, int Slot = 0) : GameEvent;
 
 public sealed record BoostExpired(ItemDefinition Item) : GameEvent;
 
@@ -101,3 +101,69 @@ public sealed record StairsOpened(Position At) : GameEvent;
 public sealed record FloorDescended(int Floor, Position At) : GameEvent;
 
 public sealed record VaultConquered : GameEvent;
+
+public sealed record PlayerScorched(int Damage) : GameEvent;
+
+public sealed record EnemyScorched(int EnemyId, int Damage) : GameEvent;
+
+public sealed record LavaSpread(int EnemyId, IReadOnlyList<Position> Tiles) : GameEvent;
+
+public sealed record LavaCooled(IReadOnlyList<Position> Tiles) : GameEvent;
+
+public sealed record PlayerPulled(int EnemyId, Position To) : GameEvent;
+
+public sealed record CrystalShattered(Position At) : GameEvent;
+
+public sealed record EnemyShardHit(int EnemyId, int Damage) : GameEvent;
+
+public sealed record PlayerShardHit(int Damage) : GameEvent;
+
+public sealed record CrystalsGrew(int EnemyId, IReadOnlyList<Position> Tiles) : GameEvent;
+
+public sealed record CrystalsBurst(int EnemyId, IReadOnlyList<Position> Tiles) : GameEvent;
+
+public sealed record PlayerPoisoned(int Turns) : GameEvent;
+
+public sealed record PlayerPoisonDamaged(int Damage) : GameEvent;
+
+public sealed record PlayerDrifted(Position To) : GameEvent;
+
+public sealed record EnemyDrifted(int EnemyId, Position To) : GameEvent;
+
+public sealed record PlayerBlownAway(int EnemyId, Position To, int Damage) : GameEvent;
+
+public sealed record EnemySummoned(int EnemyId, int MinionId, Position At) : GameEvent;
+
+public sealed record EnemyWithered(int EnemyId) : GameEvent;
+
+public sealed record ItemMarked(ItemInstance Item, ItemMark Mark) : GameEvent;
+
+public sealed record JunkDiscarded(int Count) : GameEvent;
+
+public sealed record SpellCast(SpellDefinition Spell, IReadOnlyList<Position> Path, IReadOnlyList<Position> Area) : GameEvent;
+
+public sealed record SpellSelected(int Index) : GameEvent;
+
+public sealed record SpellLearned(SpellDefinition Spell, int Key, SpellDefinition? Replaced = null) : GameEvent;
+
+public sealed record SpellRejected(SpellResult Reason) : GameEvent;
+
+public sealed record ManaSiphoned(int Amount) : GameEvent;
+
+public sealed record EnemyPulled(int EnemyId, Position To) : GameEvent;
+
+public sealed record CoinsGained(int Amount) : GameEvent;
+
+public sealed record CoinsLost(int Amount) : GameEvent;
+
+public sealed record MerchantGreeted : GameEvent;
+
+public sealed record ItemBought(ItemInstance Item, int Price) : GameEvent;
+
+public sealed record ItemSold(ItemInstance Item, int Price) : GameEvent;
+
+public sealed record JunkSold(int Count, int Price) : GameEvent;
+
+public sealed record BackpackExpanded(int Capacity, int Price) : GameEvent;
+
+public sealed record TradeRejected(TradeResult Reason) : GameEvent;

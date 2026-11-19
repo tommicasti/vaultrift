@@ -33,6 +33,7 @@ public sealed partial class Game
     private bool CanHoldDrop(Position position) =>
         Map.IsWalkable(position) &&
         !IsChest(position) &&
+        !IsMerchant(position) &&
         position != Player.Position &&
         position != Stairs &&
         !_floorItems.ContainsKey(position);

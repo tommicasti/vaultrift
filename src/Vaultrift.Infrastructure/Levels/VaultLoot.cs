@@ -12,6 +12,8 @@ public sealed class VaultLoot : ILootTable
     public const double BossClassModShare = 0.25;
     public const double OwnClassModShare = 0.70;
     public const double ChestPotionShare = 0.20;
+    public const double ScrollShare = 0.25;
+    public const double EpicScrollShare = 0.25;
 
     private static readonly string[] Potions =
         ["potion-healing", "potion-greater-healing", "potion-mana", "potion-greater-mana", "potion-strength", "potion-protection"];
@@ -75,7 +77,7 @@ public sealed class VaultLoot : ILootTable
         ArgumentNullException.ThrowIfNull(context);
 
         if (_random.NextDouble() < ChestPotionShare)
-            return new ItemInstance(ItemCatalog.Get(_random.Pick(Potions)));
+            return RollConsumable();
 
         var rarity = Roll(ChestRarityChance);
 
@@ -105,7 +107,7 @@ public sealed class VaultLoot : ILootTable
             return null;
 
         if (!KeepsTreasure(enemy) && _random.NextDouble() < PotionShare)
-            return new ItemInstance(ItemCatalog.Get(_random.Pick(Potions)));
+            return RollConsumable();
 
         var rarity = Roll(drop => DropRarityChance(enemy, drop));
         var share = KeepsTreasure(enemy) ? BossClassModShare : ClassModShare;
@@ -114,6 +116,15 @@ public sealed class VaultLoot : ILootTable
             return new ItemInstance(classMod);
 
         return RollEquipment(rarity);
+    }
+
+    private ItemInstance RollConsumable()
+    {
+        if (_random.NextDouble() >= ScrollShare)
+            return new ItemInstance(ItemCatalog.Get(_random.Pick(Potions)));
+
+        var rarity = _random.NextDouble() < EpicScrollShare ? Rarity.Epic : Rarity.Rare;
+        return new ItemInstance(_random.Pick(ItemCatalog.Scrolls.Where(scroll => scroll.Rarity == rarity).ToList()));
     }
 
     private ItemInstance RollEquipment(Rarity rarity)

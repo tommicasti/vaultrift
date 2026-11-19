@@ -1,4 +1,6 @@
-﻿using Vaultrift.Infrastructure.Content;
+using Vaultrift.Engine.World;
+using Vaultrift.Infrastructure.Content;
+using Vaultrift.Infrastructure.Levels;
 
 namespace Vaultrift.Infrastructure.Tests.Content;
 
@@ -38,6 +40,23 @@ public class BiomeCatalogTests
     [Fact]
     public void Get_UnknownId_Throws()
     {
-        Assert.Throws<KeyNotFoundException>(() => BiomeCatalog.Get("volcano"));
+        Assert.Throws<KeyNotFoundException>(() => BiomeCatalog.Get("atlantis"));
+    }
+
+    [Theory]
+    [InlineData("volcano", TileType.Lava)]
+    [InlineData("ruins", TileType.Water)]
+    [InlineData("mines", TileType.Crystal)]
+    [InlineData("fungal", TileType.Spores)]
+    public void TerrainBiomes_BringTheirOwnTerrain(string biomeId, TileType tile)
+    {
+        Assert.Equal(tile, BiomeCatalog.Get(biomeId).Terrain?.Tile);
+    }
+
+    [Fact]
+    public void CrystalsGrowInClusters_AndTheSkyBlowsInStreams()
+    {
+        Assert.Equal(TerrainShape.Cluster, BiomeCatalog.Get("mines").Terrain?.Shape);
+        Assert.Equal(TerrainShape.Stream, BiomeCatalog.Get("sky").Terrain?.Shape);
     }
 }

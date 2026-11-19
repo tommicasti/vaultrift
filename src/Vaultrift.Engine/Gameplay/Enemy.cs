@@ -1,4 +1,4 @@
-﻿using Vaultrift.Engine.Combat;
+using Vaultrift.Engine.Combat;
 using Vaultrift.Engine.Items;
 using Vaultrift.Engine.World;
 
@@ -49,11 +49,18 @@ public sealed class Enemy : Creature
 
     public bool IsFrozen => FrozenTurnsLeft > 0;
 
+    public int PowerCharge { get; internal set; }
+
+    public int? SummonerId { get; init; }
+
+    public bool IsSummoned => SummonerId is not null;
+
     internal void ReturnToStart()
     {
         Position = StartPosition;
         IsAwake = false;
         IsResting = false;
+        PowerCharge = 0;
         ClearStatuses();
         RestoreFullHealth();
     }

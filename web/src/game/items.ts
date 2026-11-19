@@ -1,5 +1,7 @@
 import type {
   ClassAbility,
+  SpellInfo,
+  SpellShape,
   EffectKind,
   Element,
   EquipmentSlot,
@@ -25,6 +27,22 @@ const categorySprites: Record<ItemCategory, SpriteRef> = {
   Cloak: { sheet: sheets.items, index: 30 },
   ClassMod: { sheet: sheets.items, index: 43 },
   Potion: { sheet: sheets.dungeon, index: 115 },
+  Staff: { sheet: sheets.items, index: 66 },
+  Scroll: { sheet: sheets.items, index: 73 },
+}
+
+const elementStaffSprites: Record<Element, number> = {
+  Fire: 66,
+  Ice: 67,
+  Lightning: 68,
+  Wind: 69,
+}
+
+const elementScrollSprites: Record<Element, number> = {
+  Fire: 73,
+  Ice: 74,
+  Lightning: 75,
+  Wind: 76,
 }
 
 const potionSprites: Record<string, SpriteRef> = {
@@ -41,6 +59,7 @@ const classModSprites: Record<string, number> = {
   berserker: 44,
   ranger: 45,
   rogue: 46,
+  mage: 77,
 }
 
 const uniqueSprites: Record<string, number> = {
@@ -88,11 +107,16 @@ const uniqueSprites: Record<string, number> = {
   'shield-dawnwall': 62,
   'shield-mirrorwall': 63,
   'shield-stormguard': 64,
+  'staff-riftheart': 70,
+  'staff-everflame': 71,
+  'staff-whirlwind': 72,
 }
 
 export function itemSprite(item: ItemInfo): SpriteRef {
   if (item.id in uniqueSprites) return { sheet: sheets.items, index: uniqueSprites[item.id] }
   if (item.id in potionSprites) return potionSprites[item.id]
+  if (item.category === 'Staff' && item.spell) return { sheet: sheets.items, index: elementStaffSprites[item.spell.element] }
+  if (item.category === 'Scroll' && item.spell) return { sheet: sheets.items, index: elementScrollSprites[item.spell.element] }
   if (item.classId !== undefined && item.classId in classModSprites)
     return { sheet: sheets.items, index: classModSprites[item.classId] }
   return categorySprites[item.category]
@@ -133,11 +157,11 @@ const effectDescriptions: Record<EffectKind, (amount: number) => string> = {
   WindBoost: amount => `+${amount}% wind chance, pushes two tiles`,
   LifeSteal: amount => `Heals ${amount}% of the damage you deal`,
   Thorns: amount => `Attackers take ${amount} damage`,
-  BowRange: amount => `+${amount} bow range`,
+  DoubleShot: amount => `${amount}% chance to loose a second arrow`,
   Luck: amount => `+${amount}% chance of loot`,
   Wisdom: amount => `+${amount}% experience`,
   ManaFlow: amount => `+${amount} mana every regeneration`,
-  Haste: amount => `Abilities recharge ${amount} ${amount === 1 ? 'turn' : 'turns'} sooner`,
+  Haste: amount => `Abilities recharge ${amount}% faster (40% at most)`,
   Regeneration: amount => `Regenerate ${amount} health every turn`,
   BulwarkExtension: amount => `Bulwark lasts ${amount} more ${amount === 1 ? 'turn' : 'turns'}`,
   BlockReflect: () => 'Blocked blows hit the attacker',
@@ -145,10 +169,12 @@ const effectDescriptions: Record<EffectKind, (amount: number) => string> = {
   FuryRegeneration: amount => `+${amount} regeneration during Fury`,
   FuryExtension: amount => `Every kill during Fury extends it by ${amount}`,
   FarShotCritical: amount => `+${amount}% critical from 4 or more tiles`,
-  PowerShotMastery: () => 'Power Shot recharges twice as fast, element guaranteed',
+  PowerShotMastery: () => 'Power Shot recharges 30% faster, element guaranteed',
   Stealth: amount => `Monsters wake up ${amount} ${amount === 1 ? 'tile' : 'tiles'} later`,
   Ambush: () => 'Strikes from invisibility deal triple damage',
   Phantom: amount => `Invisibility +${amount} turns, kills keep you hidden`,
+  ManaSiphon: amount => `Every kill gives back ${amount} mana`,
+  SpellMastery: amount => `Spells cost 1 less mana, +${amount}% element chance`,
 }
 
 export function describeEffect(effect: ItemEffectInfo): string {
@@ -175,24 +201,53 @@ export function describeElement(item: ItemInfo): string | null {
   return `${capitalize(elementNames[item.element])} · ${item.effectChance}% ${elementEffects[item.element]}`
 }
 
-const weaponTraits: Partial<Record<ItemCategory, string>> = {
-  Sword: 'One-handed · pair it with a shield or a second weapon',
-  Dagger: 'One-handed · pair it with a shield or a second weapon',
-  Axe: 'Two-handed · sweeps the target and both tiles beside it',
-  Bow: 'Two-handed · shoots up to 6 tiles · half damage up close',
-  Spear: 'Two-handed · hits the enemy in front and the one behind it',
-  Shield: 'Off hand · a blocked blow deals no damage',
-}
-
-export function describeWeaponTrait(item: ItemInfo): string | null {
-  return weaponTraits[item.category] ?? null
-}
-
 export const classNames: Record<string, string> = {
   knight: 'Knight',
   berserker: 'Berserker',
   ranger: 'Ranger',
   rogue: 'Rogue',
+  mage: 'Mage',
+}
+
+const classAbilities: Record<string, ClassAbility> = {
+  knight: 'Bulwark',
+  berserker: 'Fury',
+  ranger: 'PowerShot',
+  rogue: 'Invisibility',
+}
+
+export interface ItemKind {
+  name: string
+  hint: string
+}
+
+const twinHint = 'Pair it with a shield or a second weapon'
+
+const itemKinds: Record<Exclude<ItemCategory, 'ClassMod'>, ItemKind> = {
+  Staff: { name: 'Two-handed staff', hint: 'Attack casts the selected spell · 6 tiles · no penalty up close' },
+  Scroll: { name: 'Scroll', hint: 'Put it on F to cast it once, or learn it on a key (2–4) while holding a staff' },
+  Sword: { name: 'One-handed sword', hint: twinHint },
+  Dagger: { name: 'One-handed dagger', hint: twinHint },
+  Axe: { name: 'Two-handed axe', hint: 'Sweeps the target and both tiles beside it' },
+  Bow: { name: 'Two-handed bow', hint: 'Shoots up to 6 tiles · half damage up close' },
+  Spear: { name: 'Two-handed spear', hint: 'Hits the enemy in front and the one behind it' },
+  Shield: { name: 'Shield', hint: 'Goes in the off hand · a blocked blow deals no damage' },
+  Head: { name: 'Helmet', hint: 'Goes in the head slot' },
+  Body: { name: 'Armor', hint: 'Goes in the body slot' },
+  Feet: { name: 'Boots', hint: 'Goes in the feet slot' },
+  Ring: { name: 'Ring', hint: 'You can wear two rings at once' },
+  Cloak: { name: 'Cloak', hint: 'Goes in the cloak slot' },
+  Potion: { name: 'Potion', hint: 'Used up when you drink it' },
+}
+
+export function describeKind(item: ItemInfo): ItemKind {
+  if (item.category !== 'ClassMod') return itemKinds[item.category]
+  const ability = item.classId !== undefined ? classAbilities[item.classId] : undefined
+  const target = ability ? abilityNames[ability] : 'the class ability'
+  return {
+    name: 'Class mod',
+    hint: `One at a time in the class mod slot · strengthens ${target}`,
+  }
 }
 
 export function describeItem(item: ItemInfo): string {
@@ -207,14 +262,39 @@ export const abilityNames: Record<ClassAbility, string> = {
   Fury: 'Fury',
   PowerShot: 'Power Shot',
   Invisibility: 'Invisibility',
+  Overload: 'Overload',
 }
 
 export const abilityDescriptions: Record<ClassAbility, string> = {
   Bulwark: 'For 3 turns every blow is halved, and stopped cold with a shield.',
   Fury: 'For 5 turns your attack rises by half.',
-  PowerShot: 'Double damage arrow that pierces every enemy in a line. Needs a bow.',
+  PowerShot: 'With a bow, a double damage arrow that pierces every enemy in a line. With any other weapon, a double damage blow.',
   Invisibility: 'For 5 turns monsters cannot see you. Your first strike is always critical.',
+  Overload: 'Your next spell costs no mana and its area grows by one tile. A bolt becomes an explosion.',
 }
+
+const shapeDescriptions: Record<SpellShape, (spell: SpellInfo) => string> = {
+  Bolt: () => 'hits the first enemy in line',
+  Burst: spell =>
+    spell.element === 'Wind'
+      ? `whirls on a ${spell.size * 2 + 1}×${spell.size * 2 + 1} area and pulls enemies in`
+      : `explodes on a ${spell.size * 2 + 1}×${spell.size * 2 + 1} area`,
+  Line: spell => `hits the whole row and pushes ${spell.size} tiles`,
+  Chain: spell => `jumps between up to ${spell.size} enemies`,
+  Nova: spell => `strikes every enemy within ${spell.size} ${spell.size === 1 ? 'tile' : 'tiles'} of you`,
+  Storm: spell => `strikes every enemy within ${spell.size} tiles of you`,
+}
+
+export function describeSpell(spell: SpellInfo): string {
+  const cost = spell.manaPercent > 0 ? `${spell.manaCost} mana, or ${spell.manaPercent}% of your max if more` : `${spell.manaCost} mana`
+  return `${spell.name} · ${shapeDescriptions[spell.shape](spell)} · +${spell.power} power · ${cost}`
+}
+
+export const quickSlotKeys = ['Q', 'R', 'F']
+
+export const scrollSlot = 2
+
+export const learnedSpellKeys = [2, 3, 4]
 
 export function capitalize(text: string): string {
   return text.charAt(0).toUpperCase() + text.slice(1)

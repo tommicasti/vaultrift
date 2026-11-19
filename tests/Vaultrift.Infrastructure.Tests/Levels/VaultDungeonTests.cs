@@ -16,6 +16,7 @@ public class VaultDungeonTests
     [InlineData("berserker")]
     [InlineData("ranger")]
     [InlineData("rogue")]
+    [InlineData("mage")]
     public void CreateGame_BuildsAValidGameForEveryClass(string classId)
     {
         var game = VaultDungeon.CreateGame(Seeded(1), ClassCatalog.Find(classId)!);
@@ -24,6 +25,9 @@ public class VaultDungeonTests
         Assert.True(game.Player.Equipment.ContainsKey(EquipmentSlot.MainHand));
         Assert.DoesNotContain(game.Player.Inventory.Entries, entry => entry.Item.Definition is EquipmentDefinition);
         Assert.Equal("potion-healing", game.Player.QuickSlot?.Id);
+
+        if (classId == "mage")
+            Assert.Equal("potion-mana", game.Player.QuickSlots[1]?.Id);
         Assert.Equal(1, game.FloorNumber);
         Assert.Equal(VaultFloors.FloorCount, game.FloorCount);
         Assert.NotNull(game.Biome);
@@ -253,6 +257,74 @@ public class VaultDungeonTests
         }
     }
 
+    [Theory]
+    [InlineData("mines")]
+    [InlineData("fungal")]
+    [InlineData("sky")]
+    public void NewBiomes_ShapeTheirFloorsWithTheirTerrain(string biomeId)
+    {
+        var floors = Enumerable.Range(1, 300)
+            .Select(seed => new VaultFloors(Seeded(seed)))
+            .First(candidate => candidate.Biomes[0].Id == biomeId);
+        var floor = floors.Create(1);
+        var terrain = floors.Biomes[0].Terrain!;
+        var tiles = new List<TileType>();
+
+        for (var y = 0; y < floor.Map.Height; y++)
+        {
+            for (var x = 0; x < floor.Map.Width; x++)
+                tiles.Add(floor.Map.GetTile(new Position(x, y)));
+        }
+
+        if (terrain.Shape == TerrainShape.Stream)
+            Assert.Contains(tiles, tile => Tiles.CurrentDirection(tile) is not null);
+        else
+            Assert.Contains(terrain.Tile, tiles);
+    }
+
+    [Theory]
+    [InlineData(4)]
+    [InlineData(8)]
+    [InlineData(12)]
+    [InlineData(16)]
+    public void EveryFourthFloor_HasAMerchant_SellingForYourClass(int number)
+    {
+        var floor = new VaultFloors(Seeded(number), "mage").Create(number);
+        var merchant = floor.Merchant!;
+
+        Assert.True(floor.Map.IsWalkable(merchant.Position));
+        Assert.InRange(merchant.Offers.Count, 6, 7);
+        Assert.All(merchant.Offers, offer => Assert.True(offer.Price > 0));
+        Assert.All(
+            merchant.Offers.Select(offer => offer.Item.Definition).OfType<GearDefinition>().Where(item => item.ClassId is not null),
+            mod => Assert.Equal("mage", mod.ClassId));
+    }
+
+    [Theory]
+    [InlineData(3)]
+    [InlineData(9)]
+    public void TheMerchant_NeverBlocksTheWay(int seed)
+    {
+        var floors = new VaultFloors(Seeded(seed));
+
+        foreach (var number in new[] { 4, 8, 12, 16 })
+        {
+            var floor = floors.Create(number);
+            var blocked = floor.Chests!.Select(chest => chest.Position).Append(floor.Merchant!.Position).ToHashSet();
+            var reachable = WalkableWithout(floor, blocked);
+
+            Assert.All(floor.Enemies, enemy => Assert.Contains(enemy.Position, reachable));
+            Assert.All(floor.Items, item => Assert.Contains(item.Position, reachable));
+        }
+    }
+
+    [Fact]
+    public void TheLastFloor_HasNoMerchant()
+    {
+        Assert.All(Enumerable.Range(1, 10), seed =>
+            Assert.Null(new VaultFloors(Seeded(seed)).Create(VaultFloors.FloorCount).Merchant));
+    }
+
     [Fact]
     public void AFloor_HidesAtMostOneMimic()
     {
@@ -294,6 +366,26 @@ public class VaultDungeonTests
         Assert.True(VaultFloors.GearRarityChance(Rarity.Legendary, 1) < 0.01);
         Assert.True(VaultFloors.GearRarityChance(Rarity.Legendary, 10) > VaultFloors.GearRarityChance(Rarity.Legendary, 1));
         Assert.InRange(VaultFloors.GearRarityChance(Rarity.Legendary, VaultFloors.FloorCount), 0.0, 0.08);
+    }
+
+    [Theory]
+    [InlineData("volcano", TileType.Lava)]
+    [InlineData("ruins", TileType.Water)]
+    public void TerrainBiomes_FillTheirRoomsWithTerrain_ButNothingSpawnsOnLava(string biomeId, TileType terrain)
+    {
+        var floors = Enumerable.Range(1, 200)
+            .Select(seed => new VaultFloors(Seeded(seed)))
+            .First(candidate => candidate.Biomes[0].Id == biomeId);
+        var floor = floors.Create(1);
+        var terrainTiles = Enumerable.Range(0, floor.Map.Height)
+            .SelectMany(y => Enumerable.Range(0, floor.Map.Width).Select(x => new Position(x, y)))
+            .Where(tile => floor.Map.GetTile(tile) == terrain)
+            .ToList();
+
+        Assert.NotEmpty(terrainTiles);
+        Assert.DoesNotContain(floor.Enemies, enemy => floor.Map.IsLava(enemy.Position));
+        Assert.DoesNotContain(floor.Items, item => floor.Map.IsLava(item.Position));
+        Assert.DoesNotContain(floor.Chests!, chest => floor.Map.IsLava(chest.Position));
     }
 
     [Fact]

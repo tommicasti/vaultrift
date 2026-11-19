@@ -16,7 +16,7 @@ public sealed partial class Game
 
     private void PerformAttack(List<GameEvent> events)
     {
-        if (TryOpenChest(events))
+        if (TryOpenChest(events) || TryShatterCrystal(events))
             return;
 
         BeginAmbush();
@@ -25,27 +25,34 @@ public sealed partial class Game
 
         switch ((weapon?.Definition as WeaponDefinition)?.WeaponType)
         {
+            case WeaponType.Staff when Player.ActiveSpell is not null:
+                CastFromStaff(weapon!, events);
+                break;
             case WeaponType.Bow:
                 Shoot(weapon!, events, powered: false);
+
+                if (RollsDoubleShot())
+                    Shoot(weapon!, events, powered: false);
+
                 break;
             case WeaponType.Axe:
-                Sweep(weapon!, events);
+                Sweep(weapon!, new HitOptions(), events);
                 break;
             case WeaponType.Spear:
-                Thrust(weapon!, events);
+                Thrust(weapon!, new HitOptions(), events);
                 break;
             default:
-                Strike(weapon, Player.CombatStats, glancing: false, events);
+                Strike(weapon, Player.CombatStats, new HitOptions(), events);
                 break;
         }
 
         if (Player.OffHandWeapon is { } offHand)
-            Strike(offHand, Player.OffHandStats, glancing: true, events);
+            Strike(offHand, Player.OffHandStats, new HitOptions(Glancing: true), events);
 
         EndAmbush(events);
     }
 
-    private void Strike(ItemInstance? weapon, Stats stats, bool glancing, List<GameEvent> events)
+    private void Strike(ItemInstance? weapon, Stats stats, HitOptions options, List<GameEvent> events)
     {
         var target = FindLivingEnemyAt(Player.Position.Move(Player.Facing));
 
@@ -57,10 +64,10 @@ public sealed partial class Game
             return;
         }
 
-        Hit(target, weapon, stats, new HitOptions(Glancing: glancing), events);
+        Hit(target, weapon, stats, options, events);
     }
 
-    private void Sweep(ItemInstance weapon, List<GameEvent> events)
+    private void Sweep(ItemInstance weapon, HitOptions options, List<GameEvent> events)
     {
         var center = Player.Position.Move(Player.Facing);
         var sides = Perpendicular(Player.Facing).Select(center.Move).ToList();
@@ -80,13 +87,15 @@ public sealed partial class Game
         }
 
         if (target is not null)
-            Hit(target, weapon, Player.CombatStats, new HitOptions(), events);
+            Hit(target, weapon, Player.CombatStats, options, events);
+
+        var sideOptions = options with { Glancing = true, TriggersElement = false, GuaranteedElement = false };
 
         foreach (var bystander in bystanders.Where(enemy => !enemy.IsDead))
-            Hit(bystander, weapon, Player.CombatStats, new HitOptions(Glancing: true, TriggersElement: false), events);
+            Hit(bystander, weapon, Player.CombatStats, sideOptions, events);
     }
 
-    private void Thrust(ItemInstance weapon, List<GameEvent> events)
+    private void Thrust(ItemInstance weapon, HitOptions options, List<GameEvent> events)
     {
         var front = Player.Position.Move(Player.Facing);
         var behind = front.Move(Player.Facing);
@@ -109,7 +118,7 @@ public sealed partial class Game
         for (var index = 0; index < targets.Count; index++)
         {
             if (!targets[index].IsDead)
-                Hit(targets[index], weapon, Player.CombatStats, new HitOptions(TriggersElement: index == 0), events);
+                Hit(targets[index], weapon, Player.CombatStats, index == 0 ? options : options with { TriggersElement = false, GuaranteedElement = false }, events);
         }
     }
 
@@ -118,7 +127,8 @@ public sealed partial class Game
         var path = new List<Position>();
         var targets = new List<(Enemy Enemy, int Distance)>();
         var position = Player.Position;
-        var range = BowRange + Player.EffectAmount(EffectKind.BowRange);
+        var range = BowRange;
+        Position? crystal = null;
 
         for (var step = 1; step <= range; step++)
         {
@@ -126,7 +136,12 @@ public sealed partial class Game
             var target = FindLivingEnemyAt(position);
 
             if (target is null && (!Map.IsWalkable(position) || IsChest(position)))
+            {
+                if (Map.IsCrystal(position))
+                    crystal = position;
+
                 break;
+            }
 
             path.Add(position);
 
@@ -143,7 +158,11 @@ public sealed partial class Game
 
         if (targets.Count == 0)
         {
-            events.Add(new PlayerAttackedNothing());
+            if (crystal is { } lone)
+                Shatter(lone, events);
+            else
+                events.Add(new PlayerAttackedNothing());
+
             return;
         }
 
@@ -164,6 +183,40 @@ public sealed partial class Game
 
             Hit(target, weapon, FarShotStats(distance), options, events);
         }
+
+        if (crystal is { } pierced)
+            Shatter(pierced, events);
+    }
+
+    private void PowerStrike(List<GameEvent> events)
+    {
+        var weapon = Player.Weapon;
+        var options = new HitOptions(
+            DamageMultiplier: AbilityRules.PowerShotDamageMultiplier,
+            GuaranteedElement: Player.EffectAmount(EffectKind.PowerShotMastery) > 0);
+
+        switch ((weapon?.Definition as WeaponDefinition)?.WeaponType)
+        {
+            case WeaponType.Bow:
+                Shoot(weapon!, events, powered: true);
+                break;
+            case WeaponType.Axe:
+                Sweep(weapon!, options, events);
+                break;
+            case WeaponType.Spear:
+                Thrust(weapon!, options, events);
+                break;
+            default:
+                Strike(weapon, Player.CombatStats, options, events);
+                break;
+        }
+    }
+
+    private bool RollsDoubleShot()
+    {
+        var chance = Player.EffectAmount(EffectKind.DoubleShot);
+
+        return chance > 0 && _random.NextDouble() < chance / 100.0;
     }
 
     private Stats FarShotStats(int distance)
@@ -184,12 +237,12 @@ public sealed partial class Game
         if (options.Glancing && !rolled.Missed)
             rolled = rolled with { Damage = Math.Max(DamageCalculator.MinimumDamage, rolled.Damage / GlancingBlowDivisor) };
 
-        var result = ElementRules.Apply(
+        var result = ChargeInWater(ElementRules.Apply(
             rolled,
             weapon?.Element,
             target.Kind.Weakness,
             target.Kind.Resistance,
-            weapon?.Rarity ?? Rarity.Common);
+            weapon?.Rarity ?? Rarity.Common), target);
 
         target.TakeDamage(result.Damage);
         events.Add(new PlayerAttackedEnemy(target.Id, result));

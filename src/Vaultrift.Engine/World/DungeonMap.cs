@@ -31,7 +31,63 @@ public sealed class DungeonMap
     }
 
     public bool IsWalkable(Position position) =>
-        IsInside(position) && _tiles[position.Y, position.X] == TileType.Floor;
+        IsInside(position) && Tiles.IsWalkable(_tiles[position.Y, position.X]);
+
+    public bool IsLava(Position position) =>
+        IsInside(position) && _tiles[position.Y, position.X] == TileType.Lava;
+
+    public bool IsWater(Position position) =>
+        IsInside(position) && _tiles[position.Y, position.X] == TileType.Water;
+
+    public IReadOnlyList<string> ToRows()
+    {
+        var rows = new List<string>(Height);
+
+        for (var y = 0; y < Height; y++)
+        {
+            var row = new char[Width];
+
+            for (var x = 0; x < Width; x++)
+                row[x] = Symbol(_tiles[y, x]);
+
+            rows.Add(new string(row));
+        }
+
+        return rows;
+    }
+
+    private static char Symbol(TileType tile) => tile switch
+    {
+        TileType.Wall => '#',
+        TileType.Floor => '.',
+        TileType.Obstacle => 'o',
+        TileType.Lava => 'L',
+        TileType.Water => '~',
+        TileType.Crystal => 'C',
+        TileType.Spores => 'S',
+        TileType.CurrentUp => '^',
+        TileType.CurrentDown => 'v',
+        TileType.CurrentLeft => '<',
+        TileType.CurrentRight => '>',
+        _ => throw new ArgumentOutOfRangeException(nameof(tile), tile, "Unknown tile.")
+    };
+
+    public bool IsCrystal(Position position) =>
+        IsInside(position) && _tiles[position.Y, position.X] == TileType.Crystal;
+
+    public bool IsSpores(Position position) =>
+        IsInside(position) && _tiles[position.Y, position.X] == TileType.Spores;
+
+    public Direction? CurrentAt(Position position) =>
+        IsInside(position) ? Tiles.CurrentDirection(_tiles[position.Y, position.X]) : null;
+
+    internal void SetTile(Position position, TileType tile)
+    {
+        if (!IsInside(position))
+            throw new ArgumentOutOfRangeException(nameof(position), position, "The position is outside the map.");
+
+        _tiles[position.Y, position.X] = tile;
+    }
 
     public static DungeonMap Parse(IReadOnlyList<string> rows)
     {
@@ -55,6 +111,14 @@ public sealed class DungeonMap
                     '#' => TileType.Wall,
                     '.' => TileType.Floor,
                     'o' => TileType.Obstacle,
+                    'L' => TileType.Lava,
+                    '~' => TileType.Water,
+                    'C' => TileType.Crystal,
+                    'S' => TileType.Spores,
+                    '^' => TileType.CurrentUp,
+                    'v' => TileType.CurrentDown,
+                    '<' => TileType.CurrentLeft,
+                    '>' => TileType.CurrentRight,
                     var symbol => throw new ArgumentException($"Unknown symbol '{symbol}' at ({x}, {y}).", nameof(rows))
                 };
             }

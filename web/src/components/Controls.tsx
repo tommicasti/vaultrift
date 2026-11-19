@@ -1,22 +1,20 @@
-import type { AbilityInfo, Direction, ItemInfo } from '../api/types'
-import { abilityNames } from '../game/items'
+import type { AbilityInfo, Direction, QuickSlotInfo } from '../api/types'
+import { abilityNames, quickSlotKeys } from '../game/items'
 import { ItemIcon } from './ItemIcon'
 
 interface ControlsProps {
   disabled: boolean
-  quickSlot?: ItemInfo
-  quickSlotQuantity: number
+  quickSlots: QuickSlotInfo[]
   ability?: AbilityInfo
   onMove: (direction: Direction) => void
   onAttack: () => void
-  onUseQuickSlot: () => void
+  onUseQuickSlot: (slot: number) => void
   onUseAbility: () => void
 }
 
 export function Controls({
   disabled,
-  quickSlot,
-  quickSlotQuantity,
+  quickSlots,
   ability,
   onMove,
   onAttack,
@@ -40,10 +38,20 @@ export function Controls({
         </button>
       </div>
       <div className="actions">
-        <button className="use" aria-label="Use quick slot item" disabled={disabled} onClick={onUseQuickSlot}>
-          {quickSlot ? <ItemIcon item={quickSlot} /> : 'Use'}
-          {quickSlot && <span className="slot-quantity">{quickSlotQuantity}</span>}
-        </button>
+        <div className="quick-slots">
+          {quickSlots.map((quickSlot, slot) => (
+          <button
+            key={slot}
+            className="use"
+            aria-label={`Use quick slot ${quickSlotKeys[slot]}`}
+            disabled={disabled}
+            onClick={() => onUseQuickSlot(slot)}
+          >
+            {quickSlot.item ? <ItemIcon item={quickSlot.item} /> : quickSlotKeys[slot]}
+            {quickSlot.item && <span className="slot-quantity">{quickSlot.quantity}</span>}
+          </button>
+          ))}
+        </div>
         {ability && (
           <button
             className={ability.activeTurns > 0 ? 'ability active' : 'ability'}

@@ -2,7 +2,7 @@ import type { CSSProperties, PointerEvent, ReactElement } from 'react'
 import type { Direction, GameState } from '../api/types'
 import { tileArt } from '../game/biomes'
 import type { Effect } from '../game/effects'
-import { chestSprite, sheets, stairsSprites } from '../game/sprites'
+import { chestSprite, merchantSprite, sheets, stairsSprites } from '../game/sprites'
 import { EnemyMarker } from './EnemyMarker'
 import { HeroSprite } from './HeroSprite'
 import { ItemIcon } from './ItemIcon'
@@ -30,6 +30,8 @@ export function Board({ game, viewColumns, viewRows, effects, onAttack }: BoardP
   const enemiesByTile = new Map(game.enemies.map(enemy => [`${enemy.x},${enemy.y}`, enemy]))
   const itemsByTile = new Map(game.floorItems.map(floorItem => [`${floorItem.x},${floorItem.y}`, floorItem.item]))
   const chestTiles = new Set(game.chests.map(chest => `${chest.x},${chest.y}`))
+  const mainHand = game.player.equipment.find(equipped => equipped.slot === 'MainHand')?.item
+  const offHand = game.player.equipment.find(equipped => equipped.slot === 'OffHand')?.item
   const effectsByTile = new Map<string, Effect[]>()
 
   for (const effect of effects) {
@@ -60,6 +62,7 @@ export function Board({ game, viewColumns, viewRows, effects, onAttack }: BoardP
         <div key={`${column},${row}`} className={tileClass(symbol)}>
           {art && <Sprite sheet={sheets.biomes} index={art.base} className={art.deep ? 'tile-art deep' : 'tile-art'} />}
           {art?.overlay !== undefined && <Sprite sheet={sheets.biomes} index={art.overlay} className="tile-art" />}
+          {art?.terrain && <span className={`tile-art terrain terrain-${art.terrain}`} aria-hidden="true" />}
           {stairs && (
             <Sprite
               sheet={sheets.vault}
@@ -71,6 +74,8 @@ export function Board({ game, viewColumns, viewRows, effects, onAttack }: BoardP
           {isPlayer && (
             <>
               <HeroSprite player={game.player} className="actor" />
+              {mainHand && <ItemIcon item={mainHand} className="held-weapon on-board" />}
+              {offHand && <ItemIcon item={offHand} className="held-off-hand on-board" />}
               <span className={`facing facing-${game.player.facing.toLowerCase()}`} aria-hidden="true">
                 {facingArrows[game.player.facing]}
               </span>
@@ -78,6 +83,9 @@ export function Board({ game, viewColumns, viewRows, effects, onAttack }: BoardP
             </>
           )}
           {enemy && <EnemyMarker enemy={enemy} />}
+          {game.merchant && game.merchant.x === x && game.merchant.y === y && (
+            <Sprite sheet={merchantSprite.sheet} index={merchantSprite.index} className="actor merchant" label="Merchant" />
+          )}
           {chestTiles.has(key) && (
             <Sprite sheet={chestSprite.sheet} index={chestSprite.index} className="chest" label="Chest" />
           )}
@@ -115,6 +123,12 @@ function tileClass(symbol: string | undefined): string {
     return 'tile void'
 
   if (symbol === '#') return 'tile wall'
+
+  if (symbol === 'L') return 'tile floor lava'
+  if (symbol === '~') return 'tile floor water'
+  if (symbol === 'C') return 'tile floor obstacle crystal'
+  if (symbol === 'S') return 'tile floor spores'
+  if ('^v<>'.includes(symbol)) return 'tile floor current'
 
   return symbol === 'o' ? 'tile floor obstacle' : 'tile floor'
 }

@@ -3,6 +3,8 @@ namespace Vaultrift.Engine.Items;
 public sealed class Inventory
 {
     public const int DefaultCapacity = 64;
+    public const int ExpansionSize = 8;
+    public const int MaxCapacity = 96;
 
     private readonly List<InventoryEntry> _entries = [];
     private int _nextId = 1;
@@ -15,9 +17,35 @@ public sealed class Inventory
         Capacity = capacity;
     }
 
-    public int Capacity { get; }
+    public int Capacity { get; private set; }
+
+    public bool CanExpand => Capacity + ExpansionSize <= MaxCapacity;
+
+    public int Expansions => Math.Max(0, (Capacity - DefaultCapacity) / ExpansionSize);
+
+    internal bool Expand()
+    {
+        if (!CanExpand)
+            return false;
+
+        Capacity += ExpansionSize;
+        return true;
+    }
 
     public IReadOnlyList<InventoryEntry> Entries => _entries;
+
+    public int NextEntryId => _nextId;
+
+    internal void Restore(int capacity, int nextEntryId, IEnumerable<InventoryEntry> entries)
+    {
+        ArgumentOutOfRangeException.ThrowIfLessThan(capacity, 1);
+        ArgumentNullException.ThrowIfNull(entries);
+
+        Capacity = capacity;
+        _nextId = nextEntryId;
+        _entries.Clear();
+        _entries.AddRange(entries);
+    }
 
     public bool IsFull => _entries.Count >= Capacity;
 
@@ -41,6 +69,12 @@ public sealed class Inventory
 
         _entries.Add(new InventoryEntry(_nextId++, item));
         return true;
+    }
+
+    public bool CanAdd(ItemInstance item)
+    {
+        ArgumentNullException.ThrowIfNull(item);
+        return !IsFull || (IsStackable(item) && _entries.Any(entry => entry.Item == item));
     }
 
     public InventoryEntry? Find(int entryId) =>
@@ -74,6 +108,13 @@ public sealed class Inventory
         return entry is not null && _entries.Remove(entry);
     }
 
+    public IReadOnlyList<InventoryEntry> RemoveJunk()
+    {
+        var junk = _entries.Where(entry => entry.Mark == ItemMark.Junk).ToList();
+        _entries.RemoveAll(entry => entry.Mark == ItemMark.Junk);
+        return junk;
+    }
+
     public void RemoveOne(int entryId)
     {
         var entry = Find(entryId)
@@ -85,5 +126,5 @@ public sealed class Inventory
             _entries.Remove(entry);
     }
 
-    private static bool IsStackable(ItemInstance item) => item.Definition is PotionDefinition;
+    private static bool IsStackable(ItemInstance item) => item.Definition is PotionDefinition or ScrollDefinition;
 }

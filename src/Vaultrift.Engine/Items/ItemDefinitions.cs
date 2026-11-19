@@ -26,6 +26,8 @@ public sealed record WeaponDefinition(
     : EquipmentDefinition(Id, Name, Rarity, EquipmentKind.Weapon, Modifiers, Description, FixedElement)
 {
     public bool IsTwoHanded => WeaponType.IsTwoHanded();
+
+    public SpellDefinition? Spell { get; init; }
 }
 
 public sealed record GearDefinition(
@@ -50,4 +52,12 @@ public sealed record PotionDefinition(
     int BoostTurns = 0,
     string? Description = null,
     int ManaRestore = 0)
+    : ItemDefinition(Id, Name, Rarity, Description);
+
+public sealed record ScrollDefinition(
+    string Id,
+    string Name,
+    Rarity Rarity,
+    SpellDefinition Spell,
+    string? Description = null)
     : ItemDefinition(Id, Name, Rarity, Description);

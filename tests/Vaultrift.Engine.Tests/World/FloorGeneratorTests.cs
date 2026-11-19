@@ -1,4 +1,4 @@
-﻿using Vaultrift.Engine.Randomness;
+using Vaultrift.Engine.Randomness;
 using Vaultrift.Engine.World;
 
 namespace Vaultrift.Engine.Tests.World;
@@ -57,17 +57,22 @@ public class FloorGeneratorTests
         Assert.Equal(floorTiles, reachable.Count);
     }
 
-    [Theory]
-    [InlineData(1)]
-    [InlineData(2)]
-    [InlineData(3)]
-    public void Generate_TheBossRoomIsTheFarthestFromTheStart(int seed)
+    [Fact]
+    public void Generate_TheBossNeverWaitsInTheStartRoom()
     {
-        var layout = Generate(seed);
-        var distances = FloorGenerator.WalkingDistances(layout.Map, layout.StartRoom.Center);
+        Assert.All(Enumerable.Range(1, 30).Select(Generate), layout => Assert.NotEqual(layout.StartRoom, layout.BossRoom));
+    }
 
-        Assert.NotEqual(layout.StartRoom, layout.BossRoom);
-        Assert.All(layout.Rooms, room => Assert.True(distances[room.Center] <= distances[layout.BossRoom.Center]));
+    [Fact]
+    public void Generate_TheBossRoomIsRandom_NotAlwaysTheFarthest()
+    {
+        var farthest = Enumerable.Range(1, 30).Select(Generate).Count(layout =>
+        {
+            var distances = FloorGenerator.WalkingDistances(layout.Map, layout.StartRoom.Center);
+            return layout.Rooms.All(room => distances[room.Center] <= distances[layout.BossRoom.Center]);
+        });
+
+        Assert.InRange(farthest, 0, 15);
     }
 
     [Fact]

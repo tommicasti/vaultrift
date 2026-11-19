@@ -1,8 +1,10 @@
-﻿using Vaultrift.Engine.Gameplay;
+using Vaultrift.Engine.Gameplay;
 using Vaultrift.Engine.Items;
+using Vaultrift.Engine.Persistence;
 using Vaultrift.Engine.Randomness;
 using Vaultrift.Engine.World;
 using Vaultrift.Infrastructure.Content;
+using Vaultrift.Infrastructure.Persistence;
 
 namespace Vaultrift.Infrastructure.Levels;
 
@@ -13,10 +15,28 @@ public static class VaultDungeon
         ArgumentNullException.ThrowIfNull(random);
         ArgumentNullException.ThrowIfNull(playerClass);
 
+        return CreateGame(random, new VaultFloors(random, playerClass.Class.Id), playerClass, playerName);
+    }
+
+    public static Game CreateGame(IRandom random, VaultFloors floors, ClassDefinition playerClass, string? playerName = null)
+    {
+        ArgumentNullException.ThrowIfNull(random);
+        ArgumentNullException.ThrowIfNull(floors);
+        ArgumentNullException.ThrowIfNull(playerClass);
+
         var player = new Player(new Position(0, 0), playerClass.Class, playerName);
         GiveStartingKit(player, playerClass.StartingItemIds);
 
-        return new Game(player, new VaultFloors(random), random, new VaultLoot(random));
+        return new Game(player, floors, random, new VaultLoot(random));
+    }
+
+    public static Game RestoreGame(GameSnapshot snapshot, IRandom random, VaultFloors floors)
+    {
+        ArgumentNullException.ThrowIfNull(snapshot);
+        ArgumentNullException.ThrowIfNull(random);
+        ArgumentNullException.ThrowIfNull(floors);
+
+        return Game.Restore(snapshot, VaultContent.Instance, floors, random, new VaultLoot(random));
     }
 
     private static void GiveStartingKit(Player player, IReadOnlyList<string> itemIds)
@@ -28,8 +48,19 @@ public static class VaultDungeon
         {
             if (entry.Item.Definition is EquipmentDefinition)
                 player.Equip(entry.Id);
-            else if (entry.Item.Definition is PotionDefinition && player.QuickSlot is null)
-                player.AssignQuickSlot(entry.Id);
+            else if (entry.Item.Definition is PotionDefinition && FreeQuickSlot(player) is { } free)
+                player.AssignQuickSlot(entry.Id, free);
         }
+    }
+
+    private static int? FreeQuickSlot(Player player)
+    {
+        for (var slot = 0; slot < player.QuickSlots.Count; slot++)
+        {
+            if (player.QuickSlots[slot] is null)
+                return slot;
+        }
+
+        return null;
     }
 }

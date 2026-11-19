@@ -122,12 +122,56 @@ public class ItemCatalogTests
     public void FixedElements_BelongOnlyToLegendaryWeaponsAndCloaks()
     {
         Assert.All(
-            Equipment.Where(item => item.FixedElement is not null),
+            Equipment.Where(item => item.FixedElement is not null && item is not WeaponDefinition { WeaponType: WeaponType.Staff }),
             item =>
             {
                 Assert.Equal(Rarity.Legendary, item.Rarity);
                 Assert.True(ItemInstance.CanHaveElement(item));
             });
+    }
+
+    [Fact]
+    public void EveryStaff_CarriesASpell_OfItsOwnElement()
+    {
+        var staffs = Equipment.OfType<WeaponDefinition>().Where(item => item.WeaponType == WeaponType.Staff).ToList();
+
+        Assert.NotEmpty(staffs);
+        Assert.All(staffs, staff =>
+        {
+            Assert.NotNull(staff.Spell);
+            Assert.Equal(SpellShape.Bolt, staff.Spell!.Shape);
+            Assert.Equal(staff.Spell.Element, staff.FixedElement);
+        });
+    }
+
+    [Fact]
+    public void Scrolls_TeachEveryNonBoltSpell_RareOrEpic()
+    {
+        var taught = ItemCatalog.Scrolls.Select(scroll => scroll.Spell.Id).ToList();
+
+        Assert.Equal(SpellCatalog.All.Where(spell => spell.Shape != SpellShape.Bolt).Select(spell => spell.Id).Order().ToList(), taught.Order().ToList());
+        Assert.All(ItemCatalog.Scrolls, scroll => Assert.Contains(scroll.Rarity, new[] { Rarity.Rare, Rarity.Epic }));
+    }
+
+    [Fact]
+    public void EpicSpells_CostAQuarterOfMaximumMana_WhenThatIsMore()
+    {
+        var epic = ItemCatalog.Scrolls.Where(scroll => scroll.Rarity == Rarity.Epic).Select(scroll => scroll.Spell).ToList();
+        var others = SpellCatalog.All.Except(epic).ToList();
+
+        Assert.All(epic, spell => Assert.Equal(25, spell.ManaPercent));
+        Assert.All(others, spell => Assert.Equal(0, spell.ManaPercent));
+    }
+
+    [Fact]
+    public void StrongerSpells_CostMoreMana()
+    {
+        var bolts = SpellCatalog.All.Where(spell => spell.Shape == SpellShape.Bolt).ToList();
+        var rare = ItemCatalog.Scrolls.Where(scroll => scroll.Rarity == Rarity.Rare).Select(scroll => scroll.Spell).ToList();
+        var epic = ItemCatalog.Scrolls.Where(scroll => scroll.Rarity == Rarity.Epic).Select(scroll => scroll.Spell).ToList();
+
+        Assert.True(bolts.Max(spell => spell.ManaCost) < rare.Min(spell => spell.ManaCost));
+        Assert.True(rare.Max(spell => spell.ManaCost) < epic.Min(spell => spell.ManaCost));
     }
 
     [Fact]

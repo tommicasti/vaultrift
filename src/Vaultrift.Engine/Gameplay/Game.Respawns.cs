@@ -23,6 +23,7 @@ public sealed partial class Game
         enemy.IsDead &&
         !enemy.Kind.IsBoss &&
         !enemy.Kind.IsStationary &&
+        !enemy.IsSummoned &&
         Distance(enemy.StartPosition, Player.Position) >= MonsterRespawnDistance &&
         IsFree(enemy.StartPosition);
 }

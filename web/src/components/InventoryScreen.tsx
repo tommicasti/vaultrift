@@ -1,16 +1,24 @@
 import { useState } from 'react'
-import type { EquipmentSlot, InventoryEntryState, ItemInfo, PlayerState, StatPoint } from '../api/types'
+import type { EquipmentSlot, InventoryEntryState, ItemInfo, ItemMark, PlayerState, SpellInfo, StatPoint } from '../api/types'
+import { coinSprite } from '../game/sprites'
+import { backpackSorts, loadBackpackSort, saveBackpackSort, sortBackpack, type BackpackSort } from '../game/backpackSort'
 import {
   classNames,
   describeEffect,
   describeElement,
   describeItem,
-  describeWeaponTrait,
+  describeKind,
+  describeSpell,
   elementNames,
+  learnedSpellKeys,
+  quickSlotKeys,
+  scrollSlot,
   slotLabels,
 } from '../game/items'
 import { HeroSprite } from './HeroSprite'
 import { ItemIcon } from './ItemIcon'
+import { MarkBadge, MarkIcon } from './MarkBadge'
+import { Sprite } from './Sprite'
 
 const slotOrder: EquipmentSlot[] = ['Ring1', 'Head', 'ClassMod', 'MainHand', 'Body', 'OffHand', 'Ring2', 'Feet', 'Cloak']
 
@@ -24,10 +32,19 @@ interface InventoryScreenProps {
   onEquip: (entryId: number, hand?: EquipmentSlot) => void
   onUnequip: (slot: EquipmentSlot) => void
   onUse: (entryId: number) => void
-  onAssignQuickSlot: (entryId: number) => void
+  onAssignQuickSlot: (entryId: number, slot: number) => void
+  onLearn: (entryId: number, key: number) => void
   onSpendPoint: (stat: StatPoint) => void
   onDiscard: (entryId: number) => void
+  onDiscardJunk: () => void
+  onMark: (entryId: number, mark: ItemMark) => void
   onClose: () => void
+}
+
+const sortLabels: Record<BackpackSort, string> = {
+  Recent: 'Recent',
+  Rarity: 'Rarity',
+  Type: 'Type',
 }
 
 const pointGains: Record<StatPoint, string> = {
@@ -52,18 +69,43 @@ export function InventoryScreen({
   onUnequip,
   onUse,
   onAssignQuickSlot,
+  onLearn,
   onSpendPoint,
   onDiscard,
+  onDiscardJunk,
+  onMark,
   onClose,
 }: InventoryScreenProps) {
   const [selectedId, setSelectedId] = useState<number | null>(null)
+  const [sort, setSort] = useState<BackpackSort>(loadBackpackSort)
+  const [confirmingJunk, setConfirmingJunk] = useState(false)
 
   const equippedBySlot = new Map(player.equipment.map(equipped => [equipped.slot, equipped]))
   const slotByEntryId = new Map(player.equipment.map(equipped => [equipped.entryId, equipped.slot]))
   const allEntries = new Map<number, InventoryEntryState>([
     ...entries.map(entry => [entry.id, entry] as const),
-    ...player.equipment.map(equipped => [equipped.entryId, { id: equipped.entryId, item: equipped.item, quantity: 1 }] as const),
+    ...player.equipment.map(
+      equipped => [equipped.entryId, { id: equipped.entryId, item: equipped.item, quantity: 1, mark: equipped.mark, sellPrice: equipped.sellPrice }] as const,
+    ),
   ])
+  const sortedEntries = sortBackpack(entries, sort)
+  const junkCount = entries.filter(entry => entry.mark === 'Junk').reduce((total, entry) => total + entry.quantity, 0)
+
+  function changeSort(next: BackpackSort) {
+    setSort(next)
+    saveBackpackSort(next)
+  }
+
+  function handleDiscardJunk() {
+    if (!confirmingJunk) {
+      setConfirmingJunk(true)
+      return
+    }
+
+    setConfirmingJunk(false)
+    setSelectedId(null)
+    onDiscardJunk()
+  }
   const copies = new Map<string, number>()
 
   for (const entry of allEntries.values()) {
@@ -165,6 +207,7 @@ export function InventoryScreen({
                     onDoubleClick={() => equipped && handleSlotDoubleClick(slot)}
                   >
                     {equipped ? <ItemIcon item={equipped.item} /> : <span className="slot-label">{slotLabels[slot]}</span>}
+                    {equipped && <MarkBadge mark={equipped.mark} />}
                   </button>
                 )
               })}
@@ -188,12 +231,37 @@ export function InventoryScreen({
           </div>
 
           <div className="backpack">
-            <div className="label">
-              Backpack {entries.length} / {capacity}
+            <div className="backpack-toolbar">
+              <span className="label">
+                Backpack {entries.length} / {capacity}
+              </span>
+              <div className="sort-control" role="group" aria-label="Sort backpack">
+                {backpackSorts.map(option => (
+                  <button
+                    key={option}
+                    className={option === sort ? 'sort-option active' : 'sort-option'}
+                    aria-pressed={option === sort}
+                    onClick={() => changeSort(option)}
+                  >
+                    {sortLabels[option]}
+                  </button>
+                ))}
+              </div>
+              {junkCount > 0 && (
+                <button
+                  className={confirmingJunk ? 'junk-button confirming' : 'junk-button'}
+                  disabled={disabled}
+                  onClick={handleDiscardJunk}
+                  onBlur={() => setConfirmingJunk(false)}
+                >
+                  <MarkIcon mark="Junk" />
+                  {confirmingJunk ? `Throw away ${junkCount}?` : `Throw away junk (${junkCount})`}
+                </button>
+              )}
             </div>
             <div className="backpack-grid">
               {Array.from({ length: capacity }, (_, index) => {
-                const entry = entries[index]
+                const entry = sortedEntries[index]
 
                 if (!entry) return <div key={`empty-${index}`} className="slot" />
 
@@ -215,6 +283,7 @@ export function InventoryScreen({
                     <ItemIcon item={entry.item} />
                     {entry.quantity > 1 && <span className="slot-quantity">{entry.quantity}</span>}
                     {isDuplicate && <span className="slot-duplicate">D</span>}
+                    <MarkBadge mark={entry.mark} />
                   </button>
                 )
               })}
@@ -227,16 +296,22 @@ export function InventoryScreen({
           entry={selected}
           equippedSlot={selectedSlot}
           playerClassId={player.classId}
-          inQuickSlot={selected !== undefined && player.quickSlot?.id === selected.item.id}
+          quickSlotsHolding={player.quickSlots.flatMap((quickSlot, slot) =>
+            selected !== undefined && quickSlot.item?.id === selected.item.id ? [slot] : [],
+          )}
+          holdsStaff={player.spells.length > 0}
+          learnedSpells={player.spells.slice(1)}
           disabled={disabled}
           onEquip={onEquip}
           onUnequip={onUnequip}
           onUse={onUse}
           onAssignQuickSlot={onAssignQuickSlot}
+          onLearn={onLearn}
           onDiscard={entryId => {
             setSelectedId(null)
             onDiscard(entryId)
           }}
+          onMark={onMark}
         />
       </section>
     </div>
@@ -247,26 +322,34 @@ interface ItemDetailsProps {
   entry?: InventoryEntryState
   equippedSlot?: EquipmentSlot
   playerClassId?: string
-  inQuickSlot: boolean
+  quickSlotsHolding: number[]
+  holdsStaff: boolean
+  learnedSpells: (SpellInfo | null)[]
   disabled: boolean
   onEquip: (entryId: number, hand?: EquipmentSlot) => void
   onUnequip: (slot: EquipmentSlot) => void
   onUse: (entryId: number) => void
-  onAssignQuickSlot: (entryId: number) => void
+  onAssignQuickSlot: (entryId: number, slot: number) => void
+  onLearn: (entryId: number, key: number) => void
   onDiscard: (entryId: number) => void
+  onMark: (entryId: number, mark: ItemMark) => void
 }
 
 function ItemDetails({
   entry,
   equippedSlot,
   playerClassId,
-  inQuickSlot,
+  quickSlotsHolding,
+  holdsStaff,
+  learnedSpells,
   disabled,
   onEquip,
   onUnequip,
   onUse,
   onAssignQuickSlot,
+  onLearn,
   onDiscard,
+  onMark,
 }: ItemDetailsProps) {
   const [confirmingDiscard, setConfirmingDiscard] = useState(false)
 
@@ -279,27 +362,40 @@ function ItemDetails({
   }
 
   const { item } = entry
-  const isPotion = item.category === 'Potion'
+  const isScroll = item.category === 'Scroll'
+  const isPotion = item.category === 'Potion' || isScroll
   const isOneHanded = oneHandedCategories.has(item.category)
   const isForeignMod = item.classId !== undefined && item.classId !== playerClassId
   const element = describeElement(item)
-  const trait = describeWeaponTrait(item)
+  const kind = describeKind(item)
 
   return (
     <div className={`item-details rarity-${item.rarity.toLowerCase()}`}>
       <ItemIcon item={item} />
       <div className="item-details-text">
-        <div className="item-name">{item.name}</div>
-        <div className="label">
-          {item.rarity} · {describeItem(item)}
+        <div className="item-title">
+          <span className="item-name">{item.name}</span>
+          <MarkToggle entry={entry} mark="Favorite" label="Favorite" disabled={disabled} onMark={onMark} />
+          <MarkToggle entry={entry} mark="Junk" label="Junk" disabled={disabled} onMark={onMark} />
+          <span className="item-value" title={entry.quantity > 1 ? `${entry.sellPrice * entry.quantity} for all ${entry.quantity}` : undefined}>
+            <span className="label">Sells for</span>
+            <span className="coins">
+              <Sprite sheet={coinSprite.sheet} index={coinSprite.index} className="coin-icon" />
+              {entry.sellPrice}
+              {entry.quantity > 1 && <span className="label"> each</span>}
+            </span>
+          </span>
         </div>
+        <div className="item-kind">{kind.name}</div>
+        <div className="label">{[item.rarity, describeItem(item)].filter(Boolean).join(' · ')}</div>
         {item.classId && (
           <div className={isForeignMod ? 'label class-only foreign' : 'label class-only'}>
             {classNames[item.classId] ?? item.classId} only
           </div>
         )}
-        {trait && <div className="label">{trait}</div>}
-        {element && <div className={`item-element element-${item.element?.toLowerCase()}`}>{element}</div>}
+        <div className="label">{kind.hint}</div>
+        {item.spell && <div className={`item-element element-${item.spell.element.toLowerCase()}`}>{describeSpell(item.spell)}</div>}
+        {element && !item.spell && <div className={`item-element element-${item.element?.toLowerCase()}`}>{element}</div>}
         {item.effects.map(effect => (
           <div key={effect.kind} className="item-effect">
             {describeEffect(effect)}
@@ -308,19 +404,52 @@ function ItemDetails({
         {item.description && <p className="item-description">{item.description}</p>}
       </div>
       <div className="item-actions">
-        {isPotion && (
+        {isPotion && !isScroll && (
           <button disabled={disabled} onClick={() => onUse(entry.id)}>
             Use
           </button>
         )}
-        {isPotion &&
-          (inQuickSlot ? (
-            <span className="equipped-tag">In quick slot</span>
-          ) : (
-            <button disabled={disabled} onClick={() => onAssignQuickSlot(entry.id)}>
-              Set quick slot
-            </button>
-          ))}
+        {isScroll && (
+          <div className="quick-slot-picker" role="group" aria-label="Learn on a key">
+            <span className="label">Learn</span>
+            {learnedSpellKeys.map((key, index) => (
+              <button
+                key={key}
+                disabled={disabled || !holdsStaff}
+                aria-label={`Learn on key ${key}`}
+                title={
+                  !holdsStaff
+                    ? 'Hold a staff to learn it'
+                    : learnedSpells[index]
+                      ? `Replaces ${learnedSpells[index]?.name}, which goes back to its scroll`
+                      : `Key ${key} is free`
+                }
+                onClick={() => onLearn(entry.id, key)}
+              >
+                {key}
+                {learnedSpells[index] && <span className="taken-dot" aria-hidden="true" />}
+              </button>
+            ))}
+          </div>
+        )}
+        {isPotion && (
+          <div className="quick-slot-picker" role="group" aria-label="Quick slot">
+            <span className="label">Quick</span>
+            {quickSlotKeys.map((key, slot) => ({ key, slot })).filter(({ slot }) => (slot === scrollSlot) === isScroll).map(({ key, slot }) => (
+              <button
+                key={key}
+                className={quickSlotsHolding.includes(slot) ? 'active' : ''}
+                aria-pressed={quickSlotsHolding.includes(slot)}
+                aria-label={`Put in quick slot ${key}`}
+                title={`Quick slot ${key}`}
+                disabled={disabled}
+                onClick={() => onAssignQuickSlot(entry.id, slot)}
+              >
+                {key}
+              </button>
+            ))}
+          </div>
+        )}
         {!isPotion && equippedSlot && (
           <button disabled={disabled} onClick={() => onUnequip(equippedSlot)}>
             Unequip
@@ -341,7 +470,7 @@ function ItemDetails({
             Equip
           </button>
         )}
-        {!equippedSlot && (
+        {!equippedSlot && entry.mark !== 'Favorite' && (
           <button
             className={confirmingDiscard ? 'discard confirming' : 'discard'}
             disabled={disabled}
@@ -352,5 +481,30 @@ function ItemDetails({
         )}
       </div>
     </div>
+  )
+}
+
+interface MarkToggleProps {
+  entry: InventoryEntryState
+  mark: Exclude<ItemMark, 'None'>
+  label: string
+  disabled: boolean
+  onMark: (entryId: number, mark: ItemMark) => void
+}
+
+function MarkToggle({ entry, mark, label, disabled, onMark }: MarkToggleProps) {
+  const active = entry.mark === mark
+
+  return (
+    <button
+      className={`mark-toggle mark-${mark.toLowerCase()}${active ? ' active' : ''}`}
+      disabled={disabled}
+      aria-pressed={active}
+      title={active ? `Remove ${label.toLowerCase()} mark` : `Mark as ${label.toLowerCase()}`}
+      onClick={() => onMark(entry.id, active ? 'None' : mark)}
+    >
+      <MarkIcon mark={mark} />
+      <span>{label}</span>
+    </button>
   )
 }

@@ -7,5 +7,9 @@ public enum UseResult
     NotUsable,
     AlreadyAtFullHealth,
     AlreadyAtFullMana,
-    QuickSlotEmpty
+    QuickSlotEmpty,
+    ItemIsFavorite,
+    NoJunk,
+    NotEnoughMana,
+    ScrollNeedsSlot
 }

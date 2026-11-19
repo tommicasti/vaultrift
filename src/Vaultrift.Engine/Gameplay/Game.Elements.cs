@@ -10,10 +10,10 @@ public sealed partial class Game
 
     private static readonly Direction[] ChainDirections = [Direction.Up, Direction.Right, Direction.Down, Direction.Left];
 
-    private void TriggerElement(Element element, Rarity rarity, Enemy target, int damage, List<GameEvent> events, bool guaranteed = false)
+    private void TriggerElement(Element element, Rarity rarity, Enemy target, int damage, List<GameEvent> events, bool guaranteed = false, int extraChance = 0)
     {
         var boost = Player.EffectAmount(BoostFor(element));
-        var chance = guaranteed ? 1.0 : ElementRules.EffectChance(element, rarity) + boost / 100.0;
+        var chance = guaranteed ? 1.0 : ElementRules.EffectChance(element, rarity) + (boost + extraChance) / 100.0;
 
         if (!Rolls(chance))
             return;
@@ -50,9 +50,9 @@ public sealed partial class Game
 
     private bool Rolls(double chance) => chance >= 1 || _random.NextDouble() < chance;
 
-    private static void Ignite(Enemy target, int burnDamage, List<GameEvent> events)
+    private void Ignite(Enemy target, int burnDamage, List<GameEvent> events)
     {
-        if (target.IsDead)
+        if (target.IsDead || Map.IsWater(target.Position))
             return;
 
         target.BurnTurnsLeft = ElementRules.BurnTurns;
@@ -85,12 +85,12 @@ public sealed partial class Game
 
             struck.Add(victim);
 
-            var result = ElementRules.Apply(
+            var result = ChargeInWater(ElementRules.Apply(
                 new AttackResult(Math.Max(DamageCalculator.MinimumDamage, (damage + 1) / 2), IsCritical: false),
                 Element.Lightning,
                 victim.Kind.Weakness,
                 victim.Kind.Resistance,
-                rarity);
+                rarity), victim);
 
             victim.TakeDamage(result.Damage);
             events.Add(new EnemyShocked(victim.Id, result));
@@ -111,7 +111,7 @@ public sealed partial class Game
 
             var destination = target.Position.Move(Player.Facing);
 
-            if (!CanEnemyEnter(target, destination))
+            if (!CanBePushedInto(target, destination))
             {
                 Slam(target, damage, events);
                 return;
@@ -119,6 +119,12 @@ public sealed partial class Game
 
             target.Position = destination;
             events.Add(new EnemyKnockedBack(target.Id, destination));
+
+            if (AvoidsLava(target, destination))
+            {
+                Scorch(target, events);
+                return;
+            }
         }
     }
 
@@ -148,6 +154,12 @@ public sealed partial class Game
     {
         foreach (var enemy in _enemies.Where(enemy => !enemy.IsDead && enemy.IsBurning))
         {
+            if (Map.IsWater(enemy.Position))
+            {
+                enemy.BurnTurnsLeft = 0;
+                continue;
+            }
+
             enemy.TakeDamage(enemy.BurnDamage);
             enemy.BurnTurnsLeft--;
             events.Add(new EnemyBurned(enemy.Id, enemy.BurnDamage));

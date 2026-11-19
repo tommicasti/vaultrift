@@ -4,6 +4,5 @@ public enum AbilityResult
 {
     Used,
     NoAbility,
-    OnCooldown,
-    NeedsBow
+    OnCooldown
 }

@@ -30,9 +30,12 @@ public sealed partial class Game
             case ClassAbility.Invisibility:
                 Player.InvisibleTurns = AbilityRules.InvisibilityTurns + Player.EffectAmount(EffectKind.Phantom);
                 break;
+            case ClassAbility.Overload:
+                Player.IsOverloaded = true;
+                break;
             case ClassAbility.PowerShot:
                 BeginAmbush();
-                Shoot(Player.Weapon!, events, powered: true);
+                PowerStrike(events);
                 EndAmbush(events);
                 EndTurn(events);
                 return new TurnResult(TurnPassed: true, events);
@@ -51,20 +54,17 @@ public sealed partial class Game
         if (Player.AbilityCooldown > 0)
             return AbilityResult.OnCooldown;
 
-        if (ability == ClassAbility.PowerShot && (Player.Weapon?.Definition as WeaponDefinition)?.WeaponType != WeaponType.Bow)
-            return AbilityResult.NeedsBow;
-
         return AbilityResult.Used;
     }
 
     private int CooldownFor(ClassAbility ability)
     {
-        var cooldown = AbilityRules.Cooldown(ability);
+        var reduction = Player.EffectAmount(EffectKind.Haste);
 
         if (ability == ClassAbility.PowerShot && Player.EffectAmount(EffectKind.PowerShotMastery) > 0)
-            cooldown /= 2;
+            reduction += AbilityRules.PowerShotMasteryReductionPercent;
 
-        return Math.Max(1, cooldown - Player.EffectAmount(EffectKind.Haste));
+        return AbilityRules.ReducedCooldown(ability, reduction);
     }
 
     private void TickAbilities(List<GameEvent> events)

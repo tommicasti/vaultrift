@@ -5,5 +5,6 @@ public enum ClassAbility
     Bulwark,
     Fury,
     PowerShot,
-    Invisibility
+    Invisibility,
+    Overload
 }

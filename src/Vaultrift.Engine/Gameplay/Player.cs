@@ -4,15 +4,22 @@ using Vaultrift.Engine.World;
 
 namespace Vaultrift.Engine.Gameplay;
 
-public sealed class Player : Creature
+public sealed partial class Player : Creature
 {
     public const int MaxNameLength = 16;
     public const string DefaultName = "Hero";
+    public const int QuickSlotCount = 3;
+    public const int ScrollSlot = 2;
+    public const int MaxLearnedSpells = 3;
+    public const int FirstLearnedKey = 2;
+    public const int MinimumSpellCost = 1;
 
     private readonly Dictionary<EquipmentSlot, InventoryEntry> _equipment = [];
     private readonly Dictionary<string, ActiveBoost> _boosts = [];
     private readonly Dictionary<StatPoint, int> _spentPoints = [];
     private readonly Stats _baseStats;
+    private readonly ItemDefinition?[] _quickSlots = new ItemDefinition?[QuickSlotCount];
+    private readonly ScrollDefinition?[] _spellSlots = new ScrollDefinition?[MaxLearnedSpells];
 
     public Player(Position position, Stats stats, string? name = null)
         : base(position, stats)
@@ -46,6 +53,8 @@ public sealed class Player : Creature
 
     public int Mana { get; private set; }
 
+    public int Coins { get; private set; }
+
     public int MaxMana => CombatStats.MaxMana;
 
     public Direction Facing { get; internal set; }
@@ -56,7 +65,24 @@ public sealed class Player : Creature
 
     public IReadOnlyCollection<ActiveBoost> Boosts => _boosts.Values;
 
-    public PotionDefinition? QuickSlot { get; private set; }
+    public IReadOnlyList<ItemDefinition?> QuickSlots => _quickSlots;
+
+    public ItemDefinition? QuickSlot => _quickSlots[0];
+
+    public IReadOnlyList<SpellDefinition?> LearnedSpells => _spellSlots.Select(scroll => scroll?.Spell).ToList();
+
+    public SpellDefinition? StaffSpell => (Weapon?.Definition as WeaponDefinition)?.Spell;
+
+    public bool HoldsStaff => StaffSpell is not null;
+
+    public IReadOnlyList<SpellDefinition?> Spells =>
+        StaffSpell is { } staffSpell ? [staffSpell, .. LearnedSpells] : [];
+
+    public int ActiveSpellIndex { get; private set; }
+
+    public SpellDefinition? ActiveSpell => Spells.ElementAtOrDefault(ActiveSpellIndex) ?? StaffSpell;
+
+    public bool IsOverloaded { get; internal set; }
 
     public int StepsPerTurn => Class?.Speed == Speed.Fast ? 2 : 1;
 
@@ -71,6 +97,10 @@ public sealed class Player : Creature
     public int InvisibleTurns { get; internal set; }
 
     public bool IsInvisible => InvisibleTurns > 0;
+
+    public int PoisonTurns { get; internal set; }
+
+    public bool IsPoisoned => PoisonTurns > 0;
 
     public ItemInstance? Weapon => WeaponIn(EquipmentSlot.MainHand);
 
@@ -199,14 +229,17 @@ public sealed class Player : Creature
         if (entry.Item.Definition is not PotionDefinition potion)
             return UseResult.NotUsable;
 
-        if (potion.Healing > 0 && Health == Stats.MaxHealth)
+        if (potion.Healing > 0 && Health == Stats.MaxHealth && !IsPoisoned)
             return UseResult.AlreadyAtFullHealth;
 
         if (potion.ManaRestore > 0 && Mana == MaxMana)
             return UseResult.AlreadyAtFullMana;
 
         if (potion.Healing > 0)
+        {
             Heal(potion.Healing);
+            PoisonTurns = 0;
+        }
 
         if (potion.ManaRestore > 0)
             RestoreMana(potion.ManaRestore);
@@ -218,24 +251,113 @@ public sealed class Player : Creature
         return UseResult.Used;
     }
 
-    public UseResult UseQuickSlot()
+    public UseResult UseQuickSlot(int slot = 0)
     {
-        if (QuickSlot is null)
-            return UseResult.QuickSlotEmpty;
+        if (QuickSlotEntry(slot) is not { } entry)
+            return QuickSlotIn(slot) is null ? UseResult.QuickSlotEmpty : UseResult.ItemNotFound;
 
-        var entry = Inventory.Entries.FirstOrDefault(candidate => candidate.Item.Id == QuickSlot.Id);
-
-        return entry is null ? UseResult.ItemNotFound : Use(entry.Id);
+        return Use(entry.Id);
     }
 
-    public bool AssignQuickSlot(int entryId)
+    public bool AssignQuickSlot(int entryId, int slot = 0)
     {
-        if (Inventory.Find(entryId)?.Item.Definition is not PotionDefinition potion)
+        if (slot is < 0 or >= QuickSlotCount)
             return false;
 
-        QuickSlot = potion;
+        var item = Inventory.Find(entryId)?.Item.Definition;
+
+        var fits = slot == ScrollSlot ? item is ScrollDefinition : item is PotionDefinition;
+
+        if (!fits)
+            return false;
+
+        _quickSlots[slot] = item;
         return true;
     }
+
+    public InventoryEntry? QuickSlotEntry(int slot) =>
+        QuickSlotIn(slot) is { } item
+            ? Inventory.Entries.FirstOrDefault(candidate => candidate.Item.Id == item.Id)
+            : null;
+
+    public int SpellCost(SpellDefinition spell)
+    {
+        ArgumentNullException.ThrowIfNull(spell);
+
+        if (IsOverloaded)
+            return 0;
+
+        var discount = EffectAmount(EffectKind.SpellMastery) > 0 ? 1 : 0;
+
+        if (HoldsStaff && Class?.Mastery.WeaponType == WeaponType.Staff)
+            discount++;
+
+        return Math.Max(MinimumSpellCost, spell.BaseCost(MaxMana) - discount);
+    }
+
+    internal bool SelectSpell(int index)
+    {
+        if (Spells.ElementAtOrDefault(index) is null)
+            return false;
+
+        ActiveSpellIndex = index;
+        return true;
+    }
+
+    internal SpellResult CanLearn(ScrollDefinition scroll, int key)
+    {
+        ArgumentNullException.ThrowIfNull(scroll);
+
+        if (!HoldsStaff)
+            return SpellResult.NoStaff;
+
+        if (key < FirstLearnedKey || key >= FirstLearnedKey + MaxLearnedSpells)
+            return SpellResult.InvalidKey;
+
+        if (Spells.Any(known => known?.Id == scroll.Spell.Id))
+            return SpellResult.AlreadyKnown;
+
+        return SpellResult.Done;
+    }
+
+    public ScrollDefinition? ScrollOnKey(int key) =>
+        key >= FirstLearnedKey && key < FirstLearnedKey + MaxLearnedSpells ? _spellSlots[key - FirstLearnedKey] : null;
+
+    internal void Learn(ScrollDefinition scroll, int key)
+    {
+        _spellSlots[key - FirstLearnedKey] = scroll;
+        ActiveSpellIndex = key - 1;
+    }
+
+    internal void GainCoins(int amount)
+    {
+        ArgumentOutOfRangeException.ThrowIfNegative(amount);
+        Coins += amount;
+    }
+
+    internal bool TrySpendCoins(int amount)
+    {
+        ArgumentOutOfRangeException.ThrowIfNegative(amount);
+
+        if (amount > Coins)
+            return false;
+
+        Coins -= amount;
+        return true;
+    }
+
+    internal void SpendMana(int amount)
+    {
+        ArgumentOutOfRangeException.ThrowIfNegative(amount);
+
+        if (amount > Mana)
+            throw new InvalidOperationException("Not enough mana.");
+
+        Mana -= amount;
+    }
+
+    private ItemDefinition? QuickSlotIn(int slot) =>
+        slot is >= 0 and < QuickSlotCount ? _quickSlots[slot] : null;
 
     internal void RestoreMana(int amount)
     {
@@ -265,11 +387,13 @@ public sealed class Player : Creature
 
     internal void ClearBoosts() => _boosts.Clear();
 
-    internal void ClearAbilityStatuses()
+    internal void ClearStatuses()
     {
         BulwarkTurns = 0;
         FuryTurns = 0;
         InvisibleTurns = 0;
+        PoisonTurns = 0;
+        IsOverloaded = false;
     }
 
     private Stats StatsFor(EquipmentSlot hand)

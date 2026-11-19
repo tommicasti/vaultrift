@@ -1,8 +1,11 @@
-﻿namespace Vaultrift.Infrastructure.Content;
+using Vaultrift.Engine.World;
+
+namespace Vaultrift.Infrastructure.Content;
 
 public sealed record Biome(
     string Id,
     string Name,
     string BossId,
     IReadOnlyList<string> MonsterIds,
-    double ObstacleDensity);
+    double ObstacleDensity,
+    TerrainSpec? Terrain = null);

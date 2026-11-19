@@ -15,11 +15,16 @@ public sealed record EnemyKind
         Element? resistance = null,
         Element? attackElement = null,
         bool isBoss = false,
-        bool isStationary = false)
+        bool isStationary = false,
+        BossPower power = BossPower.None,
+        EnemyKind? minion = null)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(id);
         ArgumentException.ThrowIfNullOrWhiteSpace(name);
         ArgumentNullException.ThrowIfNull(baseStats);
+
+        if (power == BossPower.SummonMinions && minion is null)
+            throw new ArgumentException("A summoner needs a minion to summon.", nameof(minion));
 
         if (weakness is not null && weakness == resistance)
             throw new ArgumentException("A kind cannot be weak and resistant to the same element.", nameof(resistance));
@@ -34,6 +39,8 @@ public sealed record EnemyKind
         AttackElement = attackElement;
         IsBoss = isBoss;
         IsStationary = isStationary;
+        Power = power;
+        Minion = minion;
     }
 
     public string Id { get; }
@@ -55,4 +62,13 @@ public sealed record EnemyKind
     public bool IsBoss { get; }
 
     public bool IsStationary { get; }
+
+    public BossPower Power { get; }
+
+    public EnemyKind? Minion { get; }
+
+    public bool RidesCurrents => !IsBoss && !IsStationary;
+
+    public bool IsFireproof =>
+        Resistance == Element.Fire || AttackElement == Element.Fire || PassesThroughWalls;
 }
