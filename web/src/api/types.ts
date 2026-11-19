@@ -262,6 +262,10 @@ export type GameEventType =
   | 'StairsOpened'
   | 'FloorDescended'
   | 'VaultConquered'
+  | 'PlayerScorched'
+  | 'EnemyScorched'
+  | 'LavaSpread'
+  | 'PlayerPulled'
 
 export interface TilePosition {
   x: number

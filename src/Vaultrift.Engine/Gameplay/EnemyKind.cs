@@ -15,7 +15,8 @@ public sealed record EnemyKind
         Element? resistance = null,
         Element? attackElement = null,
         bool isBoss = false,
-        bool isStationary = false)
+        bool isStationary = false,
+        BossPower power = BossPower.None)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(id);
         ArgumentException.ThrowIfNullOrWhiteSpace(name);
@@ -34,6 +35,7 @@ public sealed record EnemyKind
         AttackElement = attackElement;
         IsBoss = isBoss;
         IsStationary = isStationary;
+        Power = power;
     }
 
     public string Id { get; }
@@ -55,4 +57,9 @@ public sealed record EnemyKind
     public bool IsBoss { get; }
 
     public bool IsStationary { get; }
+
+    public BossPower Power { get; }
+
+    public bool IsFireproof =>
+        Resistance == Element.Fire || AttackElement == Element.Fire || PassesThroughWalls;
 }

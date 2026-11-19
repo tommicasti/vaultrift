@@ -60,6 +60,7 @@ export function Board({ game, viewColumns, viewRows, effects, onAttack }: BoardP
         <div key={`${column},${row}`} className={tileClass(symbol)}>
           {art && <Sprite sheet={sheets.biomes} index={art.base} className={art.deep ? 'tile-art deep' : 'tile-art'} />}
           {art?.overlay !== undefined && <Sprite sheet={sheets.biomes} index={art.overlay} className="tile-art" />}
+          {art?.terrain && <span className={`tile-art terrain terrain-${art.terrain}`} aria-hidden="true" />}
           {stairs && (
             <Sprite
               sheet={sheets.vault}
@@ -115,6 +116,9 @@ function tileClass(symbol: string | undefined): string {
     return 'tile void'
 
   if (symbol === '#') return 'tile wall'
+
+  if (symbol === 'L') return 'tile floor lava'
+  if (symbol === '~') return 'tile floor water'
 
   return symbol === 'o' ? 'tile floor obstacle' : 'tile floor'
 }

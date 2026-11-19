@@ -406,6 +406,35 @@
   height: 0.9em;
 }
 
+.terrain {
+  background-image: url('/assets/tilesets/vaultrift-terrain.png');
+  background-repeat: no-repeat;
+  background-size: 200% 200%;
+  image-rendering: pixelated;
+  animation: terrain-flow 1.2s linear infinite;
+}
+
+.terrain-lava {
+  background-position-y: 0%;
+}
+
+.terrain-water {
+  background-position-y: 100%;
+  opacity: 0.85;
+}
+
+@keyframes terrain-flow {
+  0%,
+  49% {
+    background-position-x: 0%;
+  }
+
+  50%,
+  100% {
+    background-position-x: 100%;
+  }
+}
+
 .chest {
   position: absolute;
   inset: 8%;
@@ -1273,7 +1302,8 @@
 }
 @media (prefers-reduced-motion: reduce) {
   .level-badge.has-points,
-  .floor-item.rarity-legendary::before {
+  .floor-item.rarity-legendary::before,
+  .terrain {
     animation: none;
   }
 }

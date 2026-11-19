@@ -21,6 +21,14 @@ public static class BestiaryCatalog
         new("cyclops", "Cyclops", new Stats(maxHealth: 22, attack: 7, defense: 3),
             weakness: Element.Ice, resistance: Element.Fire, attackElement: Element.Fire),
         new("mimic", "Mimic", new Stats(maxHealth: 26, attack: 8, defense: 3), isStationary: true),
+        new("salamander", "Salamander", new Stats(maxHealth: 10, attack: 5, defense: 1, evasion: 10),
+            weakness: Element.Ice, resistance: Element.Fire, attackElement: Element.Fire),
+        new("fire-imp", "Fire Imp", new Stats(maxHealth: 7, attack: 4, defense: 0, evasion: 20), Speed.Fast,
+            weakness: Element.Ice, resistance: Element.Fire, attackElement: Element.Fire),
+        new("crab", "Crab", new Stats(maxHealth: 16, attack: 5, defense: 4), Speed.Slow,
+            weakness: Element.Lightning, resistance: Element.Fire),
+        new("eel", "Eel", new Stats(maxHealth: 9, attack: 5, defense: 0, evasion: 15), Speed.Fast,
+            weakness: Element.Ice, resistance: Element.Lightning, attackElement: Element.Lightning),
 
         new("rat-king", "Rat King", new Stats(maxHealth: 45, attack: 6, defense: 1, evasion: 10),
             weakness: Element.Fire, isBoss: true),
@@ -33,7 +41,11 @@ public static class BestiaryCatalog
         new("frost-yeti", "Frost Yeti", new Stats(maxHealth: 60, attack: 7, defense: 2),
             weakness: Element.Fire, resistance: Element.Ice, attackElement: Element.Ice, isBoss: true),
         new("black-knight", "Black Knight", new Stats(maxHealth: 55, attack: 7, defense: 5),
-            weakness: Element.Lightning, resistance: Element.Wind, isBoss: true)
+            weakness: Element.Lightning, resistance: Element.Wind, isBoss: true),
+        new("magma-golem", "Magma Golem", new Stats(maxHealth: 70, attack: 8, defense: 4), Speed.Slow,
+            weakness: Element.Ice, resistance: Element.Fire, attackElement: Element.Fire, isBoss: true, power: BossPower.LavaRing),
+        new("kraken", "Kraken", new Stats(maxHealth: 60, attack: 7, defense: 2),
+            weakness: Element.Lightning, resistance: Element.Ice, attackElement: Element.Ice, isBoss: true, power: BossPower.TentaclePull)
     ];
 
     public static IReadOnlyList<EnemyKind> Monsters { get; } = All.Where(kind => !kind.IsBoss).ToList();

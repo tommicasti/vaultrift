@@ -31,7 +31,21 @@ public sealed class DungeonMap
     }
 
     public bool IsWalkable(Position position) =>
-        IsInside(position) && _tiles[position.Y, position.X] == TileType.Floor;
+        IsInside(position) && _tiles[position.Y, position.X] is TileType.Floor or TileType.Lava or TileType.Water;
+
+    public bool IsLava(Position position) =>
+        IsInside(position) && _tiles[position.Y, position.X] == TileType.Lava;
+
+    public bool IsWater(Position position) =>
+        IsInside(position) && _tiles[position.Y, position.X] == TileType.Water;
+
+    internal void SetTile(Position position, TileType tile)
+    {
+        if (!IsInside(position))
+            throw new ArgumentOutOfRangeException(nameof(position), position, "The position is outside the map.");
+
+        _tiles[position.Y, position.X] = tile;
+    }
 
     public static DungeonMap Parse(IReadOnlyList<string> rows)
     {
@@ -55,6 +69,8 @@ public sealed class DungeonMap
                     '#' => TileType.Wall,
                     '.' => TileType.Floor,
                     'o' => TileType.Obstacle,
+                    'L' => TileType.Lava,
+                    '~' => TileType.Water,
                     var symbol => throw new ArgumentException($"Unknown symbol '{symbol}' at ({x}, {y}).", nameof(rows))
                 };
             }

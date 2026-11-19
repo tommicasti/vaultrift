@@ -165,6 +165,10 @@ public static class GameMapper
         StairsOpened e => new("StairsOpened", X: e.At.X, Y: e.At.Y),
         FloorDescended e => new("FloorDescended", X: e.At.X, Y: e.At.Y, Floor: e.Floor),
         VaultConquered => new("VaultConquered"),
+        PlayerScorched e => new("PlayerScorched", Damage: e.Damage, Element: Element.Fire),
+        EnemyScorched e => new("EnemyScorched", EnemyId: e.EnemyId, Damage: e.Damage, Element: Element.Fire),
+        LavaSpread e => new("LavaSpread", EnemyId: e.EnemyId, Tiles: ToPositions(e.Tiles)),
+        PlayerPulled e => new("PlayerPulled", EnemyId: e.EnemyId, X: e.To.X, Y: e.To.Y),
         _ => throw new ArgumentOutOfRangeException(nameof(gameEvent), gameEvent.GetType().Name, "Unknown game event.")
     };
 
@@ -235,6 +239,8 @@ public static class GameMapper
     {
         TileType.Wall => '#',
         TileType.Obstacle => 'o',
+        TileType.Lava => 'L',
+        TileType.Water => '~',
         _ => '.'
     };
 

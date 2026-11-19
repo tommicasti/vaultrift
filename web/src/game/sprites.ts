@@ -18,9 +18,9 @@ export const sheets = {
   items: { src: '/assets/tilesets/vaultrift-items.png', columns: 8, rows: 9 },
   world: { src: '/assets/tilesets/vaultrift-world.png', columns: 8, rows: 1 },
   heroes: { src: '/assets/tilesets/vaultrift-heroes.png', columns: 8, rows: 1 },
-  vault: { src: '/assets/tilesets/vaultrift-dungeon.png', columns: 8, rows: 2 },
+  vault: { src: '/assets/tilesets/vaultrift-dungeon.png', columns: 8, rows: 4 },
   outfits: { src: '/assets/tilesets/vaultrift-outfits.png', columns: 8, rows: 6 },
-  biomes: { src: '/assets/tilesets/vaultrift-biomes.png', columns: 8, rows: 6 },
+  biomes: { src: '/assets/tilesets/vaultrift-biomes.png', columns: 8, rows: 8 },
 } satisfies Record<string, SpriteSheet>
 
 const classSprites: Record<string, SpriteRef> = {
@@ -51,6 +51,12 @@ const enemySprites: Record<string, SpriteRef> = {
   'frost-yeti': { sheet: sheets.vault, index: 4 },
   'black-knight': { sheet: sheets.vault, index: 5 },
   mimic: { sheet: sheets.dungeon, index: 92 },
+  salamander: { sheet: sheets.vault, index: 16 },
+  'fire-imp': { sheet: sheets.vault, index: 17 },
+  crab: { sheet: sheets.vault, index: 18 },
+  eel: { sheet: sheets.vault, index: 19 },
+  'magma-golem': { sheet: sheets.vault, index: 20 },
+  kraken: { sheet: sheets.vault, index: 21 },
 }
 
 const defaultEnemySprite = enemySprites.rat

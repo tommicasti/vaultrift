@@ -33,9 +33,11 @@ public class BestiaryCatalogTests
     [Fact]
     public void Bosses_AreMarked_AndLeftOutOfTheMonsters()
     {
-        var bossIds = BestiaryCatalog.All.Where(kind => kind.IsBoss).Select(kind => kind.Id);
+        var bossIds = BestiaryCatalog.All.Where(kind => kind.IsBoss).Select(kind => kind.Id).ToList();
 
-        Assert.Equal(new[] { "rat-king", "spider-queen", "troll", "dune-scorpion", "frost-yeti", "black-knight" }, bossIds);
+        Assert.Equal(
+            new List<string> { "rat-king", "spider-queen", "troll", "dune-scorpion", "frost-yeti", "black-knight", "magma-golem", "kraken" },
+            bossIds);
         Assert.DoesNotContain(BestiaryCatalog.Monsters, kind => kind.IsBoss);
     }
 
@@ -63,5 +65,22 @@ public class BestiaryCatalogTests
     {
         Assert.True(BestiaryCatalog.Get("mimic").IsStationary);
         Assert.DoesNotContain(BiomeCatalog.All, biome => biome.MonsterIds.Contains("mimic") || biome.BossId == "mimic");
+    }
+
+    [Theory]
+    [InlineData("magma-golem", BossPower.LavaRing)]
+    [InlineData("kraken", BossPower.TentaclePull)]
+    public void NewBosses_HaveTheirSpecialPower(string bossId, BossPower power)
+    {
+        Assert.Equal(power, BestiaryCatalog.Get(bossId).Power);
+    }
+
+    [Fact]
+    public void VolcanoMonsters_AreAllFireproof()
+    {
+        var volcano = BiomeCatalog.Get("volcano");
+
+        Assert.All(volcano.MonsterIds.Where(id => id != "bat"), id => Assert.True(BestiaryCatalog.Get(id).IsFireproof));
+        Assert.True(BestiaryCatalog.Get(volcano.BossId).IsFireproof);
     }
 }

@@ -184,12 +184,12 @@ public sealed partial class Game
         if (options.Glancing && !rolled.Missed)
             rolled = rolled with { Damage = Math.Max(DamageCalculator.MinimumDamage, rolled.Damage / GlancingBlowDivisor) };
 
-        var result = ElementRules.Apply(
+        var result = ChargeInWater(ElementRules.Apply(
             rolled,
             weapon?.Element,
             target.Kind.Weakness,
             target.Kind.Resistance,
-            weapon?.Rarity ?? Rarity.Common);
+            weapon?.Rarity ?? Rarity.Common), target);
 
         target.TakeDamage(result.Damage);
         events.Add(new PlayerAttackedEnemy(target.Id, result));

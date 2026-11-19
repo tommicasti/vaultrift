@@ -1,9 +1,12 @@
 import { sheets } from './sprites'
 
+export type Terrain = 'lava' | 'water'
+
 export interface TileArt {
   base: number
   overlay?: number
   deep?: boolean
+  terrain?: Terrain
 }
 
 const biomeRows: Record<string, number> = {
@@ -13,6 +16,8 @@ const biomeRows: Record<string, number> = {
   snow: 3,
   castle: 4,
   swamp: 5,
+  volcano: 6,
+  ruins: 7,
 }
 
 export const biomeNames: Record<string, string> = {
@@ -22,6 +27,8 @@ export const biomeNames: Record<string, string> = {
   snow: 'Frozen Peaks',
   castle: 'Castle',
   swamp: 'Swamp',
+  volcano: 'Volcano',
+  ruins: 'Sunken Ruins',
 }
 
 const floorColumns = [0, 1, 2]
@@ -78,6 +85,8 @@ export function tileArt(biome: string | undefined, map: readonly string[], x: nu
   const floor = index(floorColumn(x, y))
 
   if (symbol === 'o') return { base: floor, overlay: index(obstacleColumns[noise(y, x) % obstacleColumns.length]) }
+  if (symbol === 'L') return { base: floor, terrain: 'lava' }
+  if (symbol === '~') return { base: floor, terrain: 'water' }
 
   return { base: floor }
 }

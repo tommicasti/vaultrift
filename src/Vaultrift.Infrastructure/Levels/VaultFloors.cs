@@ -68,7 +68,7 @@ public sealed class VaultFloors : IFloorProvider
         ArgumentOutOfRangeException.ThrowIfGreaterThan(number, Count);
 
         var biome = Biomes[number - 1];
-        var layout = FloorGenerator.Generate(_random, obstacleDensity: biome.ObstacleDensity);
+        var layout = FloorGenerator.Generate(_random, obstacleDensity: biome.ObstacleDensity, terrain: biome.Terrain);
         var map = layout.Map;
         var start = layout.StartRoom.Center;
         var stairs = number < Count ? layout.BossRoom.Center : (Position?)null;
@@ -130,7 +130,7 @@ public sealed class VaultFloors : IFloorProvider
             var candidates = room.Tiles()
                 .Where(tile => tile.X > room.X && tile.X < room.X + room.Width - 1)
                 .Where(tile => tile.Y > room.Y && tile.Y < room.Y + room.Height - 1)
-                .Where(tile => layout.Map.IsWalkable(tile) && !occupied.Contains(tile))
+                .Where(tile => layout.Map.IsWalkable(tile) && !layout.Map.IsLava(tile) && !occupied.Contains(tile))
                 .ToList();
 
             if (candidates.Count == 0)
@@ -217,7 +217,7 @@ public sealed class VaultFloors : IFloorProvider
 
     private Position? FreeTile(DungeonMap map, Room room, HashSet<Position> occupied)
     {
-        var free = room.Tiles().Where(tile => map.IsWalkable(tile) && !occupied.Contains(tile)).ToList();
+        var free = room.Tiles().Where(tile => map.IsWalkable(tile) && !map.IsLava(tile) && !occupied.Contains(tile)).ToList();
 
         return free.Count == 0 ? null : _random.Pick(free);
     }

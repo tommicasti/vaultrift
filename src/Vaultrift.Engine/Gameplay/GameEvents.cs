@@ -101,3 +101,11 @@ public sealed record StairsOpened(Position At) : GameEvent;
 public sealed record FloorDescended(int Floor, Position At) : GameEvent;
 
 public sealed record VaultConquered : GameEvent;
+
+public sealed record PlayerScorched(int Damage) : GameEvent;
+
+public sealed record EnemyScorched(int EnemyId, int Damage) : GameEvent;
+
+public sealed record LavaSpread(int EnemyId, IReadOnlyList<Position> Tiles) : GameEvent;
+
+public sealed record PlayerPulled(int EnemyId, Position To) : GameEvent;

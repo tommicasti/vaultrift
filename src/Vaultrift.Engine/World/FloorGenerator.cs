@@ -1,10 +1,9 @@
-﻿using Vaultrift.Engine.Randomness;
+using Vaultrift.Engine.Randomness;
 
 namespace Vaultrift.Engine.World;
 
 public static class FloorGenerator
 {
-
     public const int DefaultWidth = 64;
     public const int DefaultHeight = 44;
     public const int MinRooms = 10;
@@ -16,13 +15,15 @@ public static class FloorGenerator
     private const int MinRoomHeight = 4;
     private const int MaxRoomHeight = 8;
     private const int PlacementAttempts = 600;
+
     private static readonly Direction[] Directions = Enum.GetValues<Direction>();
 
     public static FloorLayout Generate(
         IRandom random,
         int width = DefaultWidth,
         int height = DefaultHeight,
-        double obstacleDensity = 0)
+        double obstacleDensity = 0,
+        TerrainSpec? terrain = null)
     {
         ArgumentNullException.ThrowIfNull(random);
         ArgumentOutOfRangeException.ThrowIfNegative(obstacleDensity);
@@ -35,7 +36,7 @@ public static class FloorGenerator
             var rooms = PlaceRooms(random, width, height);
 
             if (rooms.Count >= MinRooms)
-                return Build(random, width, height, rooms, obstacleDensity);
+                return Build(random, width, height, rooms, obstacleDensity, terrain);
         }
     }
 
@@ -86,7 +87,7 @@ public static class FloorGenerator
         return rooms.OrderBy(room => room.Center.X).ThenBy(room => room.Center.Y).ToList();
     }
 
-    private static FloorLayout Build(IRandom random, int width, int height, List<Room> rooms, double obstacleDensity)
+    private static FloorLayout Build(IRandom random, int width, int height, List<Room> rooms, double obstacleDensity, TerrainSpec? terrain)
     {
         var tiles = new TileType[height, width];
 
@@ -111,6 +112,9 @@ public static class FloorGenerator
 
         if (obstacleDensity > 0)
             PlaceObstacles(tiles, rooms, startRoom, bossRoom, obstacleDensity, random);
+
+        if (terrain is { Density: > 0 })
+            PlaceTerrain(tiles, rooms, startRoom, bossRoom, terrain, random);
 
         return new FloorLayout(new DungeonMap(tiles), rooms, startRoom, bossRoom);
     }
@@ -152,6 +156,70 @@ public static class FloorGenerator
                     tiles[tile.Y, tile.X] = TileType.Floor;
             }
         }
+    }
+
+    private static void PlaceTerrain(
+        TileType[,] tiles,
+        List<Room> rooms,
+        Room startRoom,
+        Room bossRoom,
+        TerrainSpec terrain,
+        IRandom random)
+    {
+        var reserved = new HashSet<Position>
+        {
+            bossRoom.Center,
+            bossRoom.Center with { X = bossRoom.Center.X - 1 }
+        };
+
+        foreach (var room in rooms.Where(room => room != startRoom))
+        {
+            var interior = room.Tiles()
+                .Where(tile => tile.X > room.X && tile.X < room.X + room.Width - 1)
+                .Where(tile => tile.Y > room.Y && tile.Y < room.Y + room.Height - 1)
+                .Where(tile => tiles[tile.Y, tile.X] == TileType.Floor && !reserved.Contains(tile))
+                .ToHashSet();
+            var budget = (int)Math.Round(interior.Count * terrain.Density);
+
+            while (budget > 0 && interior.Count > 0)
+            {
+                var pool = GrowPool(random.Pick(interior.ToList()), interior, random.Next(TerrainSpec.MinPoolSize, TerrainSpec.MaxPoolSize + 1), random);
+
+                foreach (var tile in pool.Take(budget))
+                {
+                    tiles[tile.Y, tile.X] = terrain.Tile;
+                    interior.Remove(tile);
+                    budget--;
+                }
+            }
+        }
+    }
+
+    private static List<Position> GrowPool(Position seed, HashSet<Position> allowed, int size, IRandom random)
+    {
+        var pool = new List<Position> { seed };
+        var frontier = new List<Position> { seed };
+
+        while (pool.Count < size && frontier.Count > 0)
+        {
+            var from = random.Pick(frontier);
+            var options = Directions
+                .Select(from.Move)
+                .Where(tile => allowed.Contains(tile) && !pool.Contains(tile))
+                .ToList();
+
+            if (options.Count == 0)
+            {
+                frontier.Remove(from);
+                continue;
+            }
+
+            var next = random.Pick(options);
+            pool.Add(next);
+            frontier.Add(next);
+        }
+
+        return pool;
     }
 
     private static int CountReachable(TileType[,] tiles, Position start)

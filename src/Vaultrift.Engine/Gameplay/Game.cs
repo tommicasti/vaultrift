@@ -230,6 +230,7 @@ public sealed partial class Game
         _stepsThisTurn = 0;
         EnemiesAct(events);
         BurnEnemies(events);
+        ScorchCreatures(events);
         AnnounceBossDefeat(events);
         TurnNumber++;
 
@@ -409,6 +410,8 @@ public sealed partial class Game
 
     private void TakeEnemyTurn(Enemy enemy, List<GameEvent> events)
     {
+        UseBossPower(enemy, events);
+
         if (IsNextToPlayer(enemy))
         {
             AttackPlayer(enemy, events);
@@ -428,12 +431,12 @@ public sealed partial class Game
     private void AttackPlayer(Enemy enemy, List<GameEvent> events)
     {
         var defense = Player.CombatStats;
-        var result = ApplyBulwark(ElementRules.Apply(
+        var result = ApplyBulwark(ChargeInWater(ElementRules.Apply(
             _damageCalculator.Calculate(enemy.CombatStats, defense),
             enemy.Kind.AttackElement,
             weakness: null,
             Player.Resistance,
-            enemy.Rarity));
+            enemy.Rarity), Player));
 
         Player.TakeDamage(result.Damage);
         events.Add(new EnemyAttackedPlayer(enemy.Id, result));
@@ -537,6 +540,7 @@ public sealed partial class Game
     private bool CanEnemyEnter(Enemy enemy, Position position) =>
         (enemy.Kind.PassesThroughWalls ? Map.IsInside(position) : Map.IsWalkable(position)) &&
         !IsChest(position) &&
+        !AvoidsLava(enemy, position) &&
         position != Player.Position &&
         FindLivingEnemyAt(position) is null;
 

@@ -1,4 +1,6 @@
-﻿namespace Vaultrift.Infrastructure.Content;
+using Vaultrift.Engine.World;
+
+namespace Vaultrift.Infrastructure.Content;
 
 public static class BiomeCatalog
 {
@@ -9,7 +11,9 @@ public static class BiomeCatalog
         new("desert", "Desert", "dune-scorpion", ["rat", "spider", "cyclops"], 0.05),
         new("snow", "Frozen Peaks", "frost-yeti", ["bat", "ghost", "cyclops"], 0.08),
         new("castle", "Castle", "black-knight", ["rat", "ghost", "cyclops"], 0.06),
-        new("swamp", "Swamp", "spider-queen", ["slime", "spider", "bat"], 0.10)
+        new("swamp", "Swamp", "spider-queen", ["slime", "spider", "bat"], 0.10),
+        new("volcano", "Volcano", "magma-golem", ["salamander", "fire-imp", "bat"], 0.05, new TerrainSpec(TileType.Lava, 0.10)),
+        new("ruins", "Sunken Ruins", "kraken", ["crab", "eel", "slime"], 0.05, new TerrainSpec(TileType.Water, 0.25))
     ];
 
     public static Biome Get(string id) =>

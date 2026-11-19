@@ -1,8 +1,10 @@
-﻿namespace Vaultrift.Engine.World;
+namespace Vaultrift.Engine.World;
 
 public enum TileType
 {
     Wall,
     Floor,
-    Obstacle
+    Obstacle,
+    Lava,
+    Water
 }

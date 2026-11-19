@@ -296,6 +296,26 @@ public class VaultDungeonTests
         Assert.InRange(VaultFloors.GearRarityChance(Rarity.Legendary, VaultFloors.FloorCount), 0.0, 0.08);
     }
 
+    [Theory]
+    [InlineData("volcano", TileType.Lava)]
+    [InlineData("ruins", TileType.Water)]
+    public void TerrainBiomes_FillTheirRoomsWithTerrain_ButNothingSpawnsOnLava(string biomeId, TileType terrain)
+    {
+        var floors = Enumerable.Range(1, 200)
+            .Select(seed => new VaultFloors(Seeded(seed)))
+            .First(candidate => candidate.Biomes[0].Id == biomeId);
+        var floor = floors.Create(1);
+        var terrainTiles = Enumerable.Range(0, floor.Map.Height)
+            .SelectMany(y => Enumerable.Range(0, floor.Map.Width).Select(x => new Position(x, y)))
+            .Where(tile => floor.Map.GetTile(tile) == terrain)
+            .ToList();
+
+        Assert.NotEmpty(terrainTiles);
+        Assert.DoesNotContain(floor.Enemies, enemy => floor.Map.IsLava(enemy.Position));
+        Assert.DoesNotContain(floor.Items, item => floor.Map.IsLava(item.Position));
+        Assert.DoesNotContain(floor.Chests!, chest => floor.Map.IsLava(chest.Position));
+    }
+
     [Fact]
     public void Floors_WithTheSameSeed_AreIdentical()
     {

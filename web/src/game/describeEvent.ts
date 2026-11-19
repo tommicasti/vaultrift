@@ -166,6 +166,14 @@ export function describeEvent(event: GameEvent, enemyNames: ReadonlyMap<number, 
       return 'A deep rumble echoes through the floor. The stairs are open!'
     case 'FloorDescended':
       return `You descend to floor ${event.floor}.`
+    case 'PlayerScorched':
+      return `The lava burns you for ${event.damage} damage!`
+    case 'EnemyScorched':
+      return `${enemy} burns in the lava for ${event.damage} damage.`
+    case 'LavaSpread':
+      return `${enemy} cracks the ground. Lava pours out!`
+    case 'PlayerPulled':
+      return `A tentacle drags you toward ${enemyLower}!`
     case 'VaultConquered':
       return 'The last guardian falls. The vault is yours!'
   }

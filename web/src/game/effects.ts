@@ -87,6 +87,19 @@ export function effectsForTurn(
         if (event.enemyId !== undefined)
           add(positionsAfter.get(event.enemyId) ?? positionsBefore.get(event.enemyId), 'impact', impactDelayMs + chainDelayMs)
         break
+      case 'LavaSpread':
+        event.tiles?.forEach(tile => add(tile, 'fire', 0))
+        break
+      case 'PlayerPulled':
+        add(player, 'wind', 0)
+        break
+      case 'PlayerScorched':
+        add(player, 'fire', impactDelayMs + burnDelayMs)
+        break
+      case 'EnemyScorched':
+        if (event.enemyId !== undefined)
+          add(positionsAfter.get(event.enemyId) ?? positionsBefore.get(event.enemyId), 'fire', impactDelayMs + burnDelayMs)
+        break
       case 'ChestOpened':
         add(event.x !== undefined && event.y !== undefined ? { x: event.x, y: event.y } : undefined, 'impact', 0)
         break
