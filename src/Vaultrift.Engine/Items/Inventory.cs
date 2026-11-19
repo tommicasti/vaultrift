@@ -3,6 +3,8 @@ namespace Vaultrift.Engine.Items;
 public sealed class Inventory
 {
     public const int DefaultCapacity = 64;
+    public const int ExpansionSize = 8;
+    public const int MaxCapacity = 96;
 
     private readonly List<InventoryEntry> _entries = [];
     private int _nextId = 1;
@@ -15,7 +17,20 @@ public sealed class Inventory
         Capacity = capacity;
     }
 
-    public int Capacity { get; }
+    public int Capacity { get; private set; }
+
+    public bool CanExpand => Capacity + ExpansionSize <= MaxCapacity;
+
+    public int Expansions => Math.Max(0, (Capacity - DefaultCapacity) / ExpansionSize);
+
+    internal bool Expand()
+    {
+        if (!CanExpand)
+            return false;
+
+        Capacity += ExpansionSize;
+        return true;
+    }
 
     public IReadOnlyList<InventoryEntry> Entries => _entries;
 
@@ -41,6 +56,12 @@ public sealed class Inventory
 
         _entries.Add(new InventoryEntry(_nextId++, item));
         return true;
+    }
+
+    public bool CanAdd(ItemInstance item)
+    {
+        ArgumentNullException.ThrowIfNull(item);
+        return !IsFull || (IsStackable(item) && _entries.Any(entry => entry.Item == item));
     }
 
     public InventoryEntry? Find(int entryId) =>

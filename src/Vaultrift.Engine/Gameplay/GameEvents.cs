@@ -144,10 +144,26 @@ public sealed record SpellCast(SpellDefinition Spell, IReadOnlyList<Position> Pa
 
 public sealed record SpellSelected(int Index) : GameEvent;
 
-public sealed record SpellLearned(SpellDefinition Spell) : GameEvent;
+public sealed record SpellLearned(SpellDefinition Spell, int Key, SpellDefinition? Replaced = null) : GameEvent;
 
 public sealed record SpellRejected(SpellResult Reason) : GameEvent;
 
 public sealed record ManaSiphoned(int Amount) : GameEvent;
 
 public sealed record EnemyPulled(int EnemyId, Position To) : GameEvent;
+
+public sealed record CoinsGained(int Amount) : GameEvent;
+
+public sealed record CoinsLost(int Amount) : GameEvent;
+
+public sealed record MerchantGreeted : GameEvent;
+
+public sealed record ItemBought(ItemInstance Item, int Price) : GameEvent;
+
+public sealed record ItemSold(ItemInstance Item, int Price) : GameEvent;
+
+public sealed record JunkSold(int Count, int Price) : GameEvent;
+
+public sealed record BackpackExpanded(int Capacity, int Price) : GameEvent;
+
+public sealed record TradeRejected(TradeResult Reason) : GameEvent;

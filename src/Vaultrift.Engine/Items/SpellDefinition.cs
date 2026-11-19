@@ -10,13 +10,16 @@ public sealed record SpellDefinition
         int power,
         int manaCost,
         int size = 0,
-        bool alwaysTriggers = false)
+        bool alwaysTriggers = false,
+        int manaPercent = 0)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(id);
         ArgumentException.ThrowIfNullOrWhiteSpace(name);
         ArgumentOutOfRangeException.ThrowIfNegative(power);
         ArgumentOutOfRangeException.ThrowIfLessThan(manaCost, 1);
         ArgumentOutOfRangeException.ThrowIfNegative(size);
+        ArgumentOutOfRangeException.ThrowIfNegative(manaPercent);
+        ArgumentOutOfRangeException.ThrowIfGreaterThan(manaPercent, 100);
 
         Id = id;
         Name = name;
@@ -26,6 +29,7 @@ public sealed record SpellDefinition
         ManaCost = manaCost;
         Size = size;
         AlwaysTriggers = alwaysTriggers;
+        ManaPercent = manaPercent;
     }
 
     public string Id { get; }
@@ -43,4 +47,9 @@ public sealed record SpellDefinition
     public int Size { get; }
 
     public bool AlwaysTriggers { get; }
+
+    public int ManaPercent { get; }
+
+    public int BaseCost(int maxMana) =>
+        Math.Max(ManaCost, (int)Math.Ceiling(maxMana * ManaPercent / 100.0));
 }

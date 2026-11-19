@@ -9,5 +9,7 @@ public enum SpellResult
     AlreadyKnown,
     SpellbookFull,
     UnknownSpell,
-    NotEnoughMana
+    NotEnoughMana,
+    InvalidKey,
+    BackpackFull
 }

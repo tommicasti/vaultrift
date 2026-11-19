@@ -61,6 +61,8 @@ export type SpellRejectReason =
   | 'SpellbookFull'
   | 'UnknownSpell'
   | 'NotEnoughMana'
+  | 'InvalidKey'
+  | 'BackpackFull'
 
 export interface SpellInfo {
   id: string
@@ -70,6 +72,7 @@ export interface SpellInfo {
   power: number
   manaCost: number
   size: number
+  manaPercent: number
 }
 
 export type AbilityRejectReason = 'NoAbility' | 'OnCooldown'
@@ -101,6 +104,7 @@ export type UseRejectReason =
   | 'ItemIsFavorite'
   | 'NoJunk'
   | 'NotEnoughMana'
+  | 'ScrollNeedsSlot'
 
 export interface StatModifierInfo {
   stat: StatType
@@ -165,6 +169,7 @@ export interface EquippedItem {
   entryId: number
   item: ItemInfo
   mark: ItemMark
+  sellPrice: number
 }
 
 export interface ActiveBoostInfo {
@@ -182,6 +187,7 @@ export interface PlayerState {
   unspentPoints: number
   mana: number
   maxMana: number
+  coins: number
   x: number
   y: number
   facing: Direction
@@ -196,7 +202,7 @@ export interface PlayerState {
   ability?: AbilityInfo
   equipment: EquippedItem[]
   quickSlots: QuickSlotInfo[]
-  spells: SpellInfo[]
+  spells: (SpellInfo | null)[]
   activeSpell: number
   isOverloaded: boolean
   boosts: ActiveBoostInfo[]
@@ -240,6 +246,7 @@ export interface InventoryEntryState {
   item: ItemInfo
   quantity: number
   mark: ItemMark
+  sellPrice: number
 }
 
 export interface GameState {
@@ -257,7 +264,33 @@ export interface GameState {
   isConquered: boolean
   biome?: string
   chests: TilePosition[]
+  merchant?: MerchantState
 }
+
+export interface OfferInfo {
+  id: number
+  item: ItemInfo
+  price: number
+}
+
+export interface MerchantState {
+  x: number
+  y: number
+  isNearby: boolean
+  offers: OfferInfo[]
+  upgradePrice?: number
+  upgradeSize: number
+}
+
+export type TradeRejectReason =
+  | 'NoMerchantNearby'
+  | 'OfferNotFound'
+  | 'NotEnoughCoins'
+  | 'BackpackFull'
+  | 'BackpackAtMax'
+  | 'ItemNotFound'
+  | 'ItemIsFavorite'
+  | 'NoJunk'
 
 export type GameEventType =
   | 'PlayerMoved'
@@ -286,6 +319,14 @@ export type GameEventType =
   | 'SpellRejected'
   | 'ManaSiphoned'
   | 'EnemyPulled'
+  | 'CoinsGained'
+  | 'CoinsLost'
+  | 'MerchantGreeted'
+  | 'ItemBought'
+  | 'ItemSold'
+  | 'JunkSold'
+  | 'BackpackExpanded'
+  | 'TradeRejected'
   | 'JunkDiscarded'
   | 'ChestOpened'
   | 'MimicRevealed'
@@ -362,6 +403,8 @@ export interface GameEvent {
   path?: TilePosition[]
   spell?: SpellInfo
   slot?: number
+  price?: number
+  replaced?: SpellInfo
 }
 
 export interface TurnResponse {

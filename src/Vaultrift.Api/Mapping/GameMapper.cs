@@ -12,7 +12,7 @@ public static class GameMapper
         new(
             id,
             ToRows(game.Map),
-            ToPlayerResponse(game.Player, game.FreeStepsLeft),
+            ToPlayerResponse(game, game.Player, game.FreeStepsLeft),
             game.Enemies
                 .Where(enemy => !enemy.IsDead)
                 .Select(ToEnemyResponse)
@@ -21,7 +21,7 @@ public static class GameMapper
                 .Select(pair => new FloorItemResponse(pair.Key.X, pair.Key.Y, ToItemResponse(pair.Value)))
                 .ToList(),
             game.Player.Inventory.Entries
-                .Select(entry => new InventoryEntryResponse(entry.Id, ToItemResponse(entry.Item), entry.Quantity, entry.Mark))
+                .Select(entry => new InventoryEntryResponse(entry.Id, ToItemResponse(entry.Item), entry.Quantity, entry.Mark, game.SellPrice(entry)))
                 .ToList(),
             game.Player.Inventory.Capacity,
             game.Deaths,
@@ -30,7 +30,8 @@ public static class GameMapper
             game.Stairs is { } stairs ? new StairsResponse(stairs.X, stairs.Y, game.StairsOpen) : null,
             game.IsConquered,
             game.Biome,
-            ToPositions(game.Chests));
+            ToPositions(game.Chests),
+            ToMerchantResponse(game));
 
     public static TurnResponse ToResponse(Guid id, Game game, TurnResult result) =>
         new(
@@ -38,7 +39,7 @@ public static class GameMapper
             result.Events.Select(ToResponse).ToList(),
             ToResponse(id, game));
 
-    private static PlayerResponse ToPlayerResponse(Player player, int freeSteps)
+    private static PlayerResponse ToPlayerResponse(Game game, Player player, int freeSteps)
     {
         var combat = player.CombatStats;
 
@@ -51,6 +52,7 @@ public static class GameMapper
             player.UnspentPoints,
             player.Mana,
             player.MaxMana,
+            player.Coins,
             player.Position.X,
             player.Position.Y,
             player.Facing,
@@ -64,11 +66,11 @@ public static class GameMapper
             freeSteps,
             ToAbilityResponse(player),
             player.Equipment
-                .Select(pair => new EquippedItemResponse(pair.Key, pair.Value.Id, ToItemResponse(pair.Value.Item), pair.Value.Mark))
+                .Select(pair => new EquippedItemResponse(pair.Key, pair.Value.Id, ToItemResponse(pair.Value.Item), pair.Value.Mark, game.SellPrice(pair.Value)))
                 .ToList(),
             Enumerable.Range(0, Player.QuickSlotCount).Select(slot => ToQuickSlotResponse(player, slot)).ToList(),
-            player.Spells.Select(spell => ToSpellResponse(spell, player.SpellCost(spell))).ToList(),
-            player.ActiveSpell is null ? 0 : player.Spells.ToList().IndexOf(player.ActiveSpell),
+            player.Spells.Select(spell => spell is null ? null : ToSpellResponse(spell, player.SpellCost(spell))).ToList(),
+            player.Spells.ElementAtOrDefault(player.ActiveSpellIndex) is null ? 0 : player.ActiveSpellIndex,
             player.IsOverloaded,
             player.Boosts
                 .Select(boost => new ActiveBoostResponse(
@@ -78,6 +80,22 @@ public static class GameMapper
                 .ToList(),
             player.Resistance,
             player.PoisonTurns);
+    }
+
+    private static MerchantResponse? ToMerchantResponse(Game game)
+    {
+        if (game.Merchant is not { } merchant)
+            return null;
+
+        var inventory = game.Player.Inventory;
+
+        return new MerchantResponse(
+            merchant.Position.X,
+            merchant.Position.Y,
+            game.IsNextToMerchant,
+            merchant.Offers.Select(offer => new OfferResponse(offer.Id, ToItemResponse(offer.Item), offer.Price)).ToList(),
+            inventory.CanExpand ? Merchant.UpgradePrice(inventory) : null,
+            Inventory.ExpansionSize);
     }
 
     private static QuickSlotResponse ToQuickSlotResponse(Player player, int slot)
@@ -90,7 +108,7 @@ public static class GameMapper
     }
 
     private static SpellResponse ToSpellResponse(SpellDefinition spell, int manaCost) =>
-        new(spell.Id, spell.Name, spell.Element, spell.Shape, spell.Power, manaCost, spell.Size);
+        new(spell.Id, spell.Name, spell.Element, spell.Shape, spell.Power, manaCost, spell.Size, spell.ManaPercent);
 
     private static AbilityResponse? ToAbilityResponse(Player player)
     {
@@ -169,9 +187,18 @@ public static class GameMapper
         SpellCast e => new("SpellCast", Element: e.Spell.Element, Path: ToPositions(e.Path), Tiles: ToPositions(e.Area),
             Spell: ToSpellResponse(e.Spell, e.Spell.ManaCost)),
         SpellSelected e => new("SpellSelected", Amount: e.Index),
-        SpellLearned e => new("SpellLearned", Spell: ToSpellResponse(e.Spell, e.Spell.ManaCost)),
+        SpellLearned e => new("SpellLearned", Spell: ToSpellResponse(e.Spell, e.Spell.ManaCost), Slot: e.Key,
+            Replaced: e.Replaced is null ? null : ToSpellResponse(e.Replaced, e.Replaced.ManaCost)),
         SpellRejected e => new("SpellRejected", Reason: e.Reason.ToString()),
         ManaSiphoned e => new("ManaSiphoned", Amount: e.Amount),
+        CoinsGained e => new("CoinsGained", Amount: e.Amount),
+        CoinsLost e => new("CoinsLost", Amount: e.Amount),
+        MerchantGreeted => new("MerchantGreeted"),
+        ItemBought e => new("ItemBought", Item: ToItemResponse(e.Item), Price: e.Price),
+        ItemSold e => new("ItemSold", Item: ToItemResponse(e.Item), Price: e.Price),
+        JunkSold e => new("JunkSold", Amount: e.Count, Price: e.Price),
+        BackpackExpanded e => new("BackpackExpanded", Amount: e.Capacity, Price: e.Price),
+        TradeRejected e => new("TradeRejected", Reason: e.Reason.ToString()),
         EnemyPulled e => new("EnemyPulled", EnemyId: e.EnemyId, X: e.To.X, Y: e.To.Y, Element: Element.Wind),
         BoostExpired e => new("BoostExpired", Item: ToItemResponse(new ItemInstance(e.Item))),
         EnemyIgnited e => new("EnemyIgnited", EnemyId: e.EnemyId, Element: Element.Fire),

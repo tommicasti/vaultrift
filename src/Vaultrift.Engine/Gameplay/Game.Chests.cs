@@ -30,6 +30,7 @@ public sealed partial class Game
             _floorItems[front] = item;
 
         events.Add(new ChestOpened(front, item));
+        EarnCoins(Progression.ChestCoins(FloorNumber), events);
         return true;
     }
 

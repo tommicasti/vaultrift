@@ -5,6 +5,31 @@ namespace Vaultrift.Engine.Gameplay;
 
 public static class Progression
 {
+    public const int CoinsBase = 2;
+    public const int LevelsPerCoin = 2;
+    public const int BossCoinMultiplier = 4;
+    public const int CoinLossPercent = 25;
+
+    public static int CoinsFor(Enemy enemy)
+    {
+        ArgumentNullException.ThrowIfNull(enemy);
+
+        var coins = (CoinsBase + enemy.Level / LevelsPerCoin) * RarityCoinMultiplier(enemy.Rarity);
+
+        return enemy.Kind.IsBoss || enemy.Kind.IsStationary ? coins * BossCoinMultiplier : coins;
+    }
+
+    public static int ChestCoins(int floor) => 4 + 2 * Math.Max(1, floor);
+
+    private static int RarityCoinMultiplier(Rarity rarity) => rarity switch
+    {
+        Rarity.Common => 1,
+        Rarity.Rare => 2,
+        Rarity.Epic => 3,
+        Rarity.Legendary => 5,
+        _ => throw new ArgumentOutOfRangeException(nameof(rarity), rarity, "Unknown rarity.")
+    };
+
     public const int ExperiencePerLevel = 20;
     public const int PointsPerLevel = 3;
     public const int HealthPerPoint = 5;

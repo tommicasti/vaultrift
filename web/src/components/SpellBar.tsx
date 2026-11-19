@@ -3,7 +3,7 @@ import { describeSpell } from '../game/items'
 import { ElementIcon } from './ElementIcon'
 
 interface SpellBarProps {
-  spells: SpellInfo[]
+  spells: (SpellInfo | null)[]
   active: number
   mana: number
   overloaded: boolean
@@ -17,6 +17,15 @@ export function SpellBar({ spells, active, mana, overloaded, disabled, onSelect 
   return (
     <section className={overloaded ? 'spell-bar overloaded' : 'spell-bar'} aria-label="Spellbook">
       {spells.map((spell, index) => {
+        if (!spell) {
+          return (
+            <span key={`empty-${index}`} className="spell empty" title="Learn a scroll on this key">
+              <span className="spell-key">{index + 1}</span>
+              <span className="spell-name">empty</span>
+            </span>
+          )
+        }
+
         const cost = overloaded ? 0 : spell.manaCost
         const classes = [
           'spell',

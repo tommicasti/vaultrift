@@ -28,6 +28,7 @@ public sealed partial class Game
     private bool CanBePushedInto(Enemy enemy, Position position) =>
         (enemy.Kind.PassesThroughWalls ? Map.IsInside(position) : Map.IsWalkable(position)) &&
         !IsChest(position) &&
+        !IsMerchant(position) &&
         position != Player.Position &&
         FindLivingEnemyAt(position) is null;
 
@@ -105,7 +106,7 @@ public sealed partial class Game
         var tiles = Surroundings
             .Select(offset => new Position(enemy.Position.X + offset.X, enemy.Position.Y + offset.Y))
             .Where(tile => Map.IsInside(tile) && Map.GetTile(tile) == TileType.Floor)
-            .Where(tile => tile != Stairs && !IsChest(tile))
+            .Where(tile => tile != Stairs && !IsChest(tile) && !IsMerchant(tile))
             .ToList();
 
         if (tiles.Count == 0)

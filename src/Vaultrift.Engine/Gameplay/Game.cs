@@ -84,6 +84,9 @@ public sealed partial class Game
 
         var target = Player.Position.Move(direction);
 
+        if (IsMerchant(target))
+            return new TurnResult(TurnPassed: false, [new MerchantGreeted()]);
+
         if (!IsFree(target))
         {
             events.Add(new PlayerTurned(direction));
@@ -117,6 +120,9 @@ public sealed partial class Game
 
     public TurnResult Attack()
     {
+        if (IsMerchant(Player.Position.Move(Player.Facing)))
+            return new TurnResult(TurnPassed: false, [new MerchantGreeted()]);
+
         var events = new List<GameEvent>();
         PerformAttack(events);
         EndTurn(events);
@@ -174,16 +180,16 @@ public sealed partial class Game
     {
         var entry = Player.Inventory.Find(entryId);
 
-        if (entry?.Item.Definition is ScrollDefinition scroll)
-            return ReadScroll(entry, scroll);
+        if (entry?.Item.Definition is ScrollDefinition)
+            return new TurnResult(TurnPassed: false, [new UseRejected(UseResult.ScrollNeedsSlot)]);
 
         return ResolveUse(entry?.Item, Player.Use(entryId));
     }
 
     public TurnResult UseQuickSlot(int slot = 0)
     {
-        if (Player.QuickSlotEntry(slot) is { Item.Definition: ScrollDefinition } scrollEntry)
-            return UseItem(scrollEntry.Id);
+        if (Player.QuickSlotEntry(slot) is { Item.Definition: ScrollDefinition scroll } scrollEntry)
+            return ReadScroll(scrollEntry, scroll);
 
         var item = Player.QuickSlots.ElementAtOrDefault(slot) is { } definition ? new ItemInstance(definition) : null;
         return ResolveUse(item, Player.UseQuickSlot(slot));
@@ -269,6 +275,8 @@ public sealed partial class Game
         if (enemy.IsSummoned)
             return;
 
+        EarnCoins(Progression.CoinsFor(enemy), events);
+
         var experience = Progression.ExperienceFor(enemy, Player.EffectAmount(EffectKind.Wisdom));
         var levelBefore = Player.Level;
         events.Add(new ExperienceGained(experience));
@@ -333,6 +341,7 @@ public sealed partial class Game
         Stairs = floor.Stairs;
         Biome = floor.Biome;
         LoadChests(floor);
+        Merchant = floor.Merchant;
         _coolingLava.Clear();
         FloorNumber = number;
         _bossDefeatAnnounced = false;
@@ -375,6 +384,10 @@ public sealed partial class Game
 
         if (chests.Select(chest => chest.Position).Distinct().Count() != chests.Count)
             throw new ArgumentException("Two chests cannot share a tile.", "floor");
+
+        if (floor.Merchant is { } merchant &&
+            (!map.IsWalkable(merchant.Position) || taken.Contains(merchant.Position) || chests.Any(chest => chest.Position == merchant.Position)))
+            throw new ArgumentException("The merchant must stand alone on a floor tile.", "floor");
 
         if (chests.Any(chest => chest.Mimic is { } mimic && mimic.Position != chest.Position))
             throw new ArgumentException("A mimic must hide inside its chest.", "floor");
@@ -499,6 +512,7 @@ public sealed partial class Game
         events.Add(new PlayerDefeated());
 
         DismissMinions();
+        LoseCoins(events);
 
         foreach (var enemy in _enemies.Where(enemy => !enemy.IsDead))
             enemy.ReturnToStart();
@@ -557,12 +571,14 @@ public sealed partial class Game
     private bool IsFree(Position position) =>
         Map.IsWalkable(position) &&
         !IsChest(position) &&
+        !IsMerchant(position) &&
         position != Player.Position &&
         FindLivingEnemyAt(position) is null;
 
     private bool CanEnemyEnter(Enemy enemy, Position position) =>
         (enemy.Kind.PassesThroughWalls ? Map.IsInside(position) : Map.IsWalkable(position)) &&
         !IsChest(position) &&
+        !IsMerchant(position) &&
         !AvoidsLava(enemy, position) &&
         position != Player.Position &&
         FindLivingEnemyAt(position) is null;

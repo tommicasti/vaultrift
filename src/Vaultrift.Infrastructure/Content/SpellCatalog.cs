@@ -22,10 +22,10 @@ public static class SpellCatalog
         new("frost-nova", "Frost Nova", Element.Ice, SpellShape.Nova, power: 3, manaCost: 6, size: 1, alwaysTriggers: true),
         new("chain-lightning", "Chain Lightning", Element.Lightning, SpellShape.Chain, power: 5, manaCost: 6, size: 3),
         new("squall", "Squall", Element.Wind, SpellShape.Line, power: 5, manaCost: 6, size: 2),
-        new("fire-rain", "Fire Rain", Element.Fire, SpellShape.Burst, power: 6, manaCost: 10, size: 2, alwaysTriggers: true),
-        new("blizzard", "Blizzard", Element.Ice, SpellShape.Nova, power: 5, manaCost: 10, size: 2),
-        new("tempest", "Tempest", Element.Lightning, SpellShape.Storm, power: 6, manaCost: 10, size: 5),
-        new("tornado", "Tornado", Element.Wind, SpellShape.Burst, power: 6, manaCost: 10, size: 1)
+        new("fire-rain", "Fire Rain", Element.Fire, SpellShape.Burst, power: 6, manaCost: 10, size: 2, alwaysTriggers: true, manaPercent: 25),
+        new("blizzard", "Blizzard", Element.Ice, SpellShape.Nova, power: 5, manaCost: 10, size: 2, manaPercent: 25),
+        new("tempest", "Tempest", Element.Lightning, SpellShape.Storm, power: 6, manaCost: 10, size: 5, manaPercent: 25),
+        new("tornado", "Tornado", Element.Wind, SpellShape.Burst, power: 6, manaCost: 10, size: 1, manaPercent: 25)
     ];
 
     public static SpellDefinition Get(string id) =>

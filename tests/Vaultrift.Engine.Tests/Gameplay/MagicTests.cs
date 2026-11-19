@@ -57,6 +57,12 @@ public class MagicTests
         return player.Inventory.Entries.First(entry => entry.Item.Definition is ScrollDefinition scroll && scroll.Spell == spell).Id;
     }
 
+    private static TurnResult CastScroll(Game game, int entry)
+    {
+        game.AssignQuickSlot(entry, Player.ScrollSlot);
+        return game.UseQuickSlot(Player.ScrollSlot);
+    }
+
     private static List<int> Damages(TurnResult result) =>
         result.Events.OfType<PlayerAttackedEnemy>().Select(hit => hit.Result.Damage).ToList();
 
@@ -94,13 +100,40 @@ public class MagicTests
     }
 
     [Fact]
+    public void AScroll_CannotBeCastFromTheBackpack()
+    {
+        var player = NewPlayer(withStaff: false);
+        var entry = AddScroll(player, Fireball);
+        var game = NewGame(player, Dummy(1, 6));
+
+        var result = game.UseItem(entry);
+
+        Assert.False(result.TurnPassed);
+        Assert.Contains(new UseRejected(UseResult.ScrollNeedsSlot), result.Events);
+    }
+
+    [Fact]
+    public void TheScrollSlot_TakesOnlyScrolls_AndThePotionSlotsOnlyPotions()
+    {
+        var player = NewPlayer(withStaff: false);
+        var scroll = AddScroll(player, Fireball);
+        player.Inventory.TryAdd(new ItemInstance(TestItems.HealingPotion));
+        var potion = player.Inventory.Entries.First(entry => entry.Item.Definition is PotionDefinition).Id;
+
+        Assert.False(player.AssignQuickSlot(scroll, 0));
+        Assert.False(player.AssignQuickSlot(potion, Player.ScrollSlot));
+        Assert.True(player.AssignQuickSlot(scroll, Player.ScrollSlot));
+        Assert.True(player.AssignQuickSlot(potion, 1));
+    }
+
+    [Fact]
     public void AScroll_WithoutAStaff_CastsOnce_AndPassesTheTurn()
     {
         var player = NewPlayer(withStaff: false);
         var entry = AddScroll(player, Fireball);
         var game = NewGame(player, Dummy(1, 6), Dummy(2, 7, 3), Dummy(3, 9));
 
-        var result = game.UseItem(entry);
+        var result = CastScroll(game, entry);
 
         Assert.True(result.TurnPassed);
         Assert.Equal(2, Damages(result).Count);
@@ -115,7 +148,7 @@ public class MagicTests
         var entry = AddScroll(player, Fireball);
         var game = NewGame(player, Dummy(1, 6));
 
-        var result = game.UseItem(entry);
+        var result = CastScroll(game, entry);
 
         Assert.False(result.TurnPassed);
         Assert.Contains(new UseRejected(UseResult.NotEnoughMana), result.Events);
@@ -129,7 +162,7 @@ public class MagicTests
         var entry = AddScroll(player, Fireball);
         var game = NewGame(player, Dummy(1, 6), Dummy(2, 7, 3), Dummy(3, 8));
 
-        var result = game.UseItem(entry);
+        var result = CastScroll(game, entry);
 
         Assert.Equal(new List<int> { 1, 2 }, result.Events.OfType<PlayerAttackedEnemy>().Select(hit => hit.EnemyId).ToList());
         Assert.Equal(9, Assert.Single(result.Events.OfType<SpellCast>()).Area.Count);
@@ -144,7 +177,7 @@ public class MagicTests
         var second = Dummy(2, 6);
         var game = NewGame(player, first, second);
 
-        var result = game.UseItem(entry);
+        var result = CastScroll(game, entry);
 
         Assert.Equal(2, Damages(result).Count);
         Assert.Contains(new EnemyKnockedBack(1, new Position(5, 2)), result.Events);
@@ -158,7 +191,7 @@ public class MagicTests
         var entry = AddScroll(player, Chain);
         var game = NewGame(player, Dummy(1, 4), Dummy(2, 5, 1), Dummy(3, 7, 1), Dummy(4, 12, 3));
 
-        var result = game.UseItem(entry);
+        var result = CastScroll(game, entry);
 
         Assert.Equal(new List<int> { 1, 2, 3 }, result.Events.OfType<PlayerAttackedEnemy>().Select(hit => hit.EnemyId).ToList());
     }
@@ -170,7 +203,7 @@ public class MagicTests
         var entry = AddScroll(player, FrostNova);
         var game = NewGame(player, Dummy(1, 6), Dummy(2, 4, 1), Dummy(3, 9));
 
-        var result = game.UseItem(entry);
+        var result = CastScroll(game, entry);
 
         Assert.Equal(2, result.Events.OfType<EnemyFrozen>().Count());
         Assert.DoesNotContain(result.Events, gameEvent => gameEvent is PlayerAttackedEnemy { EnemyId: 3 });
@@ -183,7 +216,7 @@ public class MagicTests
         var entry = AddScroll(player, Tempest);
         var game = NewGame(player, Dummy(1, 3, 1), Dummy(2, 6, 3), Dummy(3, 12));
 
-        var result = game.UseItem(entry);
+        var result = CastScroll(game, entry);
 
         Assert.Equal(new List<int> { 1, 2 }, result.Events.OfType<PlayerAttackedEnemy>().Select(hit => hit.EnemyId).ToList());
     }
@@ -195,44 +228,62 @@ public class MagicTests
         var entry = AddScroll(player, Fireball);
         var game = NewGame(player);
 
-        Assert.Contains(new SpellRejected(SpellResult.NoStaff), game.LearnSpell(entry).Events);
+        Assert.Contains(new SpellRejected(SpellResult.NoStaff), game.LearnSpell(entry, 2).Events);
         Assert.NotNull(player.Inventory.Find(entry));
     }
 
     [Fact]
-    public void ALearnedSpell_JoinsTheSpellbook_AndCanBeSelected()
+    public void ALearnedSpell_GoesOnTheChosenKey_AndBecomesTheActiveSpell()
     {
         var player = NewPlayer();
         var entry = AddScroll(player, Fireball);
         var game = NewGame(player, Dummy(1, 6), Dummy(2, 7, 3));
 
-        var learned = game.LearnSpell(entry);
-        var selected = game.SelectSpell(1);
+        var learned = game.LearnSpell(entry, 3);
         var cast = game.Attack();
 
         Assert.False(learned.TurnPassed);
-        Assert.Contains(new SpellLearned(Fireball), learned.Events);
+        Assert.Contains(new SpellLearned(Fireball, 3), learned.Events);
         Assert.Empty(player.Inventory.Entries);
-        Assert.False(selected.TurnPassed);
-        Assert.Equal(new List<SpellDefinition> { Bolt, Fireball }, player.Spells.ToList());
+        Assert.Equal(new List<SpellDefinition?> { Bolt, null, Fireball, null }, player.Spells.ToList());
+        Assert.Equal(Fireball, player.ActiveSpell);
         Assert.Equal(Fireball, Assert.Single(cast.Events.OfType<SpellCast>()).Spell);
         Assert.Equal(2, Damages(cast).Count);
     }
 
     [Fact]
-    public void TheSpellbook_HoldsThreeLearnedSpells_AndNoDuplicates()
+    public void LearningOnATakenKey_GivesTheOldSpellBackAsAScroll()
     {
         var player = NewPlayer();
         var game = NewGame(player);
+        game.LearnSpell(AddScroll(player, Fireball), 2);
 
-        game.LearnSpell(AddScroll(player, Fireball));
-        Assert.Contains(new SpellRejected(SpellResult.AlreadyKnown), game.LearnSpell(AddScroll(player, Fireball)).Events);
+        var result = game.LearnSpell(AddScroll(player, Squall), 2);
 
-        game.LearnSpell(AddScroll(player, Squall));
-        game.LearnSpell(AddScroll(player, Chain));
+        Assert.Contains(new SpellLearned(Squall, 2, Fireball), result.Events);
+        Assert.Equal(Fireball, (Assert.Single(player.Inventory.Entries).Item.Definition as ScrollDefinition)?.Spell);
+        Assert.Equal(Squall, player.Spells[1]);
+    }
 
-        Assert.Contains(new SpellRejected(SpellResult.SpellbookFull), game.LearnSpell(AddScroll(player, FrostNova)).Events);
-        Assert.Equal(4, player.Spells.Count);
+    [Fact]
+    public void LearningAKnownSpell_OrOnAMissingKey_IsRejected()
+    {
+        var player = NewPlayer();
+        var game = NewGame(player);
+        game.LearnSpell(AddScroll(player, Fireball), 2);
+
+        Assert.Contains(new SpellRejected(SpellResult.AlreadyKnown), game.LearnSpell(AddScroll(player, Fireball), 4).Events);
+        Assert.Contains(new SpellRejected(SpellResult.InvalidKey), game.LearnSpell(AddScroll(player, Squall), 1).Events);
+        Assert.Contains(new SpellRejected(SpellResult.InvalidKey), game.LearnSpell(AddScroll(player, Squall), 5).Events);
+    }
+
+    [Fact]
+    public void StrongSpells_CostAShareOfMaximumMana_OnceThePoolIsLarge()
+    {
+        var storm = new SpellDefinition("test-storm", "Storm", Element.Lightning, SpellShape.Storm, power: 6, manaCost: 10, size: 3, manaPercent: 25);
+
+        Assert.Equal(10, NewPlayer(mana: 30).SpellCost(storm));
+        Assert.Equal(30, NewPlayer(mana: 120).SpellCost(storm));
     }
 
     [Fact]
@@ -282,14 +333,14 @@ public class MagicTests
     }
 
     [Fact]
-    public void TheSecondQuickSlot_CanHoldAScroll()
+    public void TheScrollSlot_CastsItsScroll()
     {
         var player = NewPlayer(withStaff: false);
         var entry = AddScroll(player, Fireball);
         var game = NewGame(player, Dummy(1, 6));
 
-        game.AssignQuickSlot(entry, slot: 1);
-        var result = game.UseQuickSlot(1);
+        game.AssignQuickSlot(entry, Player.ScrollSlot);
+        var result = game.UseQuickSlot(Player.ScrollSlot);
 
         Assert.True(result.TurnPassed);
         Assert.Single(result.Events.OfType<SpellCast>());

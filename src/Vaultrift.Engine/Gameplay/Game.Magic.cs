@@ -18,24 +18,37 @@ public sealed partial class Game
         return new TurnResult(TurnPassed: false, [outcome]);
     }
 
-    public TurnResult LearnSpell(int entryId)
+    public TurnResult LearnSpell(int entryId, int key)
     {
         var entry = Player.Inventory.Find(entryId);
 
         if (entry is null)
-            return new TurnResult(TurnPassed: false, [new SpellRejected(SpellResult.ItemNotFound)]);
+            return SpellRejected(SpellResult.ItemNotFound);
 
         if (entry.Item.Definition is not ScrollDefinition scroll)
-            return new TurnResult(TurnPassed: false, [new SpellRejected(SpellResult.NotAScroll)]);
+            return SpellRejected(SpellResult.NotAScroll);
 
-        var result = Player.Learn(scroll.Spell);
+        var result = Player.CanLearn(scroll, key);
 
         if (result != SpellResult.Done)
-            return new TurnResult(TurnPassed: false, [new SpellRejected(result)]);
+            return SpellRejected(result);
+
+        var replaced = Player.ScrollOnKey(key);
+
+        if (replaced is not null && entry.Quantity > 1 && !Player.Inventory.CanAdd(new ItemInstance(replaced)))
+            return SpellRejected(SpellResult.BackpackFull);
 
         Player.Inventory.RemoveOne(entryId);
-        return new TurnResult(TurnPassed: false, [new SpellLearned(scroll.Spell)]);
+        Player.Learn(scroll, key);
+
+        if (replaced is not null)
+            Player.Inventory.TryAdd(new ItemInstance(replaced));
+
+        return new TurnResult(TurnPassed: false, [new SpellLearned(scroll.Spell, key, replaced?.Spell)]);
     }
+
+    private static TurnResult SpellRejected(SpellResult reason) =>
+        new(TurnPassed: false, [new SpellRejected(reason)]);
 
     private TurnResult ReadScroll(InventoryEntry entry, ScrollDefinition scroll)
     {

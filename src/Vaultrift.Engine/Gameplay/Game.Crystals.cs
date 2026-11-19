@@ -78,6 +78,7 @@ public sealed partial class Game
         tile != Stairs &&
         tile != Player.Position &&
         !IsChest(tile) &&
+        !IsMerchant(tile) &&
         !_floorItems.ContainsKey(tile) &&
         FindLivingEnemyAt(tile) is null;
 

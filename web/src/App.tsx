@@ -2,6 +2,8 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import {
   activateAbility,
   attack,
+  buyBackpackUpgrade,
+  buyOffer,
   consumeItem,
   consumeQuickSlot,
   createGame,
@@ -12,12 +14,15 @@ import {
   markItem,
   move,
   selectSpell,
+  sellItem,
+  sellJunk,
   setQuickSlot,
   spendPoint,
   unequip,
 } from './api/gamesApi'
 import type { Direction, EquipmentSlot, GameState, ItemMark, StatPoint, TurnResponse } from './api/types'
 import { Board } from './components/Board'
+import { ShopScreen } from './components/ShopScreen'
 import { SpellBar } from './components/SpellBar'
 import { ClassSelect } from './components/ClassSelect'
 import { Controls } from './components/Controls'
@@ -47,6 +52,7 @@ function App() {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [inventoryOpen, setInventoryOpen] = useState(false)
+  const [shopOpen, setShopOpen] = useState(false)
   const [effects, setEffects] = useState<Effect[]>([])
   const [victoryDismissed, setVictoryDismissed] = useState(false)
   const turnCounter = useRef(0)
@@ -62,6 +68,7 @@ function App() {
       setGame(await createGame(classId, name))
       setLog(['You enter the vault. It is dark.'])
       setInventoryOpen(false)
+      setShopOpen(false)
       setVictoryDismissed(false)
     } catch {
       setError('Could not start a new game. Is the API running?')
@@ -75,6 +82,7 @@ function App() {
     setLog([])
     setError(null)
     setInventoryOpen(false)
+    setShopOpen(false)
   }
 
   const play = useCallback(
@@ -96,6 +104,10 @@ function App() {
         turnCounter.current++
         setEffects(effectsForTurn(turn.events, game.enemies, turn.state.enemies, turn.state.player, turnCounter.current))
         setGame(turn.state)
+
+        if (turn.events.some(gameEvent => gameEvent.type === 'MerchantGreeted')) setShopOpen(true)
+        else if (!turn.state.merchant?.isNearby) setShopOpen(false)
+
         setLog(previous => [...messages.reverse(), ...previous].slice(0, maxLogEntries))
       } catch {
         setError('The action failed. Try again.')
@@ -144,9 +156,17 @@ function App() {
   )
 
   const handleLearn = useCallback(
-    (entryId: number) => void play(gameId => learnSpell(gameId, entryId)),
+    (entryId: number, key: number) => void play(gameId => learnSpell(gameId, entryId, key)),
     [play],
   )
+
+  const handleBuy = useCallback((offerId: number) => void play(gameId => buyOffer(gameId, offerId)), [play])
+
+  const handleBuyUpgrade = useCallback(() => void play(buyBackpackUpgrade), [play])
+
+  const handleSell = useCallback((entryId: number) => void play(gameId => sellItem(gameId, entryId)), [play])
+
+  const handleSellJunk = useCallback(() => void play(sellJunk), [play])
 
   const spellCount = game?.player.spells.length ?? 0
 
@@ -180,6 +200,12 @@ function App() {
     function handleKeyDown(event: KeyboardEvent) {
       if (!hasGame) return
 
+      if (shopOpen) {
+        if (event.code === 'Escape') setShopOpen(false)
+        if (event.code === 'Space' || event.code === 'Tab') event.preventDefault()
+        return
+      }
+
       if (event.code === 'Tab') {
         event.preventDefault()
         setInventoryOpen(open => !open)
@@ -210,6 +236,9 @@ function App() {
       } else if (event.code === 'KeyR') {
         event.preventDefault()
         handleUseQuickSlot(1)
+      } else if (event.code === 'KeyF') {
+        event.preventDefault()
+        handleUseQuickSlot(2)
       } else if (/^Digit[1-4]$/.test(event.code) && Number(event.code.slice(5)) <= spellCount) {
         event.preventDefault()
         handleSelectSpell(Number(event.code.slice(5)) - 1)
@@ -221,7 +250,7 @@ function App() {
 
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [hasGame, inventoryOpen, spellCount, handleMove, handleAttack, handleUseQuickSlot, handleUseAbility, handleSelectSpell])
+  }, [hasGame, inventoryOpen, shopOpen, spellCount, handleMove, handleAttack, handleUseQuickSlot, handleUseAbility, handleSelectSpell])
 
   if (!game) {
     return (
@@ -239,6 +268,7 @@ function App() {
       <header className="app-header">
         <h1>Vaultrift</h1>
         <div className="header-actions">
+          {game.merchant?.isNearby && <button onClick={() => setShopOpen(true)}>Trade</button>}
           <button onClick={() => setInventoryOpen(true)}>Backpack</button>
           <button onClick={returnToClassSelect} disabled={busy}>
             New game
@@ -262,7 +292,7 @@ function App() {
         onSelect={handleSelectSpell}
       />
       <Board game={game} viewColumns={view.columns} viewRows={view.rows} effects={effects} onAttack={handleAttack} />
-      <p className="keyboard-hint">WASD to move · Space or click to attack · E ability · Q R quick slots · 1–4 spells · Tab backpack</p>
+      <p className="keyboard-hint">WASD to move · Space or click to attack · E ability · Q R potions · F scroll · 1–4 spells · Tab backpack</p>
       <Controls
         disabled={busy}
         quickSlots={game.player.quickSlots}
@@ -274,6 +304,20 @@ function App() {
       />
       {error && <p className="error">{error}</p>}
       <EventLog entries={log} />
+      {shopOpen && game.merchant && (
+        <ShopScreen
+          merchant={game.merchant}
+          coins={game.player.coins}
+          entries={game.inventory}
+          capacity={game.inventoryCapacity}
+          disabled={busy}
+          onBuy={handleBuy}
+          onBuyUpgrade={handleBuyUpgrade}
+          onSell={handleSell}
+          onSellJunk={handleSellJunk}
+          onClose={() => setShopOpen(false)}
+        />
+      )}
       {inventoryOpen && (
         <InventoryScreen
           player={game.player}

@@ -9,4 +9,5 @@ public sealed record Floor(
     IReadOnlyList<FloorItem> Items,
     Position? Stairs = null,
     string? Biome = null,
-    IReadOnlyList<Chest>? Chests = null);
+    IReadOnlyList<Chest>? Chests = null,
+    Merchant? Merchant = null);

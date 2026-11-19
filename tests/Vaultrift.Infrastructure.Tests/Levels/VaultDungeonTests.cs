@@ -282,6 +282,49 @@ public class VaultDungeonTests
             Assert.Contains(terrain.Tile, tiles);
     }
 
+    [Theory]
+    [InlineData(4)]
+    [InlineData(8)]
+    [InlineData(12)]
+    [InlineData(16)]
+    public void EveryFourthFloor_HasAMerchant_SellingForYourClass(int number)
+    {
+        var floor = new VaultFloors(Seeded(number), "mage").Create(number);
+        var merchant = floor.Merchant!;
+
+        Assert.True(floor.Map.IsWalkable(merchant.Position));
+        Assert.InRange(merchant.Offers.Count, 6, 7);
+        Assert.All(merchant.Offers, offer => Assert.True(offer.Price > 0));
+        Assert.All(
+            merchant.Offers.Select(offer => offer.Item.Definition).OfType<GearDefinition>().Where(item => item.ClassId is not null),
+            mod => Assert.Equal("mage", mod.ClassId));
+    }
+
+    [Theory]
+    [InlineData(3)]
+    [InlineData(9)]
+    public void TheMerchant_NeverBlocksTheWay(int seed)
+    {
+        var floors = new VaultFloors(Seeded(seed));
+
+        foreach (var number in new[] { 4, 8, 12, 16 })
+        {
+            var floor = floors.Create(number);
+            var blocked = floor.Chests!.Select(chest => chest.Position).Append(floor.Merchant!.Position).ToHashSet();
+            var reachable = WalkableWithout(floor, blocked);
+
+            Assert.All(floor.Enemies, enemy => Assert.Contains(enemy.Position, reachable));
+            Assert.All(floor.Items, item => Assert.Contains(item.Position, reachable));
+        }
+    }
+
+    [Fact]
+    public void TheLastFloor_HasNoMerchant()
+    {
+        Assert.All(Enumerable.Range(1, 10), seed =>
+            Assert.Null(new VaultFloors(Seeded(seed)).Create(VaultFloors.FloorCount).Merchant));
+    }
+
     [Fact]
     public void AFloor_HidesAtMostOneMimic()
     {

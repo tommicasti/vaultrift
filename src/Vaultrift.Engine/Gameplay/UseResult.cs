@@ -10,5 +10,6 @@ public enum UseResult
     QuickSlotEmpty,
     ItemIsFavorite,
     NoJunk,
-    NotEnoughMana
+    NotEnoughMana,
+    ScrollNeedsSlot
 }

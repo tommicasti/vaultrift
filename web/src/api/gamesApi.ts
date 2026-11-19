@@ -74,6 +74,21 @@ export function selectSpell(gameId: string, index: number): Promise<TurnResponse
   return request<TurnResponse>('POST', `/games/${gameId}/spell`, { index })
 }
 
-export function learnSpell(gameId: string, entryId: number): Promise<TurnResponse> {
-  return request<TurnResponse>('POST', `/games/${gameId}/learn`, { entryId })
+export function learnSpell(gameId: string, entryId: number, key: number): Promise<TurnResponse> {
+  return request<TurnResponse>('POST', `/games/${gameId}/learn`, { entryId, key })
+}
+export function buyOffer(gameId: string, offerId: number): Promise<TurnResponse> {
+  return request<TurnResponse>('POST', `/games/${gameId}/buy`, { offerId })
+}
+
+export function buyBackpackUpgrade(gameId: string): Promise<TurnResponse> {
+  return request<TurnResponse>('POST', `/games/${gameId}/buy-upgrade`)
+}
+
+export function sellItem(gameId: string, entryId: number): Promise<TurnResponse> {
+  return request<TurnResponse>('POST', `/games/${gameId}/sell`, { entryId })
+}
+
+export function sellJunk(gameId: string): Promise<TurnResponse> {
+  return request<TurnResponse>('POST', `/games/${gameId}/sell-junk`)
 }

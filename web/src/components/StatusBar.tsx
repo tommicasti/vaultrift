@@ -1,8 +1,10 @@
 import type { PlayerState } from '../api/types'
 import { biomeNames } from '../game/biomes'
 import { abilityNames, describeModifier, elementNames, quickSlotKeys } from '../game/items'
+import { coinSprite } from '../game/sprites'
 import { ElementIcon } from './ElementIcon'
 import { ItemIcon } from './ItemIcon'
+import { Sprite } from './Sprite'
 
 interface StatusBarProps {
   player: PlayerState
@@ -63,7 +65,11 @@ export function StatusBar({ player, deaths, floor, floorCount, biome, onOpenInve
         ATK {player.attack} · DEF {player.defense} · EVA {player.evasion}% · CRIT {player.critical}%
       </div>
       <div className="label">
-        Floor {floor} / {floorCount}
+        <span className="coins">
+          <Sprite sheet={coinSprite.sheet} index={coinSprite.index} className="coin-icon" />
+          {player.coins}
+        </span>{' '}
+        · Floor {floor} / {floorCount}
         {biome && ` · ${biomeNames[biome] ?? biome}`} · Deaths: {deaths}
       </div>
       {hasExtras && (

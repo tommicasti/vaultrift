@@ -19,7 +19,12 @@ public sealed record GameStateResponse(
     StairsResponse? Stairs,
     bool IsConquered,
     string? Biome,
-    IReadOnlyList<PositionResponse> Chests);
+    IReadOnlyList<PositionResponse> Chests,
+    MerchantResponse? Merchant);
+
+public sealed record MerchantResponse(int X, int Y, bool IsNearby, IReadOnlyList<OfferResponse> Offers, int? UpgradePrice, int UpgradeSize);
+
+public sealed record OfferResponse(int Id, ItemResponse Item, int Price);
 
 public sealed record StairsResponse(int X, int Y, bool IsOpen);
 
@@ -32,6 +37,7 @@ public sealed record PlayerResponse(
     int UnspentPoints,
     int Mana,
     int MaxMana,
+    int Coins,
     int X,
     int Y,
     Direction Facing,
@@ -46,7 +52,7 @@ public sealed record PlayerResponse(
     AbilityResponse? Ability,
     IReadOnlyList<EquippedItemResponse> Equipment,
     IReadOnlyList<QuickSlotResponse> QuickSlots,
-    IReadOnlyList<SpellResponse> Spells,
+    IReadOnlyList<SpellResponse?> Spells,
     int ActiveSpell,
     bool IsOverloaded,
     IReadOnlyList<ActiveBoostResponse> Boosts,
@@ -55,7 +61,7 @@ public sealed record PlayerResponse(
 
 public sealed record QuickSlotResponse(ItemResponse? Item, int Quantity);
 
-public sealed record SpellResponse(string Id, string Name, Element Element, SpellShape Shape, int Power, int ManaCost, int Size);
+public sealed record SpellResponse(string Id, string Name, Element Element, SpellShape Shape, int Power, int ManaCost, int Size, int ManaPercent);
 
 public sealed record ClassResponse(
     string Id,
@@ -75,7 +81,7 @@ public sealed record ClassResponse(
 
 public sealed record AbilityResponse(ClassAbility Kind, int Cooldown, int MaxCooldown, int ActiveTurns);
 
-public sealed record EquippedItemResponse(EquipmentSlot Slot, int EntryId, ItemResponse Item, ItemMark Mark);
+public sealed record EquippedItemResponse(EquipmentSlot Slot, int EntryId, ItemResponse Item, ItemMark Mark, int SellPrice);
 
 public sealed record ActiveBoostResponse(ItemResponse Item, ModifierResponse Modifier, int RemainingTurns);
 
@@ -120,7 +126,7 @@ public sealed record ItemResponse(
 
 public sealed record FloorItemResponse(int X, int Y, ItemResponse Item);
 
-public sealed record InventoryEntryResponse(int Id, ItemResponse Item, int Quantity, ItemMark Mark);
+public sealed record InventoryEntryResponse(int Id, ItemResponse Item, int Quantity, ItemMark Mark, int SellPrice);
 
 public sealed record TurnResponse(bool TurnPassed, IReadOnlyList<EventResponse> Events, GameStateResponse State);
 
@@ -146,6 +152,8 @@ public sealed record EventResponse(
     ClassAbility? Ability = null,
     IReadOnlyList<PositionResponse>? Path = null,
     SpellResponse? Spell = null,
-    int? Slot = null);
+    int? Slot = null,
+    int? Price = null,
+    SpellResponse? Replaced = null);
 
 public sealed record PositionResponse(int X, int Y);

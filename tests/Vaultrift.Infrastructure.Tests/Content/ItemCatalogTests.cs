@@ -154,6 +154,16 @@ public class ItemCatalogTests
     }
 
     [Fact]
+    public void EpicSpells_CostAQuarterOfMaximumMana_WhenThatIsMore()
+    {
+        var epic = ItemCatalog.Scrolls.Where(scroll => scroll.Rarity == Rarity.Epic).Select(scroll => scroll.Spell).ToList();
+        var others = SpellCatalog.All.Except(epic).ToList();
+
+        Assert.All(epic, spell => Assert.Equal(25, spell.ManaPercent));
+        Assert.All(others, spell => Assert.Equal(0, spell.ManaPercent));
+    }
+
+    [Fact]
     public void StrongerSpells_CostMoreMana()
     {
         var bolts = SpellCatalog.All.Where(spell => spell.Shape == SpellShape.Bolt).ToList();

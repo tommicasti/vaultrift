@@ -225,7 +225,7 @@ const twinHint = 'Pair it with a shield or a second weapon'
 
 const itemKinds: Record<Exclude<ItemCategory, 'ClassMod'>, ItemKind> = {
   Staff: { name: 'Two-handed staff', hint: 'Attack casts the selected spell · 6 tiles · no penalty up close' },
-  Scroll: { name: 'Scroll', hint: 'Cast it once, or learn it for good while holding a staff' },
+  Scroll: { name: 'Scroll', hint: 'Put it on F to cast it once, or learn it on a key (2–4) while holding a staff' },
   Sword: { name: 'One-handed sword', hint: twinHint },
   Dagger: { name: 'One-handed dagger', hint: twinHint },
   Axe: { name: 'Two-handed axe', hint: 'Sweeps the target and both tiles beside it' },
@@ -286,10 +286,15 @@ const shapeDescriptions: Record<SpellShape, (spell: SpellInfo) => string> = {
 }
 
 export function describeSpell(spell: SpellInfo): string {
-  return `${spell.name} · ${shapeDescriptions[spell.shape](spell)} · +${spell.power} power · ${spell.manaCost} mana`
+  const cost = spell.manaPercent > 0 ? `${spell.manaCost} mana, or ${spell.manaPercent}% of your max if more` : `${spell.manaCost} mana`
+  return `${spell.name} · ${shapeDescriptions[spell.shape](spell)} · +${spell.power} power · ${cost}`
 }
 
-export const quickSlotKeys = ['Q', 'R']
+export const quickSlotKeys = ['Q', 'R', 'F']
+
+export const scrollSlot = 2
+
+export const learnedSpellKeys = [2, 3, 4]
 
 export function capitalize(text: string): string {
   return text.charAt(0).toUpperCase() + text.slice(1)

@@ -18,7 +18,7 @@ export const sheets = {
   items: { src: '/assets/tilesets/vaultrift-items.png', columns: 8, rows: 10 },
   world: { src: '/assets/tilesets/vaultrift-world.png', columns: 8, rows: 1 },
   heroes: { src: '/assets/tilesets/vaultrift-heroes.png', columns: 8, rows: 1 },
-  vault: { src: '/assets/tilesets/vaultrift-dungeon.png', columns: 8, rows: 4 },
+  vault: { src: '/assets/tilesets/vaultrift-dungeon.png', columns: 8, rows: 5 },
   outfits: { src: '/assets/tilesets/vaultrift-outfits.png', columns: 8, rows: 6 },
   biomes: { src: '/assets/tilesets/vaultrift-biomes.png', columns: 8, rows: 11 },
 } satisfies Record<string, SpriteSheet>
@@ -122,6 +122,10 @@ export function outfitSprite(classId: string | undefined, bodyItemId: string | u
 export const crownSprite = 29
 
 export const chestSprite = { sheet: sheets.dungeon, index: 89 }
+
+export const merchantSprite = { sheet: sheets.vault, index: 32 }
+
+export const coinSprite = { sheet: sheets.items, index: 78 }
 
 export const stairsSprites = {
   open: 8,

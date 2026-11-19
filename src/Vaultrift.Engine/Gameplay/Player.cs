@@ -8,8 +8,10 @@ public sealed class Player : Creature
 {
     public const int MaxNameLength = 16;
     public const string DefaultName = "Hero";
-    public const int QuickSlotCount = 2;
+    public const int QuickSlotCount = 3;
+    public const int ScrollSlot = 2;
     public const int MaxLearnedSpells = 3;
+    public const int FirstLearnedKey = 2;
     public const int MinimumSpellCost = 1;
 
     private readonly Dictionary<EquipmentSlot, InventoryEntry> _equipment = [];
@@ -17,7 +19,7 @@ public sealed class Player : Creature
     private readonly Dictionary<StatPoint, int> _spentPoints = [];
     private readonly Stats _baseStats;
     private readonly ItemDefinition?[] _quickSlots = new ItemDefinition?[QuickSlotCount];
-    private readonly List<SpellDefinition> _learnedSpells = [];
+    private readonly ScrollDefinition?[] _spellSlots = new ScrollDefinition?[MaxLearnedSpells];
 
     public Player(Position position, Stats stats, string? name = null)
         : base(position, stats)
@@ -51,6 +53,8 @@ public sealed class Player : Creature
 
     public int Mana { get; private set; }
 
+    public int Coins { get; private set; }
+
     public int MaxMana => CombatStats.MaxMana;
 
     public Direction Facing { get; internal set; }
@@ -65,19 +69,18 @@ public sealed class Player : Creature
 
     public ItemDefinition? QuickSlot => _quickSlots[0];
 
-    public IReadOnlyList<SpellDefinition> LearnedSpells => _learnedSpells;
+    public IReadOnlyList<SpellDefinition?> LearnedSpells => _spellSlots.Select(scroll => scroll?.Spell).ToList();
 
     public SpellDefinition? StaffSpell => (Weapon?.Definition as WeaponDefinition)?.Spell;
 
     public bool HoldsStaff => StaffSpell is not null;
 
-    public IReadOnlyList<SpellDefinition> Spells =>
-        StaffSpell is { } staffSpell ? [staffSpell, .. _learnedSpells] : [];
+    public IReadOnlyList<SpellDefinition?> Spells =>
+        StaffSpell is { } staffSpell ? [staffSpell, .. LearnedSpells] : [];
 
     public int ActiveSpellIndex { get; private set; }
 
-    public SpellDefinition? ActiveSpell =>
-        Spells.Count == 0 ? null : Spells[Math.Min(ActiveSpellIndex, Spells.Count - 1)];
+    public SpellDefinition? ActiveSpell => Spells.ElementAtOrDefault(ActiveSpellIndex) ?? StaffSpell;
 
     public bool IsOverloaded { get; internal set; }
 
@@ -263,7 +266,9 @@ public sealed class Player : Creature
 
         var item = Inventory.Find(entryId)?.Item.Definition;
 
-        if (item is not (PotionDefinition or ScrollDefinition))
+        var fits = slot == ScrollSlot ? item is ScrollDefinition : item is PotionDefinition;
+
+        if (!fits)
             return false;
 
         _quickSlots[slot] = item;
@@ -287,31 +292,58 @@ public sealed class Player : Creature
         if (HoldsStaff && Class?.Mastery.WeaponType == WeaponType.Staff)
             discount++;
 
-        return Math.Max(MinimumSpellCost, spell.ManaCost - discount);
+        return Math.Max(MinimumSpellCost, spell.BaseCost(MaxMana) - discount);
     }
 
     internal bool SelectSpell(int index)
     {
-        if (index < 0 || index >= Spells.Count)
+        if (Spells.ElementAtOrDefault(index) is null)
             return false;
 
         ActiveSpellIndex = index;
         return true;
     }
 
-    internal SpellResult Learn(SpellDefinition spell)
+    internal SpellResult CanLearn(ScrollDefinition scroll, int key)
     {
+        ArgumentNullException.ThrowIfNull(scroll);
+
         if (!HoldsStaff)
             return SpellResult.NoStaff;
 
-        if (Spells.Any(known => known.Id == spell.Id))
+        if (key < FirstLearnedKey || key >= FirstLearnedKey + MaxLearnedSpells)
+            return SpellResult.InvalidKey;
+
+        if (Spells.Any(known => known?.Id == scroll.Spell.Id))
             return SpellResult.AlreadyKnown;
 
-        if (_learnedSpells.Count >= MaxLearnedSpells)
-            return SpellResult.SpellbookFull;
-
-        _learnedSpells.Add(spell);
         return SpellResult.Done;
+    }
+
+    public ScrollDefinition? ScrollOnKey(int key) =>
+        key >= FirstLearnedKey && key < FirstLearnedKey + MaxLearnedSpells ? _spellSlots[key - FirstLearnedKey] : null;
+
+    internal void Learn(ScrollDefinition scroll, int key)
+    {
+        _spellSlots[key - FirstLearnedKey] = scroll;
+        ActiveSpellIndex = key - 1;
+    }
+
+    internal void GainCoins(int amount)
+    {
+        ArgumentOutOfRangeException.ThrowIfNegative(amount);
+        Coins += amount;
+    }
+
+    internal bool TrySpendCoins(int amount)
+    {
+        ArgumentOutOfRangeException.ThrowIfNegative(amount);
+
+        if (amount > Coins)
+            return false;
+
+        Coins -= amount;
+        return true;
     }
 
     internal void SpendMana(int amount)

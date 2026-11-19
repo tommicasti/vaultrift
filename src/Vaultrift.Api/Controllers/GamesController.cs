@@ -101,13 +101,29 @@ public sealed class GamesController : ControllerBase
     public ActionResult<TurnResponse> UseQuickSlot(Guid id, QuickSlotRequest request) =>
         Play(id, game => game.UseQuickSlot(request.Slot));
 
+    [HttpPost("{id:guid}/buy")]
+    public ActionResult<TurnResponse> Buy(Guid id, OfferRequest request) =>
+        Play(id, game => game.Buy(request.OfferId));
+
+    [HttpPost("{id:guid}/buy-upgrade")]
+    public ActionResult<TurnResponse> BuyBackpackUpgrade(Guid id) =>
+        Play(id, game => game.BuyBackpackUpgrade());
+
+    [HttpPost("{id:guid}/sell")]
+    public ActionResult<TurnResponse> Sell(Guid id, EntryRequest request) =>
+        Play(id, game => game.Sell(request.EntryId));
+
+    [HttpPost("{id:guid}/sell-junk")]
+    public ActionResult<TurnResponse> SellJunk(Guid id) =>
+        Play(id, game => game.SellJunk());
+
     [HttpPost("{id:guid}/spell")]
     public ActionResult<TurnResponse> SelectSpell(Guid id, SpellRequest request) =>
         Play(id, game => game.SelectSpell(request.Index));
 
     [HttpPost("{id:guid}/learn")]
-    public ActionResult<TurnResponse> LearnSpell(Guid id, EntryRequest request) =>
-        Play(id, game => game.LearnSpell(request.EntryId));
+    public ActionResult<TurnResponse> LearnSpell(Guid id, LearnRequest request) =>
+        Play(id, game => game.LearnSpell(request.EntryId, request.Key));
 
     private ActionResult<TurnResponse> Play(Guid id, Func<Game, TurnResult> action)
     {
