@@ -41,4 +41,10 @@ public abstract class Creature
     }
 
     internal void RestoreFullHealth() => Health = Stats.MaxHealth;
+
+    internal void RestoreHealth(int health)
+    {
+        ArgumentOutOfRangeException.ThrowIfNegative(health);
+        Health = health;
+    }
 }

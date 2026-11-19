@@ -1,14 +1,14 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Text;
-using Vaultrift.Engine.Gameplay;
+using Vaultrift.Infrastructure.Content;
 
-namespace Vaultrift.Infrastructure.Persistence
+namespace Vaultrift.Infrastructure.Persistence;
+
+public interface IGameStore
 {
-    public interface IGameStore
-    {
-        Guid Add (Game game);
+    GameSession Create(ClassDefinition playerClass, string? playerName);
 
-        Game? Find(Guid id);    
-    }
+    GameSession? Find(Guid id);
+
+    GameSession? FindByCode(string code);
+
+    void Save(GameSession session);
 }

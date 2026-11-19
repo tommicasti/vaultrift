@@ -24,12 +24,16 @@
 
 .app-header {
   display: flex;
+  flex-wrap: wrap;
   justify-content: space-between;
   align-items: center;
+  gap: 0.5rem;
 }
 
 .header-actions {
   display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
   gap: 0.5rem;
 }
 
@@ -1520,6 +1524,10 @@
     font-size: 0.75rem;
   }
 
+  .status-bar .health {
+    flex: 1 1 100%;
+  }
+
   .status-bar .stats,
   .status-extras {
     display: none;
@@ -1793,4 +1801,100 @@
 
 .on-board .element-badge {
   display: none;
+}
+
+.resume-panel {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.75rem;
+  width: min(26rem, 100%);
+}
+
+.resume-card {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  width: 100%;
+  padding: 0.75rem 1rem;
+  background: var(--surface);
+  border: 2px solid var(--accent);
+  border-radius: 10px;
+}
+
+.resume-portrait {
+  width: 3rem;
+  height: 3rem;
+  flex-shrink: 0;
+}
+
+.resume-details {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+  text-align: left;
+}
+
+.code-form {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.35rem;
+  width: 100%;
+}
+
+.code-form-row {
+  display: flex;
+  gap: 0.5rem;
+  width: min(16rem, 100%);
+}
+
+.code-form-row input {
+  flex: 1;
+  min-width: 0;
+  font: inherit;
+  font-family: ui-monospace, 'Cascadia Mono', Consolas, monospace;
+  letter-spacing: 0.1em;
+  text-align: center;
+  color: inherit;
+  background: var(--surface);
+  border: 1px solid var(--muted);
+  border-radius: 8px;
+  padding: 0.45rem 0.5rem;
+}
+
+.code-form-row input:focus {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+.save-code-chip {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.3rem;
+  white-space: nowrap;
+}
+
+.save-code-chip code {
+  font-family: ui-monospace, 'Cascadia Mono', Consolas, monospace;
+  letter-spacing: 0.05em;
+}
+
+.save-code-hint {
+  font-size: 0.75em;
+  color: var(--muted);
+}
+
+@media (max-width: 640px) {
+  .save-code-chip .label,
+  .save-code-hint {
+    display: none;
+  }
+}
+
+@media (orientation: landscape) and (max-height: 500px) {
+  .save-code-chip {
+    display: none;
+  }
 }

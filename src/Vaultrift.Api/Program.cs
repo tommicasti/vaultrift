@@ -1,6 +1,7 @@
+using System.IO.Compression;
 using System.Text.Json.Serialization;
-using Vaultrift.Engine.Randomness;
-using Vaultrift.Infrastructure.Persistence;
+using Microsoft.AspNetCore.ResponseCompression;
+using Vaultrift.Api.Hosting;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -14,18 +15,30 @@ builder.Services
 
 builder.Services.AddOpenApi();
 
-builder.Services.AddSingleton<IRandom>(new SystemRandom(Random.Shared));
-builder.Services.AddSingleton<IGameStore, InMemoryGameStore>();
+builder.Services.AddResponseCompression(options =>
+{
+    options.EnableForHttps = true;
+    options.Providers.Add<BrotliCompressionProvider>();
+    options.Providers.Add<GzipCompressionProvider>();
+});
+builder.Services.Configure<BrotliCompressionProviderOptions>(options => options.Level = CompressionLevel.Fastest);
+builder.Services.Configure<GzipCompressionProviderOptions>(options => options.Level = CompressionLevel.Fastest);
+
+builder.Services.AddGameStorage(builder.Configuration, builder.Environment);
 
 var app = builder.Build();
+
+app.UseResponseCompression();
 
 if (app.Environment.IsDevelopment())
 {
     app.MapOpenApi();
+    app.UseHttpsRedirection();
 }
 
-app.UseHttpsRedirection();
+app.UseGameClient();
 app.UseAuthorization();
 app.MapControllers();
+app.MapGameClientFallback();
 
 app.Run();

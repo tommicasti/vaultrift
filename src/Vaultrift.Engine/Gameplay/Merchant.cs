@@ -17,7 +17,15 @@ public sealed class Merchant
         _offers = stock.Select((item, index) => new Offer(index + 1, item, ItemPrices.BuyPrice(item.Definition, floor))).ToList();
     }
 
+    private Merchant(Position position, List<Offer> offers)
+    {
+        Position = position;
+        _offers = offers;
+    }
+
     public Position Position { get; }
+
+    internal static Merchant Restore(Position position, IEnumerable<Offer> offers) => new(position, offers.ToList());
 
     public IReadOnlyList<Offer> Offers => _offers;
 

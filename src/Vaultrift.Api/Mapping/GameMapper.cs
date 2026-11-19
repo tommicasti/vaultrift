@@ -3,14 +3,24 @@ using Vaultrift.Engine.Combat;
 using Vaultrift.Engine.Gameplay;
 using Vaultrift.Engine.Items;
 using Vaultrift.Engine.World;
+using Vaultrift.Infrastructure.Persistence;
 
 namespace Vaultrift.Api.Mapping;
 
 public static class GameMapper
 {
-    public static GameStateResponse ToResponse(Guid id, Game game) =>
+    public static GameStateResponse ToResponse(GameSession session) => ToResponse(session.Id, session.Code, session.Game);
+
+    public static TurnResponse ToResponse(GameSession session, TurnResult result) =>
+        new(
+            result.TurnPassed,
+            result.Events.Select(ToResponse).ToList(),
+            ToResponse(session));
+
+    private static GameStateResponse ToResponse(Guid id, string saveCode, Game game) =>
         new(
             id,
+            saveCode,
             ToRows(game.Map),
             ToPlayerResponse(game, game.Player, game.FreeStepsLeft),
             game.Enemies
@@ -32,12 +42,6 @@ public static class GameMapper
             game.Biome,
             ToPositions(game.Chests),
             ToMerchantResponse(game));
-
-    public static TurnResponse ToResponse(Guid id, Game game, TurnResult result) =>
-        new(
-            result.TurnPassed,
-            result.Events.Select(ToResponse).ToList(),
-            ToResponse(id, game));
 
     private static PlayerResponse ToPlayerResponse(Game game, Player player, int freeSteps)
     {

@@ -1,5 +1,14 @@
 import type { ClassInfo, Direction, EquipmentSlot, GameState, ItemMark, StatPoint, TurnResponse } from './types'
 
+export class ApiError extends Error {
+  readonly status: number
+
+  constructor(status: number) {
+    super(`Request failed with status ${status}`)
+    this.status = status
+  }
+}
+
 async function request<T>(method: 'GET' | 'POST', path: string, body?: unknown): Promise<T> {
   const response = await fetch(`/api${path}`, {
     method,
@@ -8,7 +17,7 @@ async function request<T>(method: 'GET' | 'POST', path: string, body?: unknown):
   })
 
   if (!response.ok) {
-    throw new Error(`Request failed with status ${response.status}`)
+    throw new ApiError(response.status)
   }
 
   return (await response.json()) as T
@@ -20,6 +29,14 @@ export function getClasses(): Promise<ClassInfo[]> {
 
 export function createGame(classId: string, name: string): Promise<GameState> {
   return request<GameState>('POST', '/games', { classId, name })
+}
+
+export function getGame(gameId: string): Promise<GameState> {
+  return request<GameState>('GET', `/games/${gameId}`)
+}
+
+export function getGameByCode(code: string): Promise<GameState> {
+  return request<GameState>('GET', `/games/code/${encodeURIComponent(code)}`)
 }
 
 export function move(gameId: string, direction: Direction): Promise<TurnResponse> {

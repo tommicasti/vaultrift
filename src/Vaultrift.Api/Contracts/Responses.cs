@@ -7,6 +7,7 @@ namespace Vaultrift.Api.Contracts;
 
 public sealed record GameStateResponse(
     Guid Id,
+    string SaveCode,
     IReadOnlyList<string> Map,
     PlayerResponse Player,
     IReadOnlyList<EnemyResponse> Enemies,

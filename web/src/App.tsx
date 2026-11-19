@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import {
+  ApiError,
   activateAbility,
   attack,
   buyBackpackUpgrade,
@@ -10,6 +11,8 @@ import {
   discardItem,
   discardJunk,
   equip,
+  getGame,
+  getGameByCode,
   learnSpell,
   markItem,
   move,
@@ -25,6 +28,8 @@ import { Board } from './components/Board'
 import { ShopScreen } from './components/ShopScreen'
 import { SpellBar } from './components/SpellBar'
 import { ClassSelect } from './components/ClassSelect'
+import { ResumePanel } from './components/ResumePanel'
+import { SaveCodeChip } from './components/SaveCodeChip'
 import { Controls } from './components/Controls'
 import { EventLog } from './components/EventLog'
 import { InventoryScreen } from './components/InventoryScreen'
@@ -32,6 +37,7 @@ import { StatusBar } from './components/StatusBar'
 import { VictoryScreen } from './components/VictoryScreen'
 import { describeEvent } from './game/describeEvent'
 import { effectsDuration, effectsForTurn, type Effect } from './game/effects'
+import { forgetSavedGame, loadSavedGame, rememberGame, type SavedGame } from './game/savedGame'
 import { useCompactLandscape } from './game/useCompactLandscape'
 import './App.css'
 
@@ -55,23 +61,68 @@ function App() {
   const [shopOpen, setShopOpen] = useState(false)
   const [effects, setEffects] = useState<Effect[]>([])
   const [victoryDismissed, setVictoryDismissed] = useState(false)
+  const [saved, setSaved] = useState<SavedGame | null>(loadSavedGame)
   const turnCounter = useRef(0)
   const compact = useCompactLandscape()
   const view = compact ? compactView : standardView
   const hasGame = game !== null
+
+  function enterGame(state: GameState, message: string) {
+    setGame(state)
+    setLog([message])
+    setInventoryOpen(false)
+    setShopOpen(false)
+    setVictoryDismissed(state.isConquered)
+  }
 
   async function startGame(classId: string, name: string) {
     setBusy(true)
     setError(null)
 
     try {
-      setGame(await createGame(classId, name))
-      setLog(['You enter the vault. It is dark.'])
-      setInventoryOpen(false)
-      setShopOpen(false)
-      setVictoryDismissed(false)
+      enterGame(await createGame(classId, name), 'You enter the vault. It is dark.')
     } catch {
       setError('Could not start a new game. Is the API running?')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  async function continueGame(savedGame: SavedGame) {
+    setBusy(true)
+    setError(null)
+
+    try {
+      const state = await getGame(savedGame.id).catch(failure => {
+        if (failure instanceof ApiError && failure.status === 404) return getGameByCode(savedGame.code)
+        throw failure
+      })
+      enterGame(state, 'You return to the vault.')
+    } catch (failure) {
+      if (failure instanceof ApiError && failure.status === 404) {
+        forgetSavedGame()
+        setSaved(null)
+        setError('That save no longer exists.')
+      } else {
+        setError('Could not reach the vault. Try again in a moment.')
+      }
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  async function loadByCode(code: string) {
+    setBusy(true)
+    setError(null)
+
+    try {
+      enterGame(await getGameByCode(code), 'You return to the vault.')
+    } catch (failure) {
+      setError(
+        failure instanceof ApiError && failure.status === 404
+          ? 'No game has that save code.'
+          : 'Could not reach the vault. Try again in a moment.',
+      )
     } finally {
       setBusy(false)
     }
@@ -83,7 +134,12 @@ function App() {
     setError(null)
     setInventoryOpen(false)
     setShopOpen(false)
+    setSaved(loadSavedGame())
   }
+
+  useEffect(() => {
+    if (game) rememberGame(game)
+  }, [game])
 
   const play = useCallback(
     async (action: (gameId: string) => Promise<TurnResponse>) => {
@@ -256,9 +312,15 @@ function App() {
     return (
       <main className="app start">
         <h1>Vaultrift</h1>
-        <p className="label">Choose your hero</p>
-        <ClassSelect disabled={busy} onChoose={(classId, name) => void startGame(classId, name)} />
+        <ResumePanel
+          saved={saved}
+          disabled={busy}
+          onContinue={savedGame => void continueGame(savedGame)}
+          onLoadCode={code => void loadByCode(code)}
+        />
+        <p className="label">{saved ? 'Or start a new adventure' : 'Choose your hero'}</p>
         {error && <p className="error">{error}</p>}
+        <ClassSelect disabled={busy} onChoose={(classId, name) => void startGame(classId, name)} />
       </main>
     )
   }
@@ -268,10 +330,11 @@ function App() {
       <header className="app-header">
         <h1>Vaultrift</h1>
         <div className="header-actions">
+          <SaveCodeChip code={game.saveCode} />
           {game.merchant?.isNearby && <button onClick={() => setShopOpen(true)}>Trade</button>}
           <button onClick={() => setInventoryOpen(true)}>Backpack</button>
           <button onClick={returnToClassSelect} disabled={busy}>
-            New game
+            Menu
           </button>
         </div>
       </header>

@@ -39,6 +39,39 @@ public sealed class DungeonMap
     public bool IsWater(Position position) =>
         IsInside(position) && _tiles[position.Y, position.X] == TileType.Water;
 
+    public IReadOnlyList<string> ToRows()
+    {
+        var rows = new List<string>(Height);
+
+        for (var y = 0; y < Height; y++)
+        {
+            var row = new char[Width];
+
+            for (var x = 0; x < Width; x++)
+                row[x] = Symbol(_tiles[y, x]);
+
+            rows.Add(new string(row));
+        }
+
+        return rows;
+    }
+
+    private static char Symbol(TileType tile) => tile switch
+    {
+        TileType.Wall => '#',
+        TileType.Floor => '.',
+        TileType.Obstacle => 'o',
+        TileType.Lava => 'L',
+        TileType.Water => '~',
+        TileType.Crystal => 'C',
+        TileType.Spores => 'S',
+        TileType.CurrentUp => '^',
+        TileType.CurrentDown => 'v',
+        TileType.CurrentLeft => '<',
+        TileType.CurrentRight => '>',
+        _ => throw new ArgumentOutOfRangeException(nameof(tile), tile, "Unknown tile.")
+    };
+
     public bool IsCrystal(Position position) =>
         IsInside(position) && _tiles[position.Y, position.X] == TileType.Crystal;
 

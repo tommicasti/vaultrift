@@ -1,0 +1,55 @@
+name: Deploy to Azure
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: deploy
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: production
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+
+      - name: Build the web client
+        working-directory: web
+        run: |
+          npm ci
+          npm run build
+
+      - name: Test
+        run: dotnet test Vaultrift.slnx --configuration Release
+
+      - name: Publish the API
+        run: dotnet publish src/Vaultrift.Api/Vaultrift.Api.csproj --configuration Release --output publish
+
+      - name: Bundle the web client
+        run: |
+          mkdir -p publish/wwwroot
+          cp -r web/dist/. publish/wwwroot/
+
+      - name: Deploy to App Service
+        uses: azure/webapps-deploy@v3
+        with:
+          app-name: ${{ vars.AZURE_WEBAPP_NAME }}
+          publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
+          package: publish

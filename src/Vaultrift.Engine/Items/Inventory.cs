@@ -34,6 +34,19 @@ public sealed class Inventory
 
     public IReadOnlyList<InventoryEntry> Entries => _entries;
 
+    public int NextEntryId => _nextId;
+
+    internal void Restore(int capacity, int nextEntryId, IEnumerable<InventoryEntry> entries)
+    {
+        ArgumentOutOfRangeException.ThrowIfLessThan(capacity, 1);
+        ArgumentNullException.ThrowIfNull(entries);
+
+        Capacity = capacity;
+        _nextId = nextEntryId;
+        _entries.Clear();
+        _entries.AddRange(entries);
+    }
+
     public bool IsFull => _entries.Count >= Capacity;
 
     public bool TryAdd(ItemInstance item)

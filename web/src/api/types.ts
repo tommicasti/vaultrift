@@ -251,6 +251,7 @@ export interface InventoryEntryState {
 
 export interface GameState {
   id: string
+  saveCode: string
   map: string[]
   player: PlayerState
   enemies: EnemyState[]

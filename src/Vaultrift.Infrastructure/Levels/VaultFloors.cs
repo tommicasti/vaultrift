@@ -38,6 +38,21 @@ public sealed class VaultFloors : IFloorProvider
         Biomes = RollBiomes(BiomeCatalog.All);
     }
 
+    public VaultFloors(IRandom random, string? classId, IReadOnlyList<string> biomeIds)
+    {
+        ArgumentNullException.ThrowIfNull(random);
+        ArgumentNullException.ThrowIfNull(biomeIds);
+
+        if (biomeIds.Count != FloorCount)
+            throw new ArgumentException($"Expected {FloorCount} biomes, got {biomeIds.Count}.", nameof(biomeIds));
+
+        _random = random;
+        _classId = classId;
+        Biomes = biomeIds.Select(BiomeCatalog.Get).ToList();
+    }
+
+    public string? ClassId => _classId;
+
     public IReadOnlyList<Biome> Biomes { get; }
 
     public int Count => FloorCount;

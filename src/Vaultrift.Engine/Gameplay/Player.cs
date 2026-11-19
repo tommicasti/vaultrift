@@ -4,7 +4,7 @@ using Vaultrift.Engine.World;
 
 namespace Vaultrift.Engine.Gameplay;
 
-public sealed class Player : Creature
+public sealed partial class Player : Creature
 {
     public const int MaxNameLength = 16;
     public const string DefaultName = "Hero";
