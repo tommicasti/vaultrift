@@ -3,7 +3,9 @@ import {
   ApiError,
   activateAbility,
   attack,
+  awakenTotem,
   buyBackpackUpgrade,
+  travel,
   buyOffer,
   consumeItem,
   consumeQuickSlot,
@@ -11,8 +13,10 @@ import {
   discardItem,
   discardJunk,
   equip,
+  face,
   getGame,
   getGameByCode,
+  previewEquip,
   learnSpell,
   markItem,
   move,
@@ -23,7 +27,7 @@ import {
   spendPoint,
   unequip,
 } from './api/gamesApi'
-import type { Direction, EquipmentSlot, GameState, ItemMark, StatPoint, TurnResponse } from './api/types'
+import type { Difficulty, Direction, EquipmentSlot, GameState, ItemMark, StatPoint, TurnResponse } from './api/types'
 import { Board } from './components/Board'
 import { ShopScreen } from './components/ShopScreen'
 import { SpellBar } from './components/SpellBar'
@@ -32,12 +36,15 @@ import { ResumePanel } from './components/ResumePanel'
 import { SaveCodeChip } from './components/SaveCodeChip'
 import { Controls } from './components/Controls'
 import { EventLog } from './components/EventLog'
+import { HeaderToggles } from './components/HeaderToggles'
 import { InventoryScreen } from './components/InventoryScreen'
 import { StatusBar } from './components/StatusBar'
 import { VictoryScreen } from './components/VictoryScreen'
+import { HeroLostScreen } from './components/HeroLostScreen'
+import { TravelScreen } from './components/TravelScreen'
 import { describeEvent } from './game/describeEvent'
 import { effectsDuration, effectsForTurn, type Effect } from './game/effects'
-import { forgetSavedGame, loadSavedGame, rememberGame, type SavedGame } from './game/savedGame'
+import { forgetHero, loadHeroes, rememberHero, type SavedHero } from './game/savedHeroes'
 import { useCompactLandscape } from './game/useCompactLandscape'
 import './App.css'
 
@@ -49,8 +56,18 @@ const keyDirections: Record<string, Direction> = {
 }
 
 const maxLogEntries = 30
+const stepIntervalMs = 120
 const compactView = { columns: 11, rows: 7 }
 const standardView = { columns: 13, rows: 11 }
+
+const difficultyIntro: Record<Difficulty, string> = {
+  Normal: 'You enter the vault. It is dark.',
+  Hard: 'You enter the vault. It is dark, and the monsters here are stronger.',
+  Hardcore: 'You enter the vault. It is dark. You will only get one chance.',
+}
+
+const incompatibleSaveMessage =
+  'This save comes from an older version of Vaultrift and can no longer be loaded. Start a new adventure!'
 
 function App() {
   const [game, setGame] = useState<GameState | null>(null)
@@ -59,9 +76,18 @@ function App() {
   const [error, setError] = useState<string | null>(null)
   const [inventoryOpen, setInventoryOpen] = useState(false)
   const [shopOpen, setShopOpen] = useState(false)
+  const [travelOpen, setTravelOpen] = useState(false)
   const [effects, setEffects] = useState<Effect[]>([])
+  const queuedMove = useRef<Direction | null>(null)
+  const lastMoveAt = useRef(0)
+  const moveTimer = useRef<number | null>(null)
+  const [moveTick, setMoveTick] = useState(0)
+  const heldKey = useRef<string | null>(null)
+  const holdTimer = useRef<number | null>(null)
+  const moveRef = useRef<(direction: Direction) => void>(() => undefined)
   const [victoryDismissed, setVictoryDismissed] = useState(false)
-  const [saved, setSaved] = useState<SavedGame | null>(loadSavedGame)
+  const [heroes, setHeroes] = useState<SavedHero[]>(loadHeroes)
+  const [lostDismissed, setLostDismissed] = useState(false)
   const turnCounter = useRef(0)
   const compact = useCompactLandscape()
   const view = compact ? compactView : standardView
@@ -73,14 +99,15 @@ function App() {
     setInventoryOpen(false)
     setShopOpen(false)
     setVictoryDismissed(state.isConquered)
+    setLostDismissed(false)
   }
 
-  async function startGame(classId: string, name: string) {
+  async function startGame(classId: string, name: string, difficulty: Difficulty) {
     setBusy(true)
     setError(null)
 
     try {
-      enterGame(await createGame(classId, name), 'You enter the vault. It is dark.')
+      enterGame(await createGame(classId, name, difficulty), difficultyIntro[difficulty])
     } catch {
       setError('Could not start a new game. Is the API running?')
     } finally {
@@ -88,21 +115,21 @@ function App() {
     }
   }
 
-  async function continueGame(savedGame: SavedGame) {
+  async function continueGame(hero: SavedHero) {
     setBusy(true)
     setError(null)
 
     try {
-      const state = await getGame(savedGame.id).catch(failure => {
-        if (failure instanceof ApiError && failure.status === 404) return getGameByCode(savedGame.code)
+      const state = await getGame(hero.id).catch(failure => {
+        if (failure instanceof ApiError && failure.status === 404) return getGameByCode(hero.code)
         throw failure
       })
-      enterGame(state, 'You return to the vault.')
+      enterGame(state, state.isLost ? `${state.player.name} rests here forever.` : 'You return to the vault.')
     } catch (failure) {
-      if (failure instanceof ApiError && failure.status === 404) {
-        forgetSavedGame()
-        setSaved(null)
-        setError('That save no longer exists.')
+      if (failure instanceof ApiError && (failure.status === 404 || failure.status === 409)) {
+        forgetHero(hero.id)
+        setHeroes(loadHeroes())
+        setError(failure.status === 409 ? incompatibleSaveMessage : 'That save no longer exists.')
       } else {
         setError('Could not reach the vault. Try again in a moment.')
       }
@@ -121,7 +148,9 @@ function App() {
       setError(
         failure instanceof ApiError && failure.status === 404
           ? 'No game has that save code.'
-          : 'Could not reach the vault. Try again in a moment.',
+          : failure instanceof ApiError && failure.status === 409
+            ? incompatibleSaveMessage
+            : 'Could not reach the vault. Try again in a moment.',
       )
     } finally {
       setBusy(false)
@@ -134,16 +163,21 @@ function App() {
     setError(null)
     setInventoryOpen(false)
     setShopOpen(false)
-    setSaved(loadSavedGame())
+    setHeroes(loadHeroes())
+  }
+
+  function handleForget(hero: SavedHero) {
+    forgetHero(hero.id)
+    setHeroes(loadHeroes())
   }
 
   useEffect(() => {
-    if (game) rememberGame(game)
+    if (game) rememberHero(game)
   }, [game])
 
   const play = useCallback(
     async (action: (gameId: string) => Promise<TurnResponse>) => {
-      if (!game || busy) return
+      if (!game || busy || game.isLost) return
 
       setBusy(true)
       setError(null)
@@ -175,7 +209,69 @@ function App() {
   )
 
   const handleMove = useCallback(
-    (direction: Direction) => void play(gameId => move(gameId, direction)),
+    (direction: Direction) => {
+      const wait = stepIntervalMs - (performance.now() - lastMoveAt.current)
+
+      if (busy || wait > 0) {
+        queuedMove.current = direction
+
+        if (!busy && moveTimer.current === null)
+          moveTimer.current = window.setTimeout(() => {
+            moveTimer.current = null
+            setMoveTick(tick => tick + 1)
+          }, wait)
+
+        return
+      }
+
+      lastMoveAt.current = performance.now()
+      void play(gameId => move(gameId, direction))
+    },
+    [play, busy],
+  )
+
+  useEffect(() => {
+    moveRef.current = handleMove
+  }, [handleMove])
+
+  useEffect(() => {
+    function stopHolding() {
+      heldKey.current = null
+      if (holdTimer.current !== null) window.clearInterval(holdTimer.current)
+      holdTimer.current = null
+    }
+
+    const handleKeyUp = (event: KeyboardEvent) => {
+      if (event.code === heldKey.current) stopHolding()
+    }
+
+    window.addEventListener('keyup', handleKeyUp)
+    window.addEventListener('blur', stopHolding)
+    return () => {
+      window.removeEventListener('keyup', handleKeyUp)
+      window.removeEventListener('blur', stopHolding)
+      stopHolding()
+    }
+  }, [])
+
+  useEffect(() => {
+    if (busy || queuedMove.current === null) return
+
+    const direction = queuedMove.current
+    queuedMove.current = null
+    handleMove(direction)
+  }, [busy, handleMove, moveTick])
+
+  const gameId = game?.id
+
+  const handlePreview = useCallback(
+    (entryId: number, hand?: EquipmentSlot) =>
+      gameId ? previewEquip(gameId, entryId, hand) : Promise.reject(new Error('No game')),
+    [gameId],
+  )
+
+  const handleFace = useCallback(
+    (direction: Direction) => void play(gameId => face(gameId, direction)),
     [play],
   )
 
@@ -219,6 +315,12 @@ function App() {
   const handleBuy = useCallback((offerId: number) => void play(gameId => buyOffer(gameId, offerId)), [play])
 
   const handleBuyUpgrade = useCallback(() => void play(buyBackpackUpgrade), [play])
+  const handleAwakenTotem = useCallback(() => void play(awakenTotem), [play])
+
+  function handleTravel(floor: number) {
+    setTravelOpen(false)
+    void play(gameId => travel(gameId, floor))
+  }
 
   const handleSell = useCallback((entryId: number) => void play(gameId => sellItem(gameId, entryId)), [play])
 
@@ -278,7 +380,20 @@ function App() {
 
       if (direction) {
         event.preventDefault()
+        if (event.repeat) return
+
+        if (event.shiftKey) {
+          handleFace(direction)
+          return
+        }
+
+        heldKey.current = event.code
         handleMove(direction)
+        if (holdTimer.current !== null) window.clearInterval(holdTimer.current)
+        holdTimer.current = window.setInterval(() => {
+          const held = heldKey.current ? keyDirections[heldKey.current] : undefined
+          if (held && !document.querySelector('[role="dialog"]')) moveRef.current(held)
+        }, stepIntervalMs)
       } else if (event.code === 'Space') {
         event.preventDefault()
 
@@ -306,21 +421,22 @@ function App() {
 
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [hasGame, inventoryOpen, shopOpen, spellCount, handleMove, handleAttack, handleUseQuickSlot, handleUseAbility, handleSelectSpell])
+  }, [hasGame, inventoryOpen, shopOpen, spellCount, handleMove, handleFace, handleAttack, handleUseQuickSlot, handleUseAbility, handleSelectSpell])
 
   if (!game) {
     return (
       <main className="app start">
         <h1>Vaultrift</h1>
         <ResumePanel
-          saved={saved}
+          heroes={heroes}
           disabled={busy}
-          onContinue={savedGame => void continueGame(savedGame)}
+          onContinue={hero => void continueGame(hero)}
+          onForget={handleForget}
           onLoadCode={code => void loadByCode(code)}
         />
-        <p className="label">{saved ? 'Or start a new adventure' : 'Choose your hero'}</p>
+        <p className="label">{heroes.length > 0 ? 'Or start a new adventure' : 'Choose your hero'}</p>
         {error && <p className="error">{error}</p>}
-        <ClassSelect disabled={busy} onChoose={(classId, name) => void startGame(classId, name)} />
+        <ClassSelect disabled={busy} onChoose={(classId, name, difficulty) => void startGame(classId, name, difficulty)} />
       </main>
     )
   }
@@ -331,7 +447,14 @@ function App() {
         <h1>Vaultrift</h1>
         <div className="header-actions">
           <SaveCodeChip code={game.saveCode} />
+          <HeaderToggles />
           {game.merchant?.isNearby && <button onClick={() => setShopOpen(true)}>Trade</button>}
+          {game.waystone?.isNearby && game.waystone.destinations.length > 0 && <button onClick={() => setTravelOpen(true)}>Waystone</button>}
+          {game.totem?.isNearby && (
+            <button disabled={busy || game.player.coins < game.totem.price} onClick={handleAwakenTotem} title={`Fight the ${game.totem.bossName} again`}>
+              Totem · {game.totem.price}
+            </button>
+          )}
           <button onClick={() => setInventoryOpen(true)}>Backpack</button>
           <button onClick={returnToClassSelect} disabled={busy}>
             Menu
@@ -344,6 +467,7 @@ function App() {
         floor={game.floor}
         floorCount={game.floorCount}
         biome={game.biome}
+        difficulty={game.difficulty}
         onOpenInventory={() => setInventoryOpen(true)}
       />
       <SpellBar
@@ -355,12 +479,13 @@ function App() {
         onSelect={handleSelectSpell}
       />
       <Board game={game} viewColumns={view.columns} viewRows={view.rows} effects={effects} onAttack={handleAttack} />
-      <p className="keyboard-hint">WASD to move · Space or click to attack · E ability · Q R potions · F scroll · 1–4 spells · Tab backpack</p>
+      <p className="keyboard-hint">WASD to move · Shift+WASD to turn · Space or click to attack · E ability · Q R potions · F scroll · 1–4 spells · Tab backpack</p>
       <Controls
-        disabled={busy}
+        disabled={game.isLost}
         quickSlots={game.player.quickSlots}
         ability={game.player.ability}
         onMove={handleMove}
+        onFace={handleFace}
         onAttack={handleAttack}
         onUseQuickSlot={handleUseQuickSlot}
         onUseAbility={handleUseAbility}
@@ -381,6 +506,15 @@ function App() {
           onClose={() => setShopOpen(false)}
         />
       )}
+      {travelOpen && game.waystone && (
+        <TravelScreen
+          waystone={game.waystone}
+          currentFloor={game.floor}
+          disabled={busy}
+          onTravel={handleTravel}
+          onClose={() => setTravelOpen(false)}
+        />
+      )}
       {inventoryOpen && (
         <InventoryScreen
           player={game.player}
@@ -396,6 +530,7 @@ function App() {
           onDiscardJunk={handleDiscardJunk}
           onLearn={handleLearn}
           onMark={handleMark}
+          onPreview={handlePreview}
           onClose={() => setInventoryOpen(false)}
         />
       )}
@@ -404,6 +539,15 @@ function App() {
           heroName={game.player.name}
           deaths={game.deaths}
           onKeepExploring={() => setVictoryDismissed(true)}
+          onNewGame={returnToClassSelect}
+        />
+      )}
+      {game.isLost && !lostDismissed && (
+        <HeroLostScreen
+          heroName={game.player.name}
+          floor={game.floor}
+          level={game.player.level}
+          onLookAround={() => setLostDismissed(true)}
           onNewGame={returnToClassSelect}
         />
       )}

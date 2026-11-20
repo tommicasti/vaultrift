@@ -1,4 +1,4 @@
-﻿using Vaultrift.Engine.Combat;
+using Vaultrift.Engine.Combat;
 using Vaultrift.Engine.Gameplay;
 using Vaultrift.Engine.Items;
 using Vaultrift.Engine.Tests.Fakes;
@@ -197,5 +197,23 @@ public class ProgressionTests
         var result = game.SpendPoint(StatPoint.Defense);
 
         Assert.Contains(new SpendRejected(SpendResult.NoPointsLeft), result.Events);
+    }
+
+    [Theory]
+    [InlineData(0, 1.0)]
+    [InlineData(-3, 1.0)]
+    [InlineData(1, 0.75)]
+    [InlineData(2, 0.5)]
+    [InlineData(10, 0.1)]
+    public void Experience_ShrinksWhenTheHeroOutlevelsTheEnemy(int levelsAbove, double factor) =>
+        Assert.Equal(factor, Progression.LevelGapFactor(levelsAbove), precision: 6);
+
+    [Fact]
+    public void AnOutleveledEnemy_GivesLessExperience()
+    {
+        var enemy = new Enemy(1, new Position(0, 0), Rat, Rarity.Common, level: 4);
+
+        Assert.True(Progression.ExperienceFor(enemy, playerLevel: 6) < Progression.ExperienceFor(enemy, playerLevel: 4));
+        Assert.Equal(Progression.ExperienceFor(enemy), Progression.ExperienceFor(enemy, playerLevel: 2));
     }
 }

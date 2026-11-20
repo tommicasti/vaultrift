@@ -1,4 +1,5 @@
 using System.Collections.Concurrent;
+using Vaultrift.Engine.Gameplay;
 using Vaultrift.Infrastructure.Content;
 
 namespace Vaultrift.Infrastructure.Persistence;
@@ -20,11 +21,11 @@ public sealed class CachedGameStore : IGameStore
 
     public int CachedCount => _sessions.Count;
 
-    public GameSession Create(ClassDefinition playerClass, string? playerName)
+    public GameSession Create(ClassDefinition playerClass, string? playerName, Difficulty difficulty = Difficulty.Normal)
     {
         ArgumentNullException.ThrowIfNull(playerClass);
 
-        var session = GameSession.Start(Guid.NewGuid(), FreeCode(), playerClass, playerName);
+        var session = GameSession.Start(Guid.NewGuid(), FreeCode(), playerClass, playerName, difficulty: difficulty);
         _repository.Upsert(session.ToRecord());
         Remember(session);
         return session;
@@ -72,7 +73,17 @@ public sealed class CachedGameStore : IGameStore
         if (record is null)
             return null;
 
-        var session = GameSession.Resume(record.Id, record.Code, SaveFile.FromJson(record.Data));
+        GameSession session;
+
+        try
+        {
+            session = GameSession.Resume(record.Id, record.Code, SaveFile.FromJson(record.Data));
+        }
+        catch (Exception error) when (error is InvalidDataException or KeyNotFoundException or System.Text.Json.JsonException or ArgumentException or InvalidOperationException)
+        {
+            throw new IncompatibleSaveException(record.Code, error);
+        }
+
         return _sessions.GetOrAdd(session.Id, session);
     }
 

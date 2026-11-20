@@ -11,4 +11,7 @@ public sealed record CharacterClass(
     Stats BaseStats,
     WeaponMastery Mastery,
     Speed Speed = Speed.Normal,
-    ClassAbility? Ability = null);
+    ClassAbility? Ability = null)
+{
+    public WeaponDefinition? SpareWeapon { get; init; }
+}

@@ -34,6 +34,33 @@ public class ClassCatalogTests
     }
 
     [Fact]
+    public void EveryClass_HasASpareCopyOfItsStartingWeapon()
+    {
+        Assert.All(ClassCatalog.All, definition =>
+        {
+            var spare = Assert.IsType<WeaponDefinition>(definition.Class.SpareWeapon);
+            var starting = definition.StartingItemIds.Select(ItemCatalog.Get).OfType<WeaponDefinition>().First();
+
+            Assert.True(spare.IsSpare);
+            Assert.Equal(starting.WeaponType, spare.WeaponType);
+            Assert.Equal(starting.Modifiers, spare.Modifiers);
+            Assert.Equal(starting.FixedElement, spare.FixedElement);
+            Assert.Equal(starting.Spell, spare.Spell);
+        });
+    }
+
+    [Fact]
+    public void Spares_CanBeLoadedBackButNeverDrop()
+    {
+        Assert.All(ItemCatalog.Spares, spare =>
+        {
+            Assert.Same(spare, ItemCatalog.Get(spare.Id));
+            Assert.DoesNotContain(spare, ItemCatalog.Equipment);
+            Assert.DoesNotContain(spare, ItemCatalog.All);
+        });
+    }
+
+    [Fact]
     public void Find_KnownId_ReturnsTheClass()
     {
         Assert.Equal("Knight", ClassCatalog.Find("knight")?.Class.Name);
@@ -82,5 +109,16 @@ public class ClassCatalogTests
 
         Assert.Contains("sword-common", kit);
         Assert.Contains(kit, id => ItemCatalog.Get(id) is GearDefinition { Kind: EquipmentKind.Shield });
+    }
+
+    [Theory]
+    [InlineData("knight", 2)]
+    [InlineData("berserker", 2)]
+    [InlineData("ranger", 3)]
+    [InlineData("rogue", 3)]
+    [InlineData("mage", 2)]
+    public void FragileClasses_StartWithAnExtraHealingPotion(string classId, int potions)
+    {
+        Assert.Equal(potions, ClassCatalog.Find(classId)!.StartingItemIds.Count(id => id == "potion-healing"));
     }
 }

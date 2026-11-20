@@ -28,17 +28,22 @@ public sealed class GameSession
 
     public string ClassId { get; }
 
+    public string? BiomeOf(int floor) =>
+        floor >= 1 && floor <= _floors.Biomes.Count ? _floors.Biomes[floor - 1].Id
+        : floor == VaultFloors.FinalFloor ? RiftArena.BiomeId
+        : null;
+
     public Game Game { get; }
 
     public DateTimeOffset LastUsed { get; private set; }
 
-    public static GameSession Start(Guid id, string code, ClassDefinition playerClass, string? playerName, ulong? seed = null)
+    public static GameSession Start(Guid id, string code, ClassDefinition playerClass, string? playerName, ulong? seed = null, Difficulty difficulty = Difficulty.Normal)
     {
         ArgumentNullException.ThrowIfNull(playerClass);
 
         var classId = playerClass.Class.Id;
         var random = new SeededRandom(seed ?? NewSeed());
-        var floors = new VaultFloors(random, classId);
+        var floors = new VaultFloors(random, classId, difficulty);
         var game = VaultDungeon.CreateGame(random, floors, playerClass, playerName);
 
         return new GameSession(id, code, classId, random, floors, game);
@@ -49,7 +54,7 @@ public sealed class GameSession
         ArgumentNullException.ThrowIfNull(save);
 
         var random = new SeededRandom(save.RandomState);
-        var floors = new VaultFloors(random, save.ClassId, save.Biomes);
+        var floors = new VaultFloors(random, save.ClassId, save.Biomes, save.Game.Difficulty);
         var game = VaultDungeon.RestoreGame(save.Game, random, floors);
 
         return new GameSession(id, code, save.ClassId, random, floors, game);

@@ -1,4 +1,4 @@
-﻿using Vaultrift.Engine.Combat;
+using Vaultrift.Engine.Combat;
 using Vaultrift.Engine.Gameplay;
 using Vaultrift.Engine.Items;
 using Vaultrift.Engine.Tests.Fakes;
@@ -260,5 +260,56 @@ public class UseItemTests
 
         Assert.Equal(1, game.Deaths);
         Assert.Empty(game.Player.Boosts);
+    }
+
+    private static readonly PotionDefinition GreaterHealing = new("test-greater-healing", "Test Greater Healing", Rarity.Rare, Healing: 25);
+    private static readonly PotionDefinition SuperiorHealing = new("test-superior-healing", "Test Superior Healing", Rarity.Epic, Healing: 40);
+    private static readonly PotionDefinition ManaPotion = new("test-mana", "Test Mana", Rarity.Common, ManaRestore: 10);
+
+    [Fact]
+    public void AnEmptiedQuickSlot_RefillsWithTheBestPotionOfTheSameKind()
+    {
+        var player = NewPlayer();
+        var potionId = AddToInventory(player, TestItems.HealingPotion);
+        AddToInventory(player, GreaterHealing);
+        AddToInventory(player, SuperiorHealing);
+        AddToInventory(player, ManaPotion);
+        player.AssignQuickSlot(potionId);
+        player.TakeDamage(15);
+
+        player.UseQuickSlot();
+
+        Assert.Equal(SuperiorHealing, player.QuickSlot);
+    }
+
+    [Fact]
+    public void AQuickSlot_NeverRefillsWithADifferentKindOfPotion()
+    {
+        var player = NewPlayer();
+        var potionId = AddToInventory(player, TestItems.HealingPotion);
+        AddToInventory(player, ManaPotion);
+        player.AssignQuickSlot(potionId);
+        player.TakeDamage(15);
+
+        player.UseQuickSlot();
+
+        Assert.Equal(TestItems.HealingPotion, player.QuickSlot);
+        Assert.Equal(UseResult.ItemNotFound, player.UseQuickSlot());
+    }
+
+    [Fact]
+    public void AnEmptyQuickSlot_PicksUpAPotionFoundLater()
+    {
+        var player = NewPlayer();
+        var potionId = AddToInventory(player, TestItems.HealingPotion);
+        player.AssignQuickSlot(potionId);
+        player.TakeDamage(25);
+        player.UseQuickSlot();
+        player.Inventory.TryAdd(GreaterHealing);
+
+        var result = player.UseQuickSlot();
+
+        Assert.Equal(UseResult.Used, result);
+        Assert.Equal(GreaterHealing, player.QuickSlot);
     }
 }

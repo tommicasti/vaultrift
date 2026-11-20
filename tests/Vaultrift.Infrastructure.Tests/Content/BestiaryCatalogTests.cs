@@ -37,7 +37,7 @@ public class BestiaryCatalogTests
 
         Assert.Equal(
             new List<string> { "rat-king", "spider-queen", "troll", "dune-scorpion", "frost-yeti", "black-knight", "magma-golem", "kraken",
-                "crystal-golem", "mushroom-king", "storm-griffin" },
+                "crystal-golem", "mushroom-king", "storm-griffin", "custode" },
             bossIds);
         Assert.DoesNotContain(BestiaryCatalog.Monsters, kind => kind.IsBoss);
     }
@@ -93,5 +93,18 @@ public class BestiaryCatalogTests
     {
         Assert.Equal("sporeling", BestiaryCatalog.Get("mushroom-king").Minion?.Id);
         Assert.DoesNotContain(BiomeCatalog.All, biome => biome.MonsterIds.Contains("sporeling"));
+    }
+
+    [Fact]
+    public void TheCustode_ChangesPowerAsItLosesHealth()
+    {
+        var custode = BestiaryCatalog.Get("custode");
+
+        Assert.Equal(
+            [BossPower.LavaRing, BossPower.SummonMinions, BossPower.Gust],
+            custode.Phases.Select(phase => phase.Power).ToList());
+        Assert.Equal("drakeling", custode.Minion?.Id);
+        Assert.Equal(Element.Ice, custode.Weakness);
+        Assert.DoesNotContain(BiomeCatalog.All, biome => biome.MonsterIds.Contains("drakeling") || biome.BossId == "custode");
     }
 }

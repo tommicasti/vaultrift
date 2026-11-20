@@ -215,6 +215,20 @@ public class ElementCombatTests
     }
 
     [Fact]
+    public void Wind_CannotPushABoss_ItStaggersItInstead()
+    {
+        var guardian = new EnemyKind("guardian", "Guardian", new Stats(maxHealth: 40, attack: 1, defense: 0), isBoss: true);
+        var boss = NewEnemy(guardian, 3, 1);
+        var game = NewGame(NewPlayer(Sword(Element.Wind)), [boss], NoCritical, Succeeds, NoCritical);
+
+        var result = game.Attack();
+
+        Assert.Equal(new Position(3, 1), boss.Position);
+        Assert.DoesNotContain(result.Events, gameEvent => gameEvent is EnemyKnockedBack);
+        Assert.Contains(new EnemySlammed(1, 4), result.Events);
+    }
+
+    [Fact]
     public void DodgedAttack_TriggersNoEffect()
     {
         var kind = new EnemyKind("nimble", "Nimble", new Stats(maxHealth: 40, attack: 1, defense: 0, evasion: 50));

@@ -8,19 +8,23 @@ namespace Vaultrift.Infrastructure.Levels;
 
 public sealed class VaultFloors : IFloorProvider
 {
-    public const int FloorCount = 20;
+    public const int RolledFloors = 20;
+    public const int FinalFloor = RolledFloors + 1;
+    public const int FloorCount = FinalFloor;
     public const int FloorsPerBossTier = 5;
 
     private const int IdsPerFloor = 1000;
-    private const int GearPerFloor = 6;
-    private const int PotionsPerFloor = 5;
+    private const int GearPerFloor = 3;
+    private const int PotionsPerFloor = 3;
     private const int ScrollsPerFloor = 1;
     private const int MinChestsPerFloor = 2;
     private const int MaxChestsPerFloor = 3;
     private const int ChestPlacementAttempts = 30;
     private const string MimicId = "mimic";
     private const int MerchantEvery = 4;
-    private const double MerchantChance = 0.15;
+    private const double MerchantChance = 0.10;
+    private const double MerchantChancePerFloor = 0.02;
+    private const int FeaturedLegendaryFloor = 10;
     private const int MerchantGear = 3;
     private const int MerchantRarityBoost = 5;
 
@@ -30,25 +34,49 @@ public sealed class VaultFloors : IFloorProvider
     private readonly IRandom _random;
     private readonly string? _classId;
 
-    public VaultFloors(IRandom random, string? classId = null)
+    public VaultFloors(IRandom random, string? classId = null, Difficulty difficulty = Difficulty.Normal)
     {
         ArgumentNullException.ThrowIfNull(random);
         _random = random;
         _classId = classId;
+        Difficulty = difficulty;
         Biomes = RollBiomes(BiomeCatalog.All);
     }
 
-    public VaultFloors(IRandom random, string? classId, IReadOnlyList<string> biomeIds)
+    public VaultFloors(IRandom random, string? classId, IReadOnlyList<string> biomeIds, Difficulty difficulty = Difficulty.Normal)
     {
         ArgumentNullException.ThrowIfNull(random);
         ArgumentNullException.ThrowIfNull(biomeIds);
 
-        if (biomeIds.Count != FloorCount)
-            throw new ArgumentException($"Expected {FloorCount} biomes, got {biomeIds.Count}.", nameof(biomeIds));
+        if (biomeIds.Count != RolledFloors)
+            throw new ArgumentException($"Expected {RolledFloors} biomes, got {biomeIds.Count}.", nameof(biomeIds));
 
         _random = random;
         _classId = classId;
+        Difficulty = difficulty;
         Biomes = biomeIds.Select(BiomeCatalog.Get).ToList();
+    }
+
+    public const int HardLevelBonus = 2;
+    public const int HardEarlyLevelBonus = 1;
+    public const int HardEarlyFloors = 5;
+    public const int CyclopsFirstFloor = 4;
+
+    public Difficulty Difficulty { get; }
+
+    public int LevelBonusAt(int floor) => Difficulty switch
+    {
+        Difficulty.Normal => 0,
+        _ when floor <= HardEarlyFloors => HardEarlyLevelBonus,
+        _ => HardLevelBonus
+    };
+
+    public static IReadOnlyList<string> MonstersFor(Biome biome, int floor)
+    {
+        ArgumentNullException.ThrowIfNull(biome);
+
+        var allowed = biome.MonsterIds.Where(id => id != "cyclops" || floor >= CyclopsFirstFloor).ToList();
+        return allowed.Count > 0 ? allowed : biome.MonsterIds;
     }
 
     public string? ClassId => _classId;
@@ -78,8 +106,8 @@ public sealed class VaultFloors : IFloorProvider
 
     public static double GearRarityChance(Rarity rarity, int floor) => rarity switch
     {
-        Rarity.Legendary => Math.Min(0.08, 0.004 * floor),
-        Rarity.Epic => Math.Min(0.25, 0.05 + 0.01 * (floor - 1)),
+        Rarity.Legendary => floor < VaultLoot.FirstLegendaryFloor ? 0.0 : Math.Min(0.05, 0.005 * (floor - VaultLoot.FirstLegendaryFloor + 1)),
+        Rarity.Epic => Math.Min(0.20, 0.02 + 0.01 * (floor - 1)),
         Rarity.Rare => Math.Min(0.35, 0.20 + 0.01 * (floor - 1)),
         _ => throw new ArgumentOutOfRangeException(nameof(rarity), rarity, "Common is whatever is left.")
     };
@@ -88,6 +116,9 @@ public sealed class VaultFloors : IFloorProvider
     {
         ArgumentOutOfRangeException.ThrowIfLessThan(number, 1);
         ArgumentOutOfRangeException.ThrowIfGreaterThan(number, Count);
+
+        if (number == FinalFloor)
+            return RiftArena.Create(number * IdsPerFloor, LevelBonusAt(number));
 
         var biome = Biomes[number - 1];
         var layout = FloorGenerator.Generate(_random, obstacleDensity: biome.ObstacleDensity, terrain: biome.Terrain);
@@ -105,10 +136,11 @@ public sealed class VaultFloors : IFloorProvider
             BossPosition(layout.BossRoom, occupied),
             BestiaryCatalog.Get(biome.BossId),
             BossRarity(number),
-            number);
+            number + LevelBonusAt(number));
         var enemies = new List<Enemy> { boss };
         var chests = PlaceChests(layout, number, occupied, () => nextId++);
         var merchant = HasMerchant(number) ? PlaceMerchant(layout, number, occupied, chests) : null;
+        var waystone = PlaceWaystone(map, start, stairs, occupied, chests, merchant);
 
         foreach (var room in layout.Rooms.Where(room => room != layout.StartRoom && room != layout.BossRoom))
         {
@@ -117,8 +149,8 @@ public sealed class VaultFloors : IFloorProvider
             for (var index = 0; index < count && FreeTile(map, room, occupied) is { } position; index++)
             {
                 occupied.Add(position);
-                var kind = BestiaryCatalog.Get(_random.Pick(biome.MonsterIds));
-                enemies.Add(new Enemy(nextId++, position, kind, RollMonsterRarity(number), number));
+                var kind = BestiaryCatalog.Get(_random.Pick(MonstersFor(biome, number)));
+                enemies.Add(new Enemy(nextId++, position, kind, RollMonsterRarity(number), number + LevelBonusAt(number)));
             }
         }
 
@@ -138,13 +170,34 @@ public sealed class VaultFloors : IFloorProvider
             items.Add(new FloorItem(position, ItemRoller.Roll(definition, _random)));
         }
 
-        return new Floor(map, start, enemies, items, stairs, biome.Id, chests, merchant);
+        return new Floor(map, start, enemies, items, stairs, biome.Id, chests, merchant, waystone);
+    }
+
+    private static Position? PlaceWaystone(DungeonMap map, Position start, Position? stairs, HashSet<Position> occupied, List<Chest> chests, Merchant? merchant)
+    {
+        foreach (var direction in new[] { Direction.Up, Direction.Right, Direction.Left, Direction.Down })
+        {
+            var tile = start.Move(direction);
+
+            var openSides = Enum.GetValues<Direction>().Count(side => map.IsWalkable(tile.Move(side)));
+
+            if (!map.IsWalkable(tile) || openSides < 3 || tile == stairs || occupied.Contains(tile) ||
+                chests.Any(chest => chest.Position == tile) || merchant?.Position == tile)
+                continue;
+
+            occupied.Add(tile);
+            return tile;
+        }
+
+        return null;
     }
 
     public static bool AlwaysHasMerchant(int floor) => floor % MerchantEvery == 0 && floor < FloorCount;
 
     private bool HasMerchant(int floor) =>
-        AlwaysHasMerchant(floor) || (floor < FloorCount && _random.NextDouble() < MerchantChance);
+        AlwaysHasMerchant(floor) || (floor < FloorCount && _random.NextDouble() < MerchantChanceAt(floor));
+
+    public static double MerchantChanceAt(int floor) => MerchantChance + MerchantChancePerFloor * floor;
 
     private Merchant? PlaceMerchant(FloorLayout layout, int floor, HashSet<Position> occupied, List<Chest> chests)
     {
@@ -179,22 +232,42 @@ public sealed class VaultFloors : IFloorProvider
         return null;
     }
 
-    private List<ItemInstance> RollStock(int floor)
+    private List<StockItem> RollStock(int floor)
     {
-        var stock = new List<ItemInstance>();
+        var stock = new List<StockItem>();
+
+        if (RollFeatured(floor) is { } featured)
+            stock.Add(new StockItem(featured, OfferKind.Featured));
 
         for (var index = 0; index < MerchantGear; index++)
-            stock.Add(ItemRoller.Roll(RollGear(floor + MerchantRarityBoost), _random));
+            stock.Add(new StockItem(ItemRoller.Roll(RollGear(floor + MerchantRarityBoost), _random)));
 
         var mods = ItemCatalog.ClassMods.Where(mod => mod.ClassId == _classId && mod.Rarity == ClassModRarity(floor)).ToList();
 
         if (mods.Count > 0)
-            stock.Add(new ItemInstance(_random.Pick(mods)));
+            stock.Add(new StockItem(new ItemInstance(_random.Pick(mods))));
 
-        stock.Add(new ItemInstance(ItemCatalog.Get("potion-greater-healing")));
-        stock.Add(new ItemInstance(ItemCatalog.Get("potion-greater-mana")));
-        stock.Add(new ItemInstance(_random.Pick(ItemCatalog.Scrolls)));
+        stock.Add(new StockItem(new ItemInstance(_random.Pick(ItemCatalog.Scrolls))));
+        stock.Add(new StockItem(new ItemInstance(_random.Pick(ItemCatalog.Runes))));
+        stock.Add(new StockItem(new ItemInstance(ItemCatalog.Get("potion-greater-healing")), OfferKind.Unlimited));
+        stock.Add(new StockItem(new ItemInstance(ItemCatalog.Get("potion-greater-mana")), OfferKind.Unlimited));
         return stock;
+    }
+
+    public static Rarity FeaturedRarity(int floor) => floor < FeaturedLegendaryFloor ? Rarity.Epic : Rarity.Legendary;
+
+    private ItemInstance? RollFeatured(int floor)
+    {
+        if (_classId is null || ClassCatalog.Find(_classId) is not { } definition)
+            return null;
+
+        var rarity = FeaturedRarity(floor);
+        var weapons = ItemCatalog.Equipment
+            .OfType<WeaponDefinition>()
+            .Where(weapon => weapon.WeaponType == definition.Class.Mastery.WeaponType && weapon.Rarity == rarity)
+            .ToList();
+
+        return weapons.Count == 0 ? null : ItemRoller.Roll(_random.Pick(weapons), _random);
     }
 
     private static Rarity ClassModRarity(int floor) => floor switch
@@ -284,9 +357,9 @@ public sealed class VaultFloors : IFloorProvider
 
     private List<Biome> RollBiomes(IReadOnlyList<Biome> catalog)
     {
-        var biomes = new List<Biome>(FloorCount);
+        var biomes = new List<Biome>(RolledFloors);
 
-        while (biomes.Count < FloorCount)
+        while (biomes.Count < RolledFloors)
         {
             var candidates = catalog.Where(biome => biome != biomes.LastOrDefault()).ToList();
             biomes.Add(_random.Pick(candidates));

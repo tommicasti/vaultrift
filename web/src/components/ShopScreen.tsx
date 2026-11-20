@@ -1,5 +1,5 @@
 import type { InventoryEntryState, MerchantState } from '../api/types'
-import { sortBackpack } from '../game/backpackSort'
+import { sortForSale } from '../game/backpackSort'
 import { describeItem, describeKind } from '../game/items'
 import { coinSprite } from '../game/sprites'
 import { ItemIcon } from './ItemIcon'
@@ -62,10 +62,15 @@ export function ShopScreen({
             <h3 className="label">For sale</h3>
             <ul className="shop-list">
               {merchant.offers.map(offer => (
-                <li key={offer.id} className={`shop-row rarity-${offer.item.rarity.toLowerCase()}`}>
+                <li
+                  key={offer.id}
+                  className={`shop-row rarity-${offer.item.rarity.toLowerCase()}${offer.kind === 'Featured' ? ' featured' : ''}`}
+                >
                   <ItemIcon item={offer.item} />
                   <div className="shop-row-text">
                     <span className="item-name">{offer.item.name}</span>
+                    {offer.kind === 'Featured' && <span className="offer-tag featured-tag">Picked for your class</span>}
+                    {offer.kind === 'Unlimited' && <span className="offer-tag">Always in stock · +25% each time</span>}
                     <span className="label">{[describeKind(offer.item).name, describeItem(offer.item)].filter(Boolean).join(' · ')}</span>
                   </div>
                   <button
@@ -110,7 +115,7 @@ export function ShopScreen({
               </button>
             )}
             <ul className="shop-list">
-              {sortBackpack(entries, 'Rarity').map(entry => (
+              {sortForSale(entries).map(entry => (
                 <li key={entry.id} className={`shop-row rarity-${entry.item.rarity.toLowerCase()}`}>
                   <span className="shop-icon">
                     <ItemIcon item={entry.item} />

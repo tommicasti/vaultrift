@@ -120,7 +120,7 @@ public class VaultLootTests
     [Fact]
     public void ChestRarityChances_AddUpToOne()
     {
-        Assert.Equal(1.0, AllRarities.Sum(VaultLoot.ChestRarityChance), precision: 6);
+        Assert.Equal(1.0, AllRarities.Sum(rarity => VaultLoot.ChestRarityChance(rarity)), precision: 6);
     }
 
     [Fact]
@@ -129,6 +129,49 @@ public class VaultLootTests
         var loot = new VaultLoot(new SystemRandom(new Random(5)));
 
         Assert.All(Enumerable.Range(0, 300), _ => Assert.NotNull(loot.RollChest(new LootContext("knight", Luck: 0))));
+    }
+
+    [Fact]
+    public void Exotics_DropOnlyFromBosses_FromFloorEight()
+    {
+        var loot = new VaultLoot(new SystemRandom(new Random(21)));
+        var early = Enumerable.Range(0, 2000).Select(_ => loot.RollDrop(Boss(), new LootContext("knight", Luck: 0, Floor: VaultLoot.FirstExoticFloor - 1)));
+        var monsters = Enumerable.Range(0, 2000).Select(_ => loot.RollDrop(Monster(Rarity.Legendary), new LootContext("knight", Luck: 0, Floor: 20)));
+        var late = Enumerable.Range(0, 4000).Select(_ => loot.RollDrop(Boss(), new LootContext("knight", Luck: 0, Floor: VaultLoot.FirstExoticFloor))).ToList();
+
+        Assert.DoesNotContain(early, item => item?.Rarity == Rarity.Exotic);
+        Assert.DoesNotContain(monsters, item => item?.Rarity == Rarity.Exotic);
+        Assert.InRange(late.Count(item => item?.Rarity == Rarity.Exotic) / 4000.0, 0.03, 0.07);
+    }
+
+    [Fact]
+    public void Exotics_LeanTowardTheClassWeapon()
+    {
+        var loot = new VaultLoot(new SystemRandom(new Random(4)));
+        var exotics = Enumerable.Range(0, 20000)
+            .Select(_ => loot.RollDrop(Boss(), new LootContext("ranger", Luck: 0, Floor: 15)))
+            .Where(item => item?.Rarity == Rarity.Exotic)
+            .Select(item => (WeaponDefinition)item!.Definition)
+            .ToList();
+
+        Assert.InRange(exotics.Count(weapon => weapon.WeaponType == WeaponType.Bow) / (double)exotics.Count, 0.55, 0.80);
+    }
+
+    [Fact]
+    public void Chests_SometimesHoldARune()
+    {
+        var loot = new VaultLoot(new SystemRandom(new Random(11)));
+        var runes = Enumerable.Range(0, 3000)
+            .Select(_ => loot.RollChest(new LootContext("knight", Luck: 0)))
+            .Count(item => item?.Definition is RuneDefinition);
+
+        Assert.InRange(runes / 3000.0, 0.03, 0.10);
+    }
+
+    [Fact]
+    public void ThereIsOneRunePerElement()
+    {
+        Assert.Equal(Enum.GetValues<Element>().Order(), ItemCatalog.Runes.Select(rune => rune.Element).Order());
     }
 
     [Fact]
@@ -156,5 +199,47 @@ public class VaultLootTests
     public void ACommonMonster_AlmostNeverDropsALegendary()
     {
         Assert.True(VaultLoot.DropChance(Monster(Rarity.Common)) * VaultLoot.DropRarityChance(Monster(Rarity.Common), Rarity.Legendary) < 0.001);
+    }
+
+    [Theory]
+    [InlineData(1)]
+    [InlineData(5)]
+    public void NoLegendaries_DropBeforeFloorSix(int floor)
+    {
+        Assert.All(AllRarities, rarity => Assert.Equal(0.0, VaultLoot.DropRarityChance(Monster(rarity), Rarity.Legendary, floor)));
+        Assert.Equal(0.0, VaultLoot.DropRarityChance(Boss(), Rarity.Legendary, floor));
+        Assert.Equal(0.0, VaultLoot.ChestRarityChance(Rarity.Legendary, floor));
+    }
+
+    [Fact]
+    public void LegendaryChances_GrowWithTheFloor_UntilTheyAreFull()
+    {
+        var chances = Enumerable.Range(1, 20)
+            .Select(floor => VaultLoot.DropRarityChance(Monster(Rarity.Epic), Rarity.Legendary, floor))
+            .ToList();
+
+        Assert.Equal(chances.Order().ToList(), chances);
+        Assert.Equal(VaultLoot.DropRarityChance(Monster(Rarity.Epic), Rarity.Legendary), chances[^1], precision: 6);
+        Assert.Equal(chances[VaultLoot.FullLegendaryFloor - 1], chances[^1], precision: 6);
+    }
+
+    [Theory]
+    [InlineData(1)]
+    [InlineData(6)]
+    [InlineData(20)]
+    public void DropRarityChances_AddUpToOne_OnEveryFloor(int floor)
+    {
+        Assert.All(AllRarities, monster =>
+            Assert.Equal(1.0, AllRarities.Sum(drop => VaultLoot.DropRarityChance(Monster(monster), drop, floor)), precision: 6));
+        Assert.Equal(1.0, AllRarities.Sum(drop => VaultLoot.ChestRarityChance(drop, floor)), precision: 6);
+    }
+
+    [Fact]
+    public void EarlyFloors_DropNoLegendaries_EvenFromBosses()
+    {
+        var loot = new VaultLoot(new SystemRandom(new Random(3)));
+        var drops = Enumerable.Range(0, 500).Select(_ => loot.RollDrop(Boss(), new LootContext("knight", Luck: 0, Floor: 3)));
+
+        Assert.DoesNotContain(drops, drop => drop?.Rarity == Rarity.Legendary);
     }
 }

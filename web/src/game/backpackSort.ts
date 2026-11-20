@@ -5,6 +5,7 @@ export type BackpackSort = 'Recent' | 'Rarity' | 'Type'
 export const backpackSorts: BackpackSort[] = ['Recent', 'Rarity', 'Type']
 
 const rarityRank: Record<Rarity, number> = {
+  Exotic: -1,
   Legendary: 0,
   Epic: 1,
   Rare: 2,
@@ -27,6 +28,7 @@ const categoryRank: Record<ItemCategory, number> = {
   ClassMod: 12,
   Potion: 13,
   Scroll: 14,
+  Rune: 15,
 }
 
 const storageKey = 'vaultrift.backpackSort'
@@ -54,6 +56,14 @@ export function sortBackpack(entries: readonly InventoryEntryState[], sort: Back
     Number(b.mark === 'Favorite') - Number(a.mark === 'Favorite')
 
   return [...entries].sort((a, b) => favoritesFirst(a, b) || comparers[sort](a, b))
+}
+
+export function sortForSale(entries: readonly InventoryEntryState[]): InventoryEntryState[] {
+  const markRank = (entry: InventoryEntryState) => (entry.mark === 'Junk' ? 0 : entry.mark === 'Favorite' ? 2 : 1)
+
+  return [...entries].sort(
+    (a, b) => markRank(a) - markRank(b) || byRarity(b, a) || byCategory(a, b) || byNewest(a, b),
+  )
 }
 
 export function loadBackpackSort(): BackpackSort {

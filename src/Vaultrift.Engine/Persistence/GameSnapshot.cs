@@ -20,7 +20,21 @@ public sealed record GameSnapshot(
     IReadOnlyList<FloorItemSnapshot> FloorItems,
     IReadOnlyList<ChestSnapshot> Chests,
     MerchantSnapshot? Merchant,
-    IReadOnlyList<CoolingLavaSnapshot> CoolingLava);
+    IReadOnlyList<CoolingLavaSnapshot> CoolingLava,
+    Difficulty Difficulty = Difficulty.Normal,
+    bool IsLost = false,
+    GraveSnapshot? Grave = null,
+    int? DeepestFloor = null,
+    IReadOnlyList<int>? ClearedFloors = null,
+    Position? Waystone = null,
+    TotemSnapshot? Totem = null,
+    int TotemUses = 0);
+
+public sealed record TotemSnapshot(Position Position, EnemySnapshot Boss);
+
+public sealed record GraveSnapshot(Position Position, IReadOnlyList<GraveItemSnapshot> Items);
+
+public sealed record GraveItemSnapshot(EquipmentSlot Slot, EntrySnapshot Entry);
 
 public sealed record PlayerSnapshot(
     string? ClassId,
@@ -73,7 +87,10 @@ public sealed record EnemySnapshot(
     int FrozenTurnsLeft,
     int FreezeImmunityTurnsLeft,
     int PowerCharge,
-    int? SummonerId);
+    int? SummonerId,
+    int MarkedTurns = 0,
+    int VenomStacks = 0,
+    int StaggeredTurns = 0);
 
 public sealed record FloorItemSnapshot(Position Position, ItemSnapshot Item);
 
@@ -81,6 +98,6 @@ public sealed record ChestSnapshot(Position Position, EnemySnapshot? Mimic);
 
 public sealed record MerchantSnapshot(Position Position, IReadOnlyList<OfferSnapshot> Offers);
 
-public sealed record OfferSnapshot(int Id, ItemSnapshot Item, int Price);
+public sealed record OfferSnapshot(int Id, ItemSnapshot Item, int Price, OfferKind Kind = OfferKind.Regular);
 
 public sealed record CoolingLavaSnapshot(Position Position, int TurnsLeft);

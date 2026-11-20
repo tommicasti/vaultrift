@@ -21,6 +21,14 @@ public static class ItemCatalog
         LegendaryWeapon("sword-ember-oath", "Ember Oath", WeaponType.Sword,
             "Sworn in fire, kept in ash. Its flames catch more often and burn hotter.",
             Element.Fire, Attack(13), Defense(1), Evasion(2)) with { Effects = [Effect(EffectKind.FireBoost, 10)] },
+        Weapon("sword-duelist", "Duelist's Rapier", WeaponType.Sword, Rarity.Epic, Attack(7), Critical(6), Evasion(3)),
+        Weapon("sword-knightguard", "Knightguard Blade", WeaponType.Sword, Rarity.Epic, Attack(8), Defense(3)),
+        LegendaryWeapon("sword-dawnbringer", "Dawnbringer", WeaponType.Sword,
+            "First light finds every wound, and closes yours.",
+            Attack(12), Defense(2), Evasion(3)) with { Effects = [Effect(EffectKind.Regeneration, 1)] },
+        LegendaryWeapon("sword-frostbite", "Frostbite Edge", WeaponType.Sword,
+            "Cold enough to stop a heartbeat. Its frost holds longer.",
+            Element.Ice, Attack(13), Evasion(3), Defense(1)) with { Effects = [Effect(EffectKind.IceBoost, 10)] },
 
         Weapon("dagger-common", "Rusty Dagger", WeaponType.Dagger, Rarity.Common, Attack(2)),
         Weapon("dagger-shiv", "Shiv", WeaponType.Dagger, Rarity.Common, Attack(1), Critical(5)),
@@ -37,6 +45,14 @@ public static class ItemCatalog
         LegendaryWeapon("dagger-gutterstar", "Gutterstar", WeaponType.Dagger,
             "Born in the alleys, polished by the stars.",
             Attack(8), Critical(14), Evasion(6)),
+        Weapon("dagger-viper", "Viper's Tooth", WeaponType.Dagger, Rarity.Epic, Attack(6), Critical(8)),
+        Weapon("dagger-smokeblade", "Smokeblade", WeaponType.Dagger, Rarity.Epic, Attack(5), Evasion(6), Critical(4)),
+        LegendaryWeapon("dagger-moonshiver", "Moonshiver", WeaponType.Dagger,
+            "It hums before a storm. Its lightning jumps twice.",
+            Element.Lightning, Attack(9), Critical(12), Evasion(3)) with { Effects = [Effect(EffectKind.LightningBoost, 10)] },
+        LegendaryWeapon("dagger-bloodletter", "Bloodletter", WeaponType.Dagger,
+            "Every cut pays the wielder back.",
+            Attack(9), Critical(13), Evasion(2)) with { Effects = [Effect(EffectKind.LifeSteal, 10)] },
 
         Weapon("axe-common", "Hatchet", WeaponType.Axe, Rarity.Common, Attack(4)),
         Weapon("axe-woodcutter", "Woodcutter's Axe", WeaponType.Axe, Rarity.Common, Attack(3), Defense(1)),
@@ -53,6 +69,14 @@ public static class ItemCatalog
         LegendaryWeapon("axe-stormmaw", "Stormmaw", WeaponType.Axe,
             "Thunder doesn't ask permission. Its lightning jumps twice.",
             Element.Lightning, Attack(14), Defense(2), Evasion(2)) with { Effects = [Effect(EffectKind.LightningBoost, 10)] },
+        Weapon("axe-ironbark", "Ironbark Axe", WeaponType.Axe, Rarity.Epic, Attack(9), Defense(3)),
+        Weapon("axe-ravager", "Ravager", WeaponType.Axe, Rarity.Epic, Attack(10), Critical(4)),
+        LegendaryWeapon("axe-cinderhowl", "Cinderhowl", WeaponType.Axe,
+            "It howls when it swings, and the embers answer. Its flames catch more often and burn hotter.",
+            Element.Fire, Attack(14), Defense(2), Evasion(1)) with { Effects = [Effect(EffectKind.FireBoost, 10)] },
+        LegendaryWeapon("axe-oakheart", "Oakheart", WeaponType.Axe,
+            "Cut from a tree that refused to fall. Mends its wielder slowly.",
+            Attack(12), Defense(5), Evasion(1)) with { Effects = [Effect(EffectKind.Regeneration, 1)] },
 
         Weapon("bow-common", "Short Bow", WeaponType.Bow, Rarity.Common, Attack(3)),
         Weapon("bow-hunting", "Hunting Bow", WeaponType.Bow, Rarity.Common, Attack(2), Evasion(2)),
@@ -69,6 +93,14 @@ public static class ItemCatalog
         LegendaryWeapon("bow-galecaller", "Galecaller", WeaponType.Bow,
             "Ask the wind nicely. Then pull. Its gusts push twice as far.",
             Element.Wind, Attack(11), Evasion(10), Defense(1)) with { Effects = [Effect(EffectKind.WindBoost, 10)] },
+        Weapon("bow-thornwood", "Thornwood Bow", WeaponType.Bow, Rarity.Epic, Attack(8), Critical(5)),
+        Weapon("bow-falconer", "Falconer's Bow", WeaponType.Bow, Rarity.Epic, Attack(7), Evasion(6)),
+        LegendaryWeapon("bow-sunpiercer", "Sunpiercer", WeaponType.Bow,
+            "Each arrow carries a piece of noon. Its flames catch more often and burn hotter.",
+            Element.Fire, Attack(13), Evasion(5), Critical(2)) with { Effects = [Effect(EffectKind.FireBoost, 10)] },
+        LegendaryWeapon("bow-hawkeye", "Hawkeye", WeaponType.Bow,
+            "Farther is better. +15% critical against targets 4 or more tiles away.",
+            Attack(12), Evasion(7), Critical(3)) with { Effects = [Effect(EffectKind.FarShotCritical, 15)] },
 
         Staff("staff-oak", "Oak Staff", Rarity.Common, SpellCatalog.FireBolt, Attack(3)),
         Staff("staff-ash", "Ash Wand", Rarity.Common, SpellCatalog.IceShard, Attack(2), Mana(5)),
@@ -85,6 +117,14 @@ public static class ItemCatalog
         LegendaryStaff("staff-whirlwind", "Whirlwind Crook", SpellCatalog.Gust,
             "The shepherd of storms. Mana flows back faster.",
             [Effect(EffectKind.ManaFlow, 1)], Attack(11), Mana(10)),
+        Staff("staff-stormglass", "Stormglass Rod", Rarity.Epic, SpellCatalog.Spark, Attack(8), Mana(5)),
+        Staff("staff-galebranch", "Gale Branch", Rarity.Epic, SpellCatalog.Gust, Attack(7), Mana(10)),
+        LegendaryStaff("staff-glacierheart", "Glacier Heart", SpellCatalog.IceShard,
+            "A heart of old ice that never thaws. Its frost holds longer.",
+            [Effect(EffectKind.IceBoost, 10)], Attack(12), Mana(10)),
+        LegendaryStaff("staff-sages-lantern", "Sage's Lantern", SpellCatalog.Spark,
+            "It lights the way and drinks the dark. Every kill gives back 5 mana.",
+            [Effect(EffectKind.ManaSiphon, 5)], Attack(11), Mana(15)),
 
         Weapon("spear-common", "Wooden Spear", WeaponType.Spear, Rarity.Common, Attack(4)),
         Weapon("spear-boar", "Boar Spear", WeaponType.Spear, Rarity.Common, Attack(3), Defense(1)),
@@ -101,6 +141,14 @@ public static class ItemCatalog
         LegendaryWeapon("spear-sunlance", "Sunlance", WeaponType.Spear,
             "Noon, sharpened to a point.",
             Element.Fire, Attack(14), Defense(1), Critical(3)),
+        Weapon("spear-halberd", "Halberd", WeaponType.Spear, Rarity.Epic, Attack(10), Defense(2)),
+        Weapon("spear-wyrmfang", "Wyrmfang Spear", WeaponType.Spear, Rarity.Epic, Attack(9), Critical(5)),
+        LegendaryWeapon("spear-stormcaller", "Stormcaller Pike", WeaponType.Spear,
+            "Raise it and the sky listens. Its lightning jumps twice.",
+            Element.Lightning, Attack(13), Evasion(3), Defense(1)) with { Effects = [Effect(EffectKind.LightningBoost, 10)] },
+        LegendaryWeapon("spear-zephyr", "Zephyr's Reach", WeaponType.Spear,
+            "Light as a breeze, sharp as a gale. Its gusts push twice as far.",
+            Element.Wind, Attack(12), Evasion(6)) with { Effects = [Effect(EffectKind.WindBoost, 10)] },
 
         Gear("shield-buckler", "Buckler", EquipmentKind.Shield, Rarity.Common, Defense(1), Block(10)),
         Gear("shield-round", "Round Shield", EquipmentKind.Shield, Rarity.Common, Defense(2), Block(8)),
@@ -255,10 +303,61 @@ public static class ItemCatalog
         Scroll("fire-rain", Rarity.Epic, "Fire falls on a 5×5 area and sets every enemy alight."),
         Scroll("blizzard", Rarity.Epic, "A storm of ice two tiles around you."),
         Scroll("tempest", Rarity.Epic, "Lightning strikes every enemy within five tiles."),
-        Scroll("tornado", Rarity.Epic, "A whirlwind where it lands that drags enemies to its heart.")
+        Scroll("tornado", Rarity.Epic, "A whirlwind where it lands that drags enemies to its heart."),
+
+        Exotic("sword-riftrender", "Riftrender", WeaponType.Sword, ExoticPower.Riftrender,
+            "It remembers where it cut last. Every third blow in a row on the same foe tears through the rift: double damage that ignores defense.",
+            Attack(15), Critical(5), Evasion(3)),
+        Exotic("sword-oathbound", "Oathbound", WeaponType.Sword, ExoticPower.Oathbound,
+            "Every wound is a promise. Your next attack adds all the melee damage you took since your last one.",
+            Attack(14), Defense(4), Evasion(2)),
+        Exotic("axe-headsmans-moon", "Headsman's Moon", WeaponType.Axe, ExoticPower.HeadsmansMoon,
+            "The moon does not wait its turn. If your sweep kills, the monsters do not get to act.",
+            Attack(16), Defense(3), Critical(3)),
+        Exotic("axe-worldsplitter", "Worldsplitter", WeaponType.Axe, ExoticPower.Worldsplitter,
+            "The ground remembers the blow. Every monster hit by your sweep loses its next turn (bosses keep their footing).",
+            Attack(15), Defense(4), Evasion(1)),
+        Exotic("bow-rift-needle", "Rift Needle", WeaponType.Bow, ExoticPower.RiftNeedle,
+            "Nothing stops it. Arrows pierce every monster in line; each one after the first takes 75% damage.",
+            Attack(15), Evasion(6), Critical(3)),
+        Exotic("bow-huntress-promise", "Huntress' Promise", WeaponType.Bow, ExoticPower.HuntressPromise,
+            "Once marked, never lost. A hit marks the target for 3 turns: it takes 50% more from your weapon, and killing it while marked heals you for 10% of your health.",
+            Attack(14), Evasion(8), Critical(3)),
+        Exotic("dagger-widows-kiss", "Widow's Kiss", WeaponType.Dagger, ExoticPower.WidowsKiss,
+            "Slow, patient, certain. Every hit adds a layer of venom (up to 5); each layer costs the target 2 health every turn, bosses included.",
+            Attack(11), Critical(14), Evasion(4)),
+        Exotic("dagger-shadowstep", "Shadowstep", WeaponType.Dagger, ExoticPower.Shadowstep,
+            "Distance is a suggestion. Attack a monster two tiles away with a free tile between you, and you leap next to it for a guaranteed critical hit. Recharges in 3 turns.",
+            Attack(11), Critical(12), Evasion(6)),
+        Exotic("spear-last-wall", "Last Wall", WeaponType.Spear, ExoticPower.LastWall,
+            "Hold the line. Any monster that steps onto the tile in front of you takes a free hit.",
+            Attack(16), Defense(3), Evasion(1)),
+        Exotic("spear-starfall-lance", "Starfall Lance", WeaponType.Spear, ExoticPower.StarfallLance,
+            "Thrown down from the sky, it still has reach to spare. Your thrust reaches 3 tiles and hits everything in line.",
+            Attack(16), Critical(4), Evasion(2)),
+        ExoticStaff("staff-prism-of-ages", "Prism of Ages", SpellCatalog.Spark, ExoticPower.Prism,
+            "Light bends to find the crack. Your spells always strike the target's weakness, whatever their element.",
+            Attack(14), Mana(15)),
+        ExoticStaff("staff-echo", "Echo Staff", SpellCatalog.FireBolt, ExoticPower.Echo,
+            "Every word is spoken twice. Each spell from the staff is cast a second time, free, at half power.",
+            Attack(13), Mana(20)),
+
+        new RuneDefinition("rune-fire", "Rune of Fire", Rarity.Rare, Element.Fire,
+            "Use it to give the weapon in your main hand the power of fire, for good. Not for staves or weapons that already have a fixed element."),
+        new RuneDefinition("rune-ice", "Rune of Ice", Rarity.Rare, Element.Ice,
+            "Use it to give the weapon in your main hand the power of ice, for good. Not for staves or weapons that already have a fixed element."),
+        new RuneDefinition("rune-lightning", "Rune of Lightning", Rarity.Rare, Element.Lightning,
+            "Use it to give the weapon in your main hand the power of lightning, for good. Not for staves or weapons that already have a fixed element."),
+        new RuneDefinition("rune-wind", "Rune of Wind", Rarity.Rare, Element.Wind,
+            "Use it to give the weapon in your main hand the power of wind, for good. Not for staves or weapons that already have a fixed element.")
     ];
 
     public static IReadOnlyList<ScrollDefinition> Scrolls { get; } = All.OfType<ScrollDefinition>().ToList();
+
+    public static IReadOnlyList<RuneDefinition> Runes { get; } = All.OfType<RuneDefinition>().ToList();
+
+    public static IReadOnlyList<WeaponDefinition> Exotics { get; } =
+        All.OfType<WeaponDefinition>().Where(weapon => weapon.Rarity == Rarity.Exotic).ToList();
 
     public static IReadOnlyList<EquipmentDefinition> Equipment { get; } =
         All.OfType<EquipmentDefinition>().Where(item => item.Kind != EquipmentKind.ClassMod).ToList();
@@ -266,9 +365,22 @@ public static class ItemCatalog
     public static IReadOnlyList<GearDefinition> ClassMods { get; } =
         All.OfType<GearDefinition>().Where(item => item.Kind == EquipmentKind.ClassMod).ToList();
 
+    public static IReadOnlyList<WeaponDefinition> Spares { get; } =
+        new[] { "sword-common", "axe-common", "bow-common", "dagger-common", "staff-oak" }
+            .Select(id => (WeaponDefinition)All.First(item => item.Id == id))
+            .Select(weapon => weapon with { Id = SparePrefix + weapon.Id, Name = $"Spare {weapon.Name}", IsSpare = true })
+            .ToList();
+
+    public static WeaponDefinition Spare(string weaponId) =>
+        Spares.FirstOrDefault(spare => spare.Id == SparePrefix + weaponId)
+        ?? throw new KeyNotFoundException($"No spare exists for '{weaponId}'.");
+
     public static ItemDefinition Get(string id) =>
         All.FirstOrDefault(item => item.Id == id)
+        ?? Spares.FirstOrDefault(item => item.Id == id) as ItemDefinition
         ?? throw new KeyNotFoundException($"No item with id '{id}' exists in the catalog.");
+
+    private const string SparePrefix = "spare-";
 
     private static StatModifier Attack(int amount) => new(StatType.Attack, amount);
 
@@ -292,6 +404,12 @@ public static class ItemCatalog
 
     private static WeaponDefinition LegendaryWeapon(string id, string name, WeaponType type, string description, Element element, params StatModifier[] modifiers) =>
         new(id, name, Rarity.Legendary, type, modifiers, description, element);
+
+    private static WeaponDefinition Exotic(string id, string name, WeaponType type, ExoticPower power, string description, params StatModifier[] modifiers) =>
+        new(id, name, Rarity.Exotic, type, modifiers, description) { Exotic = power };
+
+    private static WeaponDefinition ExoticStaff(string id, string name, SpellDefinition spell, ExoticPower power, string description, params StatModifier[] modifiers) =>
+        new(id, name, Rarity.Exotic, WeaponType.Staff, modifiers, description, spell.Element) { Spell = spell, Exotic = power };
 
     private static WeaponDefinition Staff(string id, string name, Rarity rarity, SpellDefinition spell, params StatModifier[] modifiers) =>
         new(id, name, rarity, WeaponType.Staff, modifiers, FixedElement: spell.Element) { Spell = spell };

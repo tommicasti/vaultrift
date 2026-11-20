@@ -10,6 +10,10 @@ public static class BestiaryCatalog
         new("sporeling", "Sporeling", new Stats(maxHealth: 6, attack: 4, defense: 0),
             weakness: Element.Fire);
 
+    private static readonly EnemyKind Drakeling =
+        new("drakeling", "Drakeling", new Stats(maxHealth: 8, attack: 5, defense: 1, evasion: 10), Speed.Fast,
+            weakness: Element.Ice, resistance: Element.Fire, attackElement: Element.Fire);
+
     public static IReadOnlyList<EnemyKind> All { get; } =
     [
         new("rat", "Rat", new Stats(maxHealth: 6, attack: 3, defense: 0, evasion: 5),
@@ -42,6 +46,7 @@ public static class BestiaryCatalog
         new("puffball", "Puffball", new Stats(maxHealth: 6, attack: 4, defense: 0, evasion: 15), Speed.Fast,
             weakness: Element.Fire, resistance: Element.Wind),
         Sporeling,
+        Drakeling,
         new("harpy", "Harpy", new Stats(maxHealth: 9, attack: 5, defense: 0, evasion: 20), Speed.Fast,
             weakness: Element.Lightning, resistance: Element.Wind, attackElement: Element.Wind),
         new("gargoyle", "Gargoyle", new Stats(maxHealth: 24, attack: 6, defense: 5), Speed.Slow,
@@ -68,7 +73,18 @@ public static class BestiaryCatalog
         new("mushroom-king", "Mushroom King", new Stats(maxHealth: 60, attack: 7, defense: 2),
             weakness: Element.Fire, resistance: Element.Lightning, isBoss: true, power: BossPower.SummonMinions, minion: Sporeling),
         new("storm-griffin", "Storm Griffin", new Stats(maxHealth: 55, attack: 7, defense: 3, evasion: 10),
-            weakness: Element.Ice, resistance: Element.Wind, attackElement: Element.Lightning, isBoss: true, power: BossPower.Gust)
+            weakness: Element.Ice, resistance: Element.Wind, attackElement: Element.Lightning, isBoss: true, power: BossPower.Gust),
+        new("custode", "Custode", new Stats(maxHealth: 80, attack: 8, defense: 4, evasion: 5),
+            weakness: Element.Ice, resistance: Element.Fire, attackElement: Element.Fire, isBoss: true,
+            power: BossPower.LavaRing, minion: Drakeling)
+        {
+            Phases =
+            [
+                new BossPhase(100, BossPower.LavaRing, Speed.Normal),
+                new BossPhase(66, BossPower.SummonMinions, Speed.Normal),
+                new BossPhase(33, BossPower.Gust, Speed.Fast)
+            ]
+        }
     ];
 
     public static IReadOnlyList<EnemyKind> Monsters { get; } = All.Where(kind => !kind.IsBoss).ToList();

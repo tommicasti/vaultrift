@@ -24,7 +24,7 @@ public sealed partial class Game
             return Rejected(TradeResult.BackpackFull);
 
         Player.TrySpendCoins(offer.Price);
-        Merchant.Remove(offer);
+        Merchant.Sold(offer);
         return Traded(new ItemBought(offer.Item, offer.Price));
     }
 

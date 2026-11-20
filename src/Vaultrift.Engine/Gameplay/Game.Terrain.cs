@@ -69,7 +69,9 @@ public sealed partial class Game
 
     private void UseBossPower(Enemy enemy, List<GameEvent> events)
     {
-        if (enemy.Kind.Power == BossPower.None)
+        AnnouncePhase(enemy, events);
+
+        if (enemy.Power == BossPower.None)
             return;
 
         enemy.PowerCharge++;
@@ -79,7 +81,7 @@ public sealed partial class Game
 
         enemy.PowerCharge = 0;
 
-        switch (enemy.Kind.Power)
+        switch (enemy.Power)
         {
             case BossPower.LavaRing:
                 SpreadLava(enemy, events);
@@ -97,8 +99,23 @@ public sealed partial class Game
                 BlowAway(enemy, events);
                 break;
             default:
-                throw new ArgumentOutOfRangeException(nameof(enemy), enemy.Kind.Power, "Unknown boss power.");
+                throw new ArgumentOutOfRangeException(nameof(enemy), enemy.Power, "Unknown boss power.");
         }
+    }
+
+    private readonly Dictionary<int, int> _announcedPhases = [];
+
+    private void AnnouncePhase(Enemy enemy, List<GameEvent> events)
+    {
+        if (enemy.PhaseNumber <= 1)
+            return;
+
+        if (_announcedPhases.TryGetValue(enemy.Id, out var announced) && announced >= enemy.PhaseNumber)
+            return;
+
+        _announcedPhases[enemy.Id] = enemy.PhaseNumber;
+        enemy.PowerCharge = PowerInterval - 1;
+        events.Add(new BossPhaseChanged(enemy.Id, enemy.PhaseNumber, enemy.Power));
     }
 
     private void SpreadLava(Enemy enemy, List<GameEvent> events)

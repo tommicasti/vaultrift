@@ -1,4 +1,4 @@
-import type { PlayerState } from '../api/types'
+import type { Difficulty, PlayerState } from '../api/types'
 import { biomeNames } from '../game/biomes'
 import { abilityNames, describeModifier, elementNames, quickSlotKeys } from '../game/items'
 import { coinSprite } from '../game/sprites'
@@ -12,10 +12,11 @@ interface StatusBarProps {
   floor: number
   floorCount: number
   biome?: string
+  difficulty: Difficulty
   onOpenInventory: () => void
 }
 
-export function StatusBar({ player, deaths, floor, floorCount, biome, onOpenInventory }: StatusBarProps) {
+export function StatusBar({ player, deaths, floor, floorCount, biome, difficulty, onOpenInventory }: StatusBarProps) {
   const healthPercent = (player.health / player.maxHealth) * 100
   const experiencePercent = (player.experience / player.experienceToNextLevel) * 100
   const manaPercent = player.maxMana > 0 ? (player.mana / player.maxMana) * 100 : 0
@@ -70,7 +71,9 @@ export function StatusBar({ player, deaths, floor, floorCount, biome, onOpenInve
           {player.coins}
         </span>{' '}
         · Floor {floor} / {floorCount}
-        {biome && ` · ${biomeNames[biome] ?? biome}`} · Deaths: {deaths}
+        {biome && ` · ${biomeNames[biome] ?? biome}`}
+        {difficulty === 'Hardcore' ? '' : ` · Deaths: ${deaths}`}
+        {difficulty !== 'Normal' && <span className={`difficulty-badge difficulty-${difficulty.toLowerCase()}`}>{difficulty}</span>}
       </div>
       {hasExtras && (
         <div className="status-extras">

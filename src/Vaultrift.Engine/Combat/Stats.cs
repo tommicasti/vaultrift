@@ -110,6 +110,9 @@ public sealed record Stats
     public Stats WithAttack(int attack) =>
         new(MaxHealth, attack, Defense, Evasion, Critical, Block, MaxMana);
 
+    public Stats WithDefense(int defense) =>
+        new(MaxHealth, Attack, Math.Max(0, defense), Evasion, Critical, Block, MaxMana);
+
     public Stats WithCritical(int critical) =>
         new(MaxHealth, Attack, Defense, Evasion, Math.Clamp(critical, 0, 100), Block, MaxMana);
 }

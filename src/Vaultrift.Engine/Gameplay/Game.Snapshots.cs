@@ -29,7 +29,7 @@ public sealed partial class Game
 
         Merchant = snapshot.Merchant is { } merchant
             ? Merchant.Restore(merchant.Position,
-                merchant.Offers.Select(offer => new Offer(offer.Id, Player.RestoreItem(offer.Item, content), offer.Price)))
+                merchant.Offers.Select(offer => new Offer(offer.Id, Player.RestoreItem(offer.Item, content), offer.Price, offer.Kind)))
             : null;
 
         FloorNumber = snapshot.FloorNumber;
@@ -37,11 +37,28 @@ public sealed partial class Game
         TurnNumber = snapshot.TurnNumber;
         _stepsThisTurn = snapshot.StepsThisTurn;
         _bossDefeatAnnounced = snapshot.BossDefeatAnnounced;
-        IsConquered = snapshot.IsConquered;
+        IsConquered = snapshot.IsConquered && FloorNumber >= FloorCount;
         Biome = snapshot.Biome;
-        Stairs = snapshot.Stairs;
+        Stairs = snapshot.Stairs ?? (FloorNumber < FloorCount ? snapshot.PlayerStart : null);
         _playerStart = snapshot.PlayerStart;
+        Difficulty = snapshot.Difficulty;
+        IsLost = snapshot.IsLost;
+        Grave = snapshot.Grave is { } grave
+            ? new Grave(grave.Position, grave.Items.Select(item => (item.Slot, Player.RestoreEntry(item.Entry, content))).ToList())
+            : null;
+        DeepestFloor = snapshot.DeepestFloor ?? FloorNumber;
+        TotemUses = snapshot.TotemUses;
+        Totem = snapshot.Totem is { } totem ? new BossTotem(totem.Position, RestoreEnemy(totem.Boss, content)) : null;
+
+        foreach (var cleared in snapshot.ClearedFloors ?? ClearedBefore(snapshot))
+            _clearedFloors.Add(cleared);
+
+        Waystone = snapshot.DeepestFloor is null ? PlaceWaystone() : snapshot.Waystone;
     }
+
+    private IEnumerable<int> ClearedBefore(GameSnapshot snapshot) =>
+        Enumerable.Range(1, Math.Max(0, snapshot.FloorNumber - 1))
+            .Concat(HasBoss && BossesDefeated ? [snapshot.FloorNumber] : []);
 
     public static Game Restore(
         GameSnapshot snapshot,
@@ -75,9 +92,19 @@ public sealed partial class Game
         _chests.Values.Select(chest => new ChestSnapshot(chest.Position, chest.Mimic is { } mimic ? CaptureEnemy(mimic) : null)).ToList(),
         Merchant is { } merchant
             ? new MerchantSnapshot(merchant.Position,
-                merchant.Offers.Select(offer => new OfferSnapshot(offer.Id, Player.CaptureItem(offer.Item), offer.Price)).ToList())
+                merchant.Offers.Select(offer => new OfferSnapshot(offer.Id, Player.CaptureItem(offer.Item), offer.Price, offer.Kind)).ToList())
             : null,
-        _coolingLava.Select(pair => new CoolingLavaSnapshot(pair.Key, pair.Value)).ToList());
+        _coolingLava.Select(pair => new CoolingLavaSnapshot(pair.Key, pair.Value)).ToList(),
+        Difficulty,
+        IsLost,
+        Grave is { } grave
+            ? new GraveSnapshot(grave.Position, grave.Items.Select(item => new GraveItemSnapshot(item.Slot, Player.CaptureEntry(item.Entry))).ToList())
+            : null,
+        DeepestFloor,
+        _clearedFloors.ToList(),
+        Waystone,
+        Totem is { } totem ? new TotemSnapshot(totem.Position, CaptureEnemy(totem.Boss)) : null,
+        TotemUses);
 
     private static EnemySnapshot CaptureEnemy(Enemy enemy) => new(
         enemy.Id,
@@ -94,7 +121,10 @@ public sealed partial class Game
         enemy.FrozenTurnsLeft,
         enemy.FreezeImmunityTurnsLeft,
         enemy.PowerCharge,
-        enemy.SummonerId);
+        enemy.SummonerId,
+        enemy.MarkedTurns,
+        enemy.VenomStacks,
+        enemy.StaggeredTurns);
 
     private static Enemy RestoreEnemy(EnemySnapshot snapshot, IGameContent content)
     {
@@ -108,7 +138,10 @@ public sealed partial class Game
             BurnDamage = snapshot.BurnDamage,
             FrozenTurnsLeft = snapshot.FrozenTurnsLeft,
             FreezeImmunityTurnsLeft = snapshot.FreezeImmunityTurnsLeft,
-            PowerCharge = snapshot.PowerCharge
+            PowerCharge = snapshot.PowerCharge,
+            MarkedTurns = snapshot.MarkedTurns,
+            VenomStacks = snapshot.VenomStacks,
+            StaggeredTurns = snapshot.StaggeredTurns
         };
 
         enemy.RestoreHealth(snapshot.Health);

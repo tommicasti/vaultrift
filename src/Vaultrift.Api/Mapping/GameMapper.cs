@@ -9,7 +9,7 @@ namespace Vaultrift.Api.Mapping;
 
 public static class GameMapper
 {
-    public static GameStateResponse ToResponse(GameSession session) => ToResponse(session.Id, session.Code, session.Game);
+    public static GameStateResponse ToResponse(GameSession session) => ToResponse(session.Id, session.Code, session.Game, session.BiomeOf);
 
     public static TurnResponse ToResponse(GameSession session, TurnResult result) =>
         new(
@@ -17,7 +17,7 @@ public static class GameMapper
             result.Events.Select(ToResponse).ToList(),
             ToResponse(session));
 
-    private static GameStateResponse ToResponse(Guid id, string saveCode, Game game) =>
+    private static GameStateResponse ToResponse(Guid id, string saveCode, Game game, Func<int, string?> biomeOf) =>
         new(
             id,
             saveCode,
@@ -41,7 +41,18 @@ public static class GameMapper
             game.IsConquered,
             game.Biome,
             ToPositions(game.Chests),
-            ToMerchantResponse(game));
+            ToMerchantResponse(game),
+            game.Difficulty,
+            game.IsLost,
+            game.Grave is { } grave ? new GraveResponse(grave.Position.X, grave.Position.Y, grave.Count) : null,
+            game.Waystone is { } waystone
+                ? new WaystoneResponse(waystone.X, waystone.Y, game.IsNextToWaystone,
+                    game.TravelDestinations.Select(floor => new DestinationResponse(floor, biomeOf(floor), game.ClearedFloors.Contains(floor))).ToList())
+                : null,
+            game.Totem is { } totem
+                ? new TotemResponse(totem.Position.X, totem.Position.Y, game.IsNextToTotem, game.TotemPrice, totem.Boss.Kind.Name, totem.Boss.Kind.Id)
+                : null,
+            game.DeepestFloor);
 
     private static PlayerResponse ToPlayerResponse(Game game, Player player, int freeSteps)
     {
@@ -97,7 +108,7 @@ public static class GameMapper
             merchant.Position.X,
             merchant.Position.Y,
             game.IsNextToMerchant,
-            merchant.Offers.Select(offer => new OfferResponse(offer.Id, ToItemResponse(offer.Item), offer.Price)).ToList(),
+            merchant.Offers.Select(offer => new OfferResponse(offer.Id, ToItemResponse(offer.Item), offer.Price, offer.Kind)).ToList(),
             inventory.CanExpand ? Merchant.UpgradePrice(inventory) : null,
             Inventory.ExpansionSize);
     }
@@ -148,7 +159,10 @@ public static class GameMapper
             enemy.Kind.AttackElement,
             enemy.IsBurning,
             enemy.IsFrozen,
-            enemy.Kind.IsBoss);
+            enemy.Kind.IsBoss,
+            enemy.MarkedTurns,
+            enemy.VenomStacks,
+            enemy.StaggeredTurns > 0);
 
     private static EventResponse ToResponse(GameEvent gameEvent) => gameEvent switch
     {
@@ -235,6 +249,19 @@ public static class GameMapper
         PlayerBlownAway e => new("PlayerBlownAway", EnemyId: e.EnemyId, X: e.To.X, Y: e.To.Y, Damage: e.Damage, Element: Element.Wind),
         EnemySummoned e => new("EnemySummoned", EnemyId: e.MinionId, X: e.At.X, Y: e.At.Y),
         EnemyWithered e => new("EnemyWithered", EnemyId: e.EnemyId),
+        GraveDug e => new("GraveDug", X: e.At.X, Y: e.At.Y, Amount: e.Count),
+        GraveRecovered e => new("GraveRecovered", Amount: e.Count, Level: e.Left),
+        GraveLost e => new("GraveLost", X: e.At.X, Y: e.At.Y, Amount: e.Count),
+        HeroLost => new("HeroLost"),
+        Traveled e => new("Traveled", X: e.Start.X, Y: e.Start.Y, Floor: e.Floor),
+        TravelRejected e => new("TravelRejected", Reason: e.Reason.ToString()),
+        TotemAwakened e => new("TotemAwakened", EnemyId: e.EnemyId, Price: e.Price),
+        TotemRejected e => new("TotemRejected", Reason: e.Reason.ToString()),
+        ExoticTriggered e => new("ExoticTriggered", EnemyId: e.EnemyId, Amount: e.Amount, Power: e.Power),
+        EnemyEnvenomed e => new("EnemyEnvenomed", EnemyId: e.EnemyId, Damage: e.Damage, Amount: e.Stacks),
+        SpareWeaponTaken e => new("SpareWeaponTaken", Item: ToItemResponse(e.Item)),
+        WeaponImbued e => new("WeaponImbued", Item: ToItemResponse(e.Weapon)),
+        BossPhaseChanged e => new("BossPhaseChanged", EnemyId: e.EnemyId, Level: e.Phase, Reason: e.Power.ToString()),
         _ => throw new ArgumentOutOfRangeException(nameof(gameEvent), gameEvent.GetType().Name, "Unknown game event.")
     };
 
@@ -267,7 +294,7 @@ public static class GameMapper
             potion is { Healing: > 0 } ? potion.Healing : null,
             potion?.Boost is { } boost ? ToModifierResponse(boost) : null,
             potion?.Boost is not null ? potion.BoostTurns : null,
-            instance.Element,
+            instance.Element ?? (item as RuneDefinition)?.Element,
             EffectChanceOf(instance),
             EffectsOf(item),
             item is WeaponDefinition { IsTwoHanded: true },
@@ -307,6 +334,7 @@ public static class GameMapper
         GearDefinition gear => gear.Kind.ToString(),
         PotionDefinition => "Potion",
         ScrollDefinition => "Scroll",
+        RuneDefinition => "Rune",
         _ => throw new ArgumentOutOfRangeException(nameof(item), item.GetType().Name, "Unknown item type.")
     };
 

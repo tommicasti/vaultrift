@@ -11,16 +11,20 @@ public static class ItemPrices
     {
         ArgumentNullException.ThrowIfNull(item);
 
+        if (item is WeaponDefinition { IsSpare: true })
+            return 0;
+
         var value = item.Rarity switch
         {
             Rarity.Common => 6,
             Rarity.Rare => 18,
             Rarity.Epic => 45,
             Rarity.Legendary => 120,
+            Rarity.Exotic => 300,
             _ => throw new ArgumentOutOfRangeException(nameof(item), item.Rarity, "Unknown rarity.")
         };
 
-        if (item is PotionDefinition or ScrollDefinition)
+        if (item is PotionDefinition or ScrollDefinition or RuneDefinition)
             value /= ConsumableDivisor;
 
         return (int)Math.Round(value * FloorFactor(floor), MidpointRounding.AwayFromZero);

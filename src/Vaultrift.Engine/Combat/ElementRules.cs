@@ -10,25 +10,25 @@ public static class ElementRules
     public const int FreezeImmunityTurns = 3;
 
     public static double WeaknessMultiplier(Rarity rarity) =>
-        rarity == Rarity.Legendary ? 2.0 : 1.5;
+        rarity >= Rarity.Legendary ? 2.0 : 1.5;
 
     public static int BurnDamage(Rarity rarity) =>
-        rarity == Rarity.Legendary ? 3 : 2;
+        rarity >= Rarity.Legendary ? 3 : 2;
 
     public static double EffectChance(Element element, Rarity rarity) => (element, rarity) switch
     {
         (Element.Fire, Rarity.Common) => 0.10,
         (Element.Fire, Rarity.Rare) => 0.15,
         (Element.Fire, Rarity.Epic) => 0.20,
-        (Element.Fire, Rarity.Legendary) => 0.40,
+        (Element.Fire, Rarity.Legendary or Rarity.Exotic) => 0.40,
         (Element.Ice, Rarity.Common) => 0.08,
         (Element.Ice, Rarity.Rare) => 0.12,
         (Element.Ice, Rarity.Epic) => 0.18,
-        (Element.Ice, Rarity.Legendary) => 0.30,
+        (Element.Ice, Rarity.Legendary or Rarity.Exotic) => 0.30,
         (Element.Lightning or Element.Wind, Rarity.Common) => 0.25,
         (Element.Lightning or Element.Wind, Rarity.Rare) => 0.40,
         (Element.Lightning or Element.Wind, Rarity.Epic) => 0.60,
-        (Element.Lightning or Element.Wind, Rarity.Legendary) => 1.0,
+        (Element.Lightning or Element.Wind, Rarity.Legendary or Rarity.Exotic) => 1.0,
         _ => throw new ArgumentOutOfRangeException(nameof(element), element, "Unknown element or rarity.")
     };
 

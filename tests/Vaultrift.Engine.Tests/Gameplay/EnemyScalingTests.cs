@@ -28,13 +28,22 @@ public class EnemyScalingTests
     }
 
     [Fact]
-    public void Scale_EachLevel_AddsFifteenPercent()
+    public void Scale_EachLevel_AddsFifteenPercentAttackAndDefense_AndTwentyPercentHealth()
     {
         var scaled = EnemyScaling.Scale(Base, Rarity.Common, level: 5);
 
-        Assert.Equal(16, scaled.MaxHealth);
+        Assert.Equal(18, scaled.MaxHealth);
         Assert.Equal(8, scaled.Attack);
         Assert.Equal(3, scaled.Defense);
+    }
+
+    [Fact]
+    public void Bosses_KeepFifteenPercentHealthPerLevel()
+    {
+        var scaled = EnemyScaling.Scale(Base, Rarity.Common, level: 5, isBoss: true);
+
+        Assert.Equal(16, scaled.MaxHealth);
+        Assert.Equal(8, scaled.Attack);
     }
 
     [Fact]

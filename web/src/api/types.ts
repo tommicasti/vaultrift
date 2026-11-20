@@ -1,6 +1,20 @@
 export type Direction = 'Up' | 'Down' | 'Left' | 'Right'
 
-export type Rarity = 'Common' | 'Rare' | 'Epic' | 'Legendary'
+export type Rarity = 'Common' | 'Rare' | 'Epic' | 'Legendary' | 'Exotic'
+
+export type ExoticPower =
+  | 'Riftrender'
+  | 'Oathbound'
+  | 'HeadsmansMoon'
+  | 'Worldsplitter'
+  | 'RiftNeedle'
+  | 'HuntressPromise'
+  | 'WidowsKiss'
+  | 'Shadowstep'
+  | 'LastWall'
+  | 'StarfallLance'
+  | 'Prism'
+  | 'Echo'
 
 export type ItemCategory =
   | 'Sword'
@@ -18,6 +32,7 @@ export type ItemCategory =
   | 'Potion'
   | 'Staff'
   | 'Scroll'
+  | 'Rune'
 
 export type EquipmentSlot = 'MainHand' | 'OffHand' | 'Head' | 'Body' | 'Feet' | 'Ring1' | 'Ring2' | 'Cloak' | 'ClassMod'
 
@@ -105,6 +120,9 @@ export type UseRejectReason =
   | 'NoJunk'
   | 'NotEnoughMana'
   | 'ScrollNeedsSlot'
+  | 'NoWeaponToImbue'
+  | 'WeaponCannotBeImbued'
+  | 'WeaponAlreadyImbued'
 
 export interface StatModifierInfo {
   stat: StatType
@@ -227,6 +245,9 @@ export interface EnemyState {
   isBurning: boolean
   isFrozen: boolean
   isBoss: boolean
+  markedTurns: number
+  venomStacks: number
+  isStaggered: boolean
 }
 
 export interface StairsState {
@@ -249,9 +270,20 @@ export interface InventoryEntryState {
   sellPrice: number
 }
 
+export type Difficulty = 'Normal' | 'Hard' | 'Hardcore'
+
+export interface GraveInfo {
+  x: number
+  y: number
+  count: number
+}
+
 export interface GameState {
   id: string
   saveCode: string
+  difficulty: Difficulty
+  isLost: boolean
+  grave?: GraveInfo
   map: string[]
   player: PlayerState
   enemies: EnemyState[]
@@ -266,12 +298,40 @@ export interface GameState {
   biome?: string
   chests: TilePosition[]
   merchant?: MerchantState
+  waystone?: WaystoneState
+  totem?: TotemState
+  deepestFloor: number
 }
+
+export interface DestinationInfo {
+  floor: number
+  biome?: string
+  isCleared: boolean
+}
+
+export interface WaystoneState {
+  x: number
+  y: number
+  isNearby: boolean
+  destinations: DestinationInfo[]
+}
+
+export interface TotemState {
+  x: number
+  y: number
+  isNearby: boolean
+  price: number
+  bossName: string
+  bossKind: string
+}
+
+export type OfferKind = 'Regular' | 'Featured' | 'Unlimited'
 
 export interface OfferInfo {
   id: number
   item: ItemInfo
   price: number
+  kind: OfferKind
 }
 
 export interface MerchantState {
@@ -375,6 +435,19 @@ export type GameEventType =
   | 'PlayerBlownAway'
   | 'EnemySummoned'
   | 'EnemyWithered'
+  | 'BossPhaseChanged'
+  | 'GraveDug'
+  | 'GraveRecovered'
+  | 'GraveLost'
+  | 'HeroLost'
+  | 'SpareWeaponTaken'
+  | 'WeaponImbued'
+  | 'ExoticTriggered'
+  | 'EnemyEnvenomed'
+  | 'Traveled'
+  | 'TravelRejected'
+  | 'TotemAwakened'
+  | 'TotemRejected'
 
 export interface TilePosition {
   x: number
@@ -406,10 +479,23 @@ export interface GameEvent {
   slot?: number
   price?: number
   replaced?: SpellInfo
+  power?: ExoticPower
 }
 
 export interface TurnResponse {
   turnPassed: boolean
   events: GameEvent[]
   state: GameState
+}
+
+export interface StatsPreview {
+  result: string
+  maxHealth: number
+  maxMana: number
+  attack: number
+  defense: number
+  evasion: number
+  critical: number
+  block: number
+  resistance?: Element
 }

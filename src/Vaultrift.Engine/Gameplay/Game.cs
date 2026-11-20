@@ -11,6 +11,8 @@ public sealed partial class Game
     public const int EnemyWakeDistance = 5;
     public const int HealthRegenInterval = 3;
     public const int HealthRegenAmount = 1;
+    public const int BossPursuitDistance = 3;
+    public const int BossPursuitSteps = 2;
 
     private readonly IFloorProvider _floors;
     private readonly Dictionary<Position, ItemInstance> _floorItems = [];
@@ -79,6 +81,9 @@ public sealed partial class Game
 
     public TurnResult MovePlayer(Direction direction)
     {
+        if (IsLost)
+            return Defeated();
+
         var events = new List<GameEvent>();
         Player.Facing = direction;
 
@@ -96,6 +101,7 @@ public sealed partial class Game
         Player.Position = target;
         events.Add(new PlayerMoved(target));
         PickUpItemAt(target, events);
+        RecoverGraveAt(target, events);
 
         if (target == Stairs)
         {
@@ -118,13 +124,33 @@ public sealed partial class Game
         return new TurnResult(TurnPassed: true, events);
     }
 
+    public TurnResult Face(Direction direction)
+    {
+        if (IsLost)
+            return Defeated();
+
+        Player.Facing = direction;
+        return new TurnResult(TurnPassed: false, [new PlayerTurned(direction)]);
+    }
+
     public TurnResult Attack()
     {
+        if (IsLost)
+            return Defeated();
+
         if (IsMerchant(Player.Position.Move(Player.Facing)))
             return new TurnResult(TurnPassed: false, [new MerchantGreeted()]);
 
         var events = new List<GameEvent>();
         PerformAttack(events);
+
+        if (Wields(Items.ExoticPower.HeadsmansMoon) && events.OfType<EnemyDefeated>().Any() && !Player.IsDead)
+        {
+            events.Add(new ExoticTriggered(Items.ExoticPower.HeadsmansMoon));
+            AnnounceBossDefeat(events);
+            return new TurnResult(TurnPassed: false, events);
+        }
+
         EndTurn(events);
         return new TurnResult(TurnPassed: true, events);
     }
@@ -218,6 +244,9 @@ public sealed partial class Game
 
         events.Add(new ItemUsed(item!));
 
+        if (item!.Definition is RuneDefinition && Player.Weapon is { } imbued)
+            events.Add(new WeaponImbued(imbued));
+
         EndTurn(events);
         return new TurnResult(TurnPassed: true, events);
     }
@@ -240,11 +269,15 @@ public sealed partial class Game
 
     private void EndTurn(List<GameEvent> events)
     {
+        if (IsLost)
+            return;
+
         _stepsThisTurn = 0;
         CoolLava(events);
         EnemiesAct(events);
         DriftCreatures(events);
         BurnEnemies(events);
+        TickExotics(events);
         ScorchCreatures(events);
         BreatheSpores(events);
         SufferPoison(events);
@@ -269,7 +302,7 @@ public sealed partial class Game
     {
         events.Add(new EnemyDefeated(enemy.Id));
 
-        if (enemy.Kind.Power == BossPower.SummonMinions)
+        if (enemy.Kind.Minion is not null)
             WitherMinions(enemy, events);
 
         if (enemy.IsSummoned)
@@ -277,7 +310,7 @@ public sealed partial class Game
 
         EarnCoins(Progression.CoinsFor(enemy), events);
 
-        var experience = Progression.ExperienceFor(enemy, Player.EffectAmount(EffectKind.Wisdom));
+        var experience = Progression.ExperienceFor(enemy, Player.EffectAmount(EffectKind.Wisdom), Player.Level);
         var levelBefore = Player.Level;
         events.Add(new ExperienceGained(experience));
 
@@ -297,7 +330,7 @@ public sealed partial class Game
     private void Descend(List<GameEvent> events)
     {
         _stepsThisTurn = 0;
-        LoadFloor(FloorNumber + 1);
+        LoadFloor(FloorNumber + 1, events);
         Player.Facing = Direction.Down;
         Player.RestoreFullHealth();
         Player.RestoreFullMana();
@@ -311,6 +344,7 @@ public sealed partial class Game
             return;
 
         _bossDefeatAnnounced = true;
+        MarkFloorCleared();
 
         if (FloorNumber == FloorCount)
         {
@@ -324,8 +358,11 @@ public sealed partial class Game
     }
 
     [MemberNotNull(nameof(Map))]
-    private void LoadFloor(int number)
+    private void LoadFloor(int number, List<GameEvent>? events = null)
     {
+        if (events is not null)
+            AbandonGrave(events);
+
         var floor = _floors.Create(number) ?? throw new InvalidOperationException($"Floor {number} could not be created.");
         Validate(floor);
 
@@ -345,6 +382,7 @@ public sealed partial class Game
         _coolingLava.Clear();
         FloorNumber = number;
         _bossDefeatAnnounced = false;
+        PrepareFloor(floor.Waystone);
     }
 
     private static void Validate(Floor floor)
@@ -431,14 +469,20 @@ public sealed partial class Game
                 continue;
             }
 
-            if (enemy.IsResting)
+            if (enemy.StaggeredTurns > 0)
+            {
+                enemy.StaggeredTurns--;
+                continue;
+            }
+
+            if (enemy.IsResting && !Pursues(enemy))
             {
                 enemy.IsResting = false;
                 continue;
             }
 
             TakeEnemyTurn(enemy, events);
-            enemy.IsResting = enemy.Kind.Speed == Speed.Slow;
+            enemy.IsResting = enemy.Speed == Speed.Slow;
         }
     }
 
@@ -455,12 +499,17 @@ public sealed partial class Game
         if (enemy.Kind.IsStationary)
             return;
 
-        for (var step = 0; step < enemy.StepsPerTurn; step++)
+        var steps = Pursues(enemy) ? Math.Max(BossPursuitSteps, enemy.StepsPerTurn) : enemy.StepsPerTurn;
+
+        for (var step = 0; step < steps; step++)
         {
             if (!StepTowardPlayer(enemy, events) || IsNextToPlayer(enemy))
                 return;
         }
     }
+
+    private bool Pursues(Enemy enemy) =>
+        enemy.Kind.IsBoss && !enemy.Kind.IsStationary && Distance(enemy.Position, Player.Position) >= BossPursuitDistance;
 
     private void AttackPlayer(Enemy enemy, List<GameEvent> events)
     {
@@ -474,6 +523,7 @@ public sealed partial class Game
 
         Player.TakeDamage(result.Damage);
         events.Add(new EnemyAttackedPlayer(enemy.Id, result));
+        SwearRevenge(result);
 
         if (result.IsBlocked && Player.EffectAmount(EffectKind.BlockReflect) > 0)
             Prick(enemy, DamageCalculator.BaseDamage(enemy.CombatStats, defense), events);
@@ -508,11 +558,19 @@ public sealed partial class Game
 
     private void RespawnPlayer(List<GameEvent> events)
     {
+        if (HandleDeath(events))
+            return;
+
         Deaths++;
         events.Add(new PlayerDefeated());
 
+        if (LeavesGraves)
+            DigGrave(events);
+
         DismissMinions();
-        LoseCoins(events);
+
+        if (!LeavesGraves)
+            LoseCoins(events);
 
         foreach (var enemy in _enemies.Where(enemy => !enemy.IsDead))
             enemy.ReturnToStart();
@@ -524,6 +582,7 @@ public sealed partial class Game
         Player.ClearBoosts();
         Player.ClearStatuses();
         events.Add(new PlayerRespawned(_playerStart));
+        TakeSpareWeapon(events);
     }
 
     private bool StepTowardPlayer(Enemy enemy, List<GameEvent> events)
@@ -537,6 +596,7 @@ public sealed partial class Game
 
             enemy.Position = target;
             events.Add(new EnemyMoved(enemy.Id, target));
+            GuardTheWall(enemy, events);
             return true;
         }
 
@@ -572,6 +632,7 @@ public sealed partial class Game
         Map.IsWalkable(position) &&
         !IsChest(position) &&
         !IsMerchant(position) &&
+        !IsFixture(position) &&
         position != Player.Position &&
         FindLivingEnemyAt(position) is null;
 
@@ -579,6 +640,7 @@ public sealed partial class Game
         (enemy.Kind.PassesThroughWalls ? Map.IsInside(position) : Map.IsWalkable(position)) &&
         !IsChest(position) &&
         !IsMerchant(position) &&
+        !IsFixture(position) &&
         !AvoidsLava(enemy, position) &&
         position != Player.Position &&
         FindLivingEnemyAt(position) is null;

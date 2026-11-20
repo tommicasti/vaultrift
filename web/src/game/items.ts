@@ -29,6 +29,14 @@ const categorySprites: Record<ItemCategory, SpriteRef> = {
   Potion: { sheet: sheets.dungeon, index: 115 },
   Staff: { sheet: sheets.items, index: 66 },
   Scroll: { sheet: sheets.items, index: 73 },
+  Rune: { sheet: sheets.items, index: 79 },
+}
+
+const elementRuneSprites: Record<Element, number> = {
+  Fire: 79,
+  Ice: 80,
+  Lightning: 81,
+  Wind: 82,
 }
 
 const elementStaffSprites: Record<Element, number> = {
@@ -110,6 +118,42 @@ const uniqueSprites: Record<string, number> = {
   'staff-riftheart': 70,
   'staff-everflame': 71,
   'staff-whirlwind': 72,
+  'sword-duelist': 83,
+  'sword-knightguard': 84,
+  'sword-dawnbringer': 85,
+  'sword-frostbite': 86,
+  'dagger-viper': 87,
+  'dagger-smokeblade': 88,
+  'dagger-moonshiver': 89,
+  'dagger-bloodletter': 90,
+  'axe-ironbark': 91,
+  'axe-ravager': 92,
+  'axe-cinderhowl': 93,
+  'axe-oakheart': 94,
+  'bow-thornwood': 95,
+  'bow-falconer': 96,
+  'bow-sunpiercer': 97,
+  'bow-hawkeye': 98,
+  'spear-halberd': 99,
+  'spear-wyrmfang': 100,
+  'spear-stormcaller': 101,
+  'spear-zephyr': 102,
+  'staff-stormglass': 103,
+  'staff-galebranch': 104,
+  'staff-glacierheart': 105,
+  'staff-sages-lantern': 106,
+  'sword-riftrender': 107,
+  'sword-oathbound': 108,
+  'axe-headsmans-moon': 109,
+  'axe-worldsplitter': 110,
+  'bow-rift-needle': 111,
+  'bow-huntress-promise': 112,
+  'dagger-widows-kiss': 113,
+  'dagger-shadowstep': 114,
+  'spear-last-wall': 115,
+  'spear-starfall-lance': 116,
+  'staff-prism-of-ages': 117,
+  'staff-echo': 118,
 }
 
 export function itemSprite(item: ItemInfo): SpriteRef {
@@ -117,6 +161,7 @@ export function itemSprite(item: ItemInfo): SpriteRef {
   if (item.id in potionSprites) return potionSprites[item.id]
   if (item.category === 'Staff' && item.spell) return { sheet: sheets.items, index: elementStaffSprites[item.spell.element] }
   if (item.category === 'Scroll' && item.spell) return { sheet: sheets.items, index: elementScrollSprites[item.spell.element] }
+  if (item.category === 'Rune' && item.element) return { sheet: sheets.items, index: elementRuneSprites[item.element] }
   if (item.classId !== undefined && item.classId in classModSprites)
     return { sheet: sheets.items, index: classModSprites[item.classId] }
   return categorySprites[item.category]
@@ -198,6 +243,7 @@ const elementEffects: Record<Element, string> = {
 export function describeElement(item: ItemInfo): string | null {
   if (!item.element) return null
   if (item.category === 'Cloak') return `Resists ${elementNames[item.element]}`
+  if (item.category === 'Rune') return `Gives your weapon ${elementNames[item.element]}`
   return `${capitalize(elementNames[item.element])} · ${item.effectChance}% ${elementEffects[item.element]}`
 }
 
@@ -238,6 +284,7 @@ const itemKinds: Record<Exclude<ItemCategory, 'ClassMod'>, ItemKind> = {
   Ring: { name: 'Ring', hint: 'You can wear two rings at once' },
   Cloak: { name: 'Cloak', hint: 'Goes in the cloak slot' },
   Potion: { name: 'Potion', hint: 'Used up when you drink it' },
+  Rune: { name: 'Rune', hint: 'Used up when you apply it' },
 }
 
 export function describeKind(item: ItemInfo): ItemKind {

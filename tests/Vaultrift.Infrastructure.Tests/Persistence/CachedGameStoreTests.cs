@@ -76,4 +76,29 @@ public class CachedGameStoreTests
         Assert.Same(store.Find(session.Id), store.FindByCode(session.Code));
         Assert.Equal(1, store.CachedCount);
     }
+
+    [Theory]
+    [InlineData("{}")]
+    [InlineData("not json")]
+    public void ASaveThisVersionCannotRead_IsReportedAsIncompatible(string data)
+    {
+        var repository = new MemorySaveRepository();
+        repository.Upsert(new SaveRecord(Guid.NewGuid(), "ABCD-EFGH", "knight", "Ada", 1, 1, data, DateTimeOffset.UtcNow));
+
+        var error = Assert.Throws<IncompatibleSaveException>(() => new CachedGameStore(repository).FindByCode("ABCD-EFGH"));
+
+        Assert.Equal("ABCD-EFGH", error.Code);
+    }
+
+    [Fact]
+    public void ASaveWithAnItemThatNoLongerExists_IsReportedAsIncompatible()
+    {
+        var repository = new MemorySaveRepository();
+        var session = new CachedGameStore(repository).Create(Knight, null);
+        var record = repository.FindById(session.Id)!;
+        var broken = record with { Data = record.Data.Replace("potion-healing", "potion-that-was-removed") };
+        repository.Upsert(broken);
+
+        Assert.Throws<IncompatibleSaveException>(() => new CachedGameStore(repository).Find(session.Id));
+    }
 }

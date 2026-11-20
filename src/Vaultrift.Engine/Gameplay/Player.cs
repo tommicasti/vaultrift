@@ -161,6 +161,56 @@ public sealed partial class Player : Creature
         return EquipResult.Equipped;
     }
 
+    internal IReadOnlyList<(EquipmentSlot Slot, InventoryEntry Entry)> StripEquipment()
+    {
+        var stripped = _equipment
+            .Where(pair => !IsSpare(pair.Value))
+            .Select(pair => (pair.Key, pair.Value))
+            .ToList();
+
+        foreach (var (slot, _) in stripped)
+            _equipment.Remove(slot);
+
+        ClampMana();
+        return stripped;
+    }
+
+    internal bool TakeSpareWeapon()
+    {
+        if (_equipment.ContainsKey(EquipmentSlot.MainHand) || Class?.SpareWeapon is not { } spare)
+            return false;
+
+        _equipment[EquipmentSlot.MainHand] = Inventory.CreateEntry(new ItemInstance(spare));
+        return true;
+    }
+
+    internal IReadOnlyList<(EquipmentSlot Slot, InventoryEntry Entry)> Reclaim(IReadOnlyList<(EquipmentSlot Slot, InventoryEntry Entry)> items)
+    {
+        var left = new List<(EquipmentSlot, InventoryEntry)>();
+
+        if (items.Any(item => item.Slot == EquipmentSlot.MainHand) &&
+            _equipment.TryGetValue(EquipmentSlot.MainHand, out var held) && IsSpare(held))
+            _equipment.Remove(EquipmentSlot.MainHand);
+
+        items = items.OrderBy(item => item.Slot == EquipmentSlot.MainHand ? 0 : 1).ToList();
+
+        foreach (var (slot, entry) in items)
+        {
+            if (!_equipment.ContainsKey(slot) && !BlockedByTwoHands(slot, entry))
+                _equipment[slot] = entry;
+            else if (!Inventory.TryPut(entry))
+                left.Add((slot, entry));
+        }
+
+        return left;
+    }
+
+    private static bool IsSpare(InventoryEntry entry) => entry.Item.Definition is WeaponDefinition { IsSpare: true };
+
+    private bool BlockedByTwoHands(EquipmentSlot slot, InventoryEntry entry) =>
+        (slot == EquipmentSlot.OffHand && HoldsTwoHanded) ||
+        (slot == EquipmentSlot.MainHand && entry.Item.Definition is WeaponDefinition { IsTwoHanded: true } && _equipment.ContainsKey(EquipmentSlot.OffHand));
+
     public UnequipResult Unequip(EquipmentSlot slot)
     {
         if (!_equipment.TryGetValue(slot, out var entry))
@@ -226,6 +276,9 @@ public sealed partial class Player : Creature
         if (entry is null)
             return UseResult.ItemNotFound;
 
+        if (entry.Item.Definition is RuneDefinition rune)
+            return Imbue(entry, rune);
+
         if (entry.Item.Definition is not PotionDefinition potion)
             return UseResult.NotUsable;
 
@@ -251,13 +304,63 @@ public sealed partial class Player : Creature
         return UseResult.Used;
     }
 
+    private UseResult Imbue(InventoryEntry runeEntry, RuneDefinition rune)
+    {
+        if (!_equipment.TryGetValue(EquipmentSlot.MainHand, out var held) || held.Item.Definition is not WeaponDefinition weapon)
+            return UseResult.NoWeaponToImbue;
+
+        if (!CanImbue(weapon))
+            return UseResult.WeaponCannotBeImbued;
+
+        if (held.Item.Element == rune.Element)
+            return UseResult.WeaponAlreadyImbued;
+
+        held.Item = new ItemInstance(weapon, rune.Element);
+        Inventory.RemoveOne(runeEntry.Id);
+        return UseResult.Used;
+    }
+
+    public static bool CanImbue(WeaponDefinition weapon) =>
+        weapon.WeaponType != WeaponType.Staff && weapon.FixedElement is null;
+
     public UseResult UseQuickSlot(int slot = 0)
     {
-        if (QuickSlotEntry(slot) is not { } entry)
+        if ((QuickSlotEntry(slot) ?? Refill(slot)) is not { } entry)
             return QuickSlotIn(slot) is null ? UseResult.QuickSlotEmpty : UseResult.ItemNotFound;
 
-        return Use(entry.Id);
+        var result = Use(entry.Id);
+
+        if (result == UseResult.Used && QuickSlotEntry(slot) is null)
+            Refill(slot);
+
+        return result;
     }
+
+    private InventoryEntry? Refill(int slot)
+    {
+        if (QuickSlotIn(slot) is not PotionDefinition emptied)
+            return null;
+
+        var replacement = Inventory.Entries
+            .Where(entry => entry.Item.Definition is PotionDefinition potion && SameFamily(potion, emptied))
+            .OrderByDescending(entry => entry.Item.Rarity)
+            .ThenByDescending(entry => Strength((PotionDefinition)entry.Item.Definition))
+            .FirstOrDefault();
+
+        if (replacement is null)
+            return null;
+
+        _quickSlots[slot] = replacement.Item.Definition;
+        return replacement;
+    }
+
+    private static bool SameFamily(PotionDefinition candidate, PotionDefinition emptied) =>
+        (emptied.Healing > 0 && candidate.Healing > 0) ||
+        (emptied.ManaRestore > 0 && candidate.ManaRestore > 0) ||
+        (emptied.Boost is { } boost && candidate.Boost?.Stat == boost.Stat);
+
+    private static int Strength(PotionDefinition potion) =>
+        potion.Healing + potion.ManaRestore + (potion.Boost?.Amount ?? 0);
 
     public bool AssignQuickSlot(int entryId, int slot = 0)
     {

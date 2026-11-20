@@ -167,3 +167,29 @@ public sealed record JunkSold(int Count, int Price) : GameEvent;
 public sealed record BackpackExpanded(int Capacity, int Price) : GameEvent;
 
 public sealed record TradeRejected(TradeResult Reason) : GameEvent;
+
+public sealed record BossPhaseChanged(int EnemyId, int Phase, BossPower Power) : GameEvent;
+
+public sealed record GraveDug(Position At, int Count) : GameEvent;
+
+public sealed record GraveRecovered(int Count, int Left) : GameEvent;
+
+public sealed record GraveLost(Position At, int Count) : GameEvent;
+
+public sealed record SpareWeaponTaken(ItemInstance Item) : GameEvent;
+
+public sealed record HeroLost : GameEvent;
+
+public sealed record WeaponImbued(ItemInstance Weapon) : GameEvent;
+
+public sealed record ExoticTriggered(ExoticPower Power, int? EnemyId = null, int Amount = 0) : GameEvent;
+
+public sealed record EnemyEnvenomed(int EnemyId, int Damage, int Stacks) : GameEvent;
+
+public sealed record Traveled(int Floor, Position Start) : GameEvent;
+
+public sealed record TravelRejected(TravelResult Reason) : GameEvent;
+
+public sealed record TotemAwakened(int EnemyId, int Price) : GameEvent;
+
+public sealed record TotemRejected(TotemResult Reason) : GameEvent;

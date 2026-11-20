@@ -31,7 +31,7 @@ public sealed class GamesController : ControllerBase
             return ValidationProblem(ModelState);
         }
 
-        var session = _store.Create(playerClass, request.Name);
+        var session = _store.Create(playerClass, request.Name, request.Difficulty);
 
         return CreatedAtAction(nameof(Get), new { id = session.Id }, GameMapper.ToResponse(session));
     }
@@ -42,9 +42,38 @@ public sealed class GamesController : ControllerBase
     [HttpGet("code/{code}")]
     public ActionResult<GameStateResponse> GetByCode(string code) => Show(_store.FindByCode(code));
 
+    [HttpGet("{id:guid}/preview/{entryId:int}")]
+    public ActionResult<StatsPreviewResponse> Preview(Guid id, int entryId, [FromQuery] EquipmentSlot? hand)
+    {
+        var session = _store.Find(id);
+
+        if (session is null)
+            return NotFound();
+
+        lock (session.Game)
+        {
+            var preview = session.Game.Player.PreviewEquip(entryId, hand, VaultContent.Instance);
+
+            return new StatsPreviewResponse(
+                preview.Result,
+                preview.MaxHealth,
+                preview.MaxMana,
+                preview.Attack,
+                preview.Defense,
+                preview.Evasion,
+                preview.Critical,
+                preview.Block,
+                preview.Resistance);
+        }
+    }
+
     [HttpPost("{id:guid}/move")]
     public ActionResult<TurnResponse> Move(Guid id, MoveRequest request) =>
         Play(id, game => game.MovePlayer(request.Direction));
+
+    [HttpPost("{id:guid}/face")]
+    public ActionResult<TurnResponse> Face(Guid id, MoveRequest request) =>
+        Play(id, game => game.Face(request.Direction));
 
     [HttpPost("{id:guid}/attack")]
     public ActionResult<TurnResponse> Attack(Guid id) =>
@@ -93,6 +122,14 @@ public sealed class GamesController : ControllerBase
     [HttpPost("{id:guid}/buy")]
     public ActionResult<TurnResponse> Buy(Guid id, OfferRequest request) =>
         Play(id, game => game.Buy(request.OfferId));
+
+    [HttpPost("{id:guid}/travel")]
+    public ActionResult<TurnResponse> Travel(Guid id, TravelRequest request) =>
+        Play(id, game => game.Travel(request.Floor));
+
+    [HttpPost("{id:guid}/totem")]
+    public ActionResult<TurnResponse> AwakenTotem(Guid id) =>
+        Play(id, game => game.AwakenTotem());
 
     [HttpPost("{id:guid}/buy-upgrade")]
     public ActionResult<TurnResponse> BuyBackpackUpgrade(Guid id) =>

@@ -1,4 +1,4 @@
-import type { ClassInfo, Direction, EquipmentSlot, GameState, ItemMark, StatPoint, TurnResponse } from './types'
+import type { ClassInfo, Difficulty, Direction, EquipmentSlot, GameState, ItemMark, StatPoint, StatsPreview, TurnResponse } from './types'
 
 export class ApiError extends Error {
   readonly status: number
@@ -27,8 +27,8 @@ export function getClasses(): Promise<ClassInfo[]> {
   return request<ClassInfo[]>('GET', '/classes')
 }
 
-export function createGame(classId: string, name: string): Promise<GameState> {
-  return request<GameState>('POST', '/games', { classId, name })
+export function createGame(classId: string, name: string, difficulty: Difficulty): Promise<GameState> {
+  return request<GameState>('POST', '/games', { classId, name, difficulty })
 }
 
 export function getGame(gameId: string): Promise<GameState> {
@@ -39,8 +39,17 @@ export function getGameByCode(code: string): Promise<GameState> {
   return request<GameState>('GET', `/games/code/${encodeURIComponent(code)}`)
 }
 
+export function previewEquip(gameId: string, entryId: number, hand?: EquipmentSlot): Promise<StatsPreview> {
+  const query = hand ? `?hand=${hand}` : ''
+  return request<StatsPreview>('GET', `/games/${gameId}/preview/${entryId}${query}`)
+}
+
 export function move(gameId: string, direction: Direction): Promise<TurnResponse> {
   return request<TurnResponse>('POST', `/games/${gameId}/move`, { direction })
+}
+
+export function face(gameId: string, direction: Direction): Promise<TurnResponse> {
+  return request<TurnResponse>('POST', `/games/${gameId}/face`, { direction })
 }
 
 export function attack(gameId: string): Promise<TurnResponse> {
@@ -96,6 +105,14 @@ export function learnSpell(gameId: string, entryId: number, key: number): Promis
 }
 export function buyOffer(gameId: string, offerId: number): Promise<TurnResponse> {
   return request<TurnResponse>('POST', `/games/${gameId}/buy`, { offerId })
+}
+
+export function travel(gameId: string, floor: number): Promise<TurnResponse> {
+  return request<TurnResponse>('POST', `/games/${gameId}/travel`, { floor })
+}
+
+export function awakenTotem(gameId: string): Promise<TurnResponse> {
+  return request<TurnResponse>('POST', `/games/${gameId}/totem`)
 }
 
 export function buyBackpackUpgrade(gameId: string): Promise<TurnResponse> {

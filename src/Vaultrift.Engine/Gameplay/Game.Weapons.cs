@@ -23,6 +23,12 @@ public sealed partial class Game
 
         var weapon = Player.Weapon;
 
+        if (weapon is not null && TryShadowstep(weapon, events))
+        {
+            EndAmbush(events);
+            return;
+        }
+
         switch ((weapon?.Definition as WeaponDefinition)?.WeaponType)
         {
             case WeaponType.Staff when Player.ActiveSpell is not null:
@@ -86,13 +92,20 @@ public sealed partial class Game
             return;
         }
 
-        if (target is not null)
-            Hit(target, weapon, Player.CombatStats, options, events);
+        var struck = new List<Enemy>();
+
+        if (target is not null && !Hit(target, weapon, Player.CombatStats, options, events).Missed)
+            struck.Add(target);
 
         var sideOptions = options with { Glancing = true, TriggersElement = false, GuaranteedElement = false };
 
         foreach (var bystander in bystanders.Where(enemy => !enemy.IsDead))
-            Hit(bystander, weapon, Player.CombatStats, sideOptions, events);
+        {
+            if (!Hit(bystander, weapon, Player.CombatStats, sideOptions, events).Missed)
+                struck.Add(bystander);
+        }
+
+        Stagger(struck, events);
     }
 
     private void Thrust(ItemInstance weapon, HitOptions options, List<GameEvent> events)
@@ -101,6 +114,11 @@ public sealed partial class Game
         var behind = front.Move(Player.Facing);
         var reachesBehind = (Map.IsWalkable(front) && !IsChest(front)) || FindLivingEnemyAt(front) is not null;
         var tiles = reachesBehind ? new List<Position> { front, behind } : [front];
+        var beyond = behind.Move(Player.Facing);
+
+        if (reachesBehind && Wields(Items.ExoticPower.StarfallLance) &&
+            ((Map.IsWalkable(behind) && !IsChest(behind)) || FindLivingEnemyAt(behind) is not null))
+            tiles.Add(beyond);
 
         events.Add(new PlayerThrust(tiles));
 
@@ -150,7 +168,7 @@ public sealed partial class Game
 
             targets.Add((target, step));
 
-            if (!powered)
+            if (!powered && !Wields(Items.ExoticPower.RiftNeedle))
                 break;
         }
 
@@ -179,7 +197,8 @@ public sealed partial class Game
                 Glancing: !powered && distance == 1,
                 TriggersElement: index == 0,
                 DamageMultiplier: powered ? AbilityRules.PowerShotDamageMultiplier : 1,
-                GuaranteedElement: guaranteedElement && index == 0);
+                GuaranteedElement: guaranteedElement && index == 0,
+                DamagePercent: !powered && index > 0 ? RiftNeedlePiercePercent : 100);
 
             Hit(target, weapon, FarShotStats(distance), options, events);
         }
@@ -227,12 +246,23 @@ public sealed partial class Game
         return distance >= FarShotDistance && bonus > 0 ? stats.WithCritical(stats.Critical + bonus) : stats;
     }
 
-    private void Hit(Enemy target, ItemInstance? weapon, Stats stats, HitOptions options, List<GameEvent> events)
+    private AttackResult Hit(Enemy target, ItemInstance? weapon, Stats stats, HitOptions options, List<GameEvent> events)
     {
-        var rolled = RollHit(stats, target);
+        var wasMarked = target.MarkedTurns > 0;
+        options = BeforeExoticHit(target, weapon, options, events);
+
+        var rolled = options.GuaranteedCritical
+            ? new AttackResult(DamageCalculator.BaseDamage(stats, target.CombatStats) * DamageCalculator.CriticalMultiplier, IsCritical: true)
+            : RollHit(stats, target, options.IgnoresDefense);
 
         if (!rolled.Missed && options.DamageMultiplier > 1)
             rolled = rolled with { Damage = rolled.Damage * options.DamageMultiplier };
+
+        if (!rolled.Missed && options.DamagePercent != 100)
+            rolled = rolled with { Damage = Math.Max(DamageCalculator.MinimumDamage, rolled.Damage * options.DamagePercent / 100) };
+
+        if (!rolled.Missed && options.BonusDamage > 0)
+            rolled = rolled with { Damage = rolled.Damage + options.BonusDamage };
 
         if (options.Glancing && !rolled.Missed)
             rolled = rolled with { Damage = Math.Max(DamageCalculator.MinimumDamage, rolled.Damage / GlancingBlowDivisor) };
@@ -262,12 +292,17 @@ public sealed partial class Game
 
         if (options.TriggersElement && !result.Missed && weapon?.Element is { } element)
             TriggerElement(element, weapon.Rarity, target, result.Damage, events, options.GuaranteedElement);
+
+        AfterExoticHit(target, weapon, result, wasMarked, events);
+        return result;
     }
 
-    private AttackResult RollHit(Stats stats, Enemy target)
+    private AttackResult RollHit(Stats stats, Enemy target, bool ignoresDefense = false)
     {
+        var defender = ignoresDefense ? target.CombatStats.WithDefense(0) : target.CombatStats;
+
         if (!_ambushReady)
-            return _damageCalculator.Calculate(stats, target.CombatStats);
+            return _damageCalculator.Calculate(stats, defender);
 
         _ambushReady = false;
         _ambushStruck = true;
@@ -276,7 +311,7 @@ public sealed partial class Game
             ? AbilityRules.AmbushDamageMultiplier + 1
             : AbilityRules.AmbushDamageMultiplier;
 
-        return new AttackResult(DamageCalculator.BaseDamage(stats, target.CombatStats) * multiplier, IsCritical: true);
+        return new AttackResult(DamageCalculator.BaseDamage(stats, defender) * multiplier, IsCritical: true);
     }
 
     private void DrainLife(int damage, List<GameEvent> events)
@@ -333,5 +368,9 @@ public sealed partial class Game
         bool Glancing = false,
         bool TriggersElement = true,
         int DamageMultiplier = 1,
-        bool GuaranteedElement = false);
+        bool GuaranteedElement = false,
+        int DamagePercent = 100,
+        int BonusDamage = 0,
+        bool IgnoresDefense = false,
+        bool GuaranteedCritical = false);
 }

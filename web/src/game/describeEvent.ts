@@ -19,6 +19,14 @@ const equipRejectMessages: Record<EquipRejectReason, string> = {
   WrongClass: 'That class mod belongs to another class.',
 }
 
+const finalFloor = 21
+
+const bossPhaseMessages: Record<string, string> = {
+  SummonMinions: 'The Custode roars, and drakelings crawl out of the rift!',
+  Gust: 'The Custode takes wing: its gusts sweep the arena, and it hunts faster!',
+  LavaRing: 'Fire pours from the Custode!',
+}
+
 const unequipRejectMessages: Record<UnequipRejectReason, string> = {
   SlotEmpty: 'There is nothing to take off there.',
   BackpackFull: 'Your backpack is full. Make some room first.',
@@ -39,6 +47,9 @@ const useRejectMessages: Record<UseRejectReason, string> = {
   NoJunk: 'Nothing is marked as junk.',
   NotEnoughMana: 'Not enough mana to read that scroll.',
   ScrollNeedsSlot: 'Put the scroll on F to cast it, or learn it with a staff.',
+  NoWeaponToImbue: 'Hold a weapon in your main hand to use a rune on it.',
+  WeaponCannotBeImbued: 'Runes do not work on staves or on weapons with a fixed element.',
+  WeaponAlreadyImbued: 'Your weapon already has that element.',
 }
 
 const abilityRejectMessages: Record<AbilityRejectReason, string> = {
@@ -93,6 +104,29 @@ function effectivenessNote(event: GameEvent): string {
       return " It's resisted."
     default:
       return ''
+  }
+}
+
+function describeExotic(event: GameEvent, enemy: string): string | null {
+  switch (event.power) {
+    case 'Riftrender':
+      return 'Riftrender tears through the rift: double damage, no armor can stop it!'
+    case 'Oathbound':
+      return `Oathbound keeps its promise: +${event.amount} damage for the blows you took.`
+    case 'HeadsmansMoon':
+      return "The Headsman's Moon claims its due: the monsters do not get to act."
+    case 'Worldsplitter':
+      return `${enemy} staggers and loses its next turn.`
+    case 'HuntressPromise':
+      return `The Huntress keeps her promise: you heal ${event.amount} health.`
+    case 'Shadowstep':
+      return 'You step through the shadows and strike!'
+    case 'LastWall':
+      return `${enemy} walks into the Last Wall.`
+    case 'Echo':
+      return 'The Echo Staff repeats your spell.'
+    default:
+      return null
   }
 }
 
@@ -231,7 +265,9 @@ export function describeEvent(event: GameEvent, enemyNames: ReadonlyMap<number, 
     case 'StairsOpened':
       return 'A deep rumble echoes through the floor. The stairs are open!'
     case 'FloorDescended':
-      return `You descend to floor ${event.floor}.`
+      return event.floor === finalFloor
+        ? 'You step into the Rift. Something vast stirs in the dark...'
+        : `You descend to floor ${event.floor}.`
     case 'PlayerScorched':
       return `The lava burns you for ${event.damage} damage!`
     case 'EnemyScorched':
@@ -262,7 +298,35 @@ export function describeEvent(event: GameEvent, enemyNames: ReadonlyMap<number, 
       return `A ${enemyNames.get(event.enemyId ?? -1) ?? 'minion'} springs from the ground!`
     case 'EnemyWithered':
       return `${enemy} withers away.`
+    case 'BossPhaseChanged':
+      return bossPhaseMessages[event.reason ?? ''] ?? `${enemy} grows stronger!`
+    case 'GraveDug':
+      return `Your gear stays behind in a grave where you fell (${event.amount} ${event.amount === 1 ? 'item' : 'items'}). Follow the marker on the edge of the map and walk over it to take it back.`
+    case 'GraveRecovered':
+      return event.level
+        ? `You take back ${event.amount} ${event.amount === 1 ? 'item' : 'items'}. Your backpack is full: ${event.level} still ${event.level === 1 ? 'waits' : 'wait'} in the grave.`
+        : `You take back your gear from the grave (${event.amount} ${event.amount === 1 ? 'item' : 'items'}).`
+    case 'GraveLost':
+      return `Your old grave crumbles to dust, and ${event.amount} ${event.amount === 1 ? 'item is' : 'items are'} lost forever.`
+    case 'WeaponImbued':
+      return `The rune sinks into the metal: you now wield a ${event.item?.name ?? 'new weapon'}.`
+    case 'SpareWeaponTaken':
+      return `You pick up a ${event.item?.name ?? 'spare weapon'} from the entrance. It is worth nothing, and it crumbles when you take your own weapon back.`
+    case 'ExoticTriggered':
+      return describeExotic(event, enemy)
+    case 'EnemyEnvenomed':
+      return `${enemy} loses ${event.damage} health to the venom (${event.amount} ${event.amount === 1 ? 'layer' : 'layers'}).`
+    case 'Traveled':
+      return `The waystone hums, and the rift carries you to floor ${event.floor}. It looks different from how you left it.`
+    case 'TravelRejected':
+      return event.reason === 'NoWaystoneNearby' ? 'Stand next to the waystone to travel.' : 'The waystone cannot take you there.'
+    case 'TotemAwakened':
+      return `You pay ${event.price} coins. The totem cracks open and ${enemyLower} rises again!`
+    case 'TotemRejected':
+      return event.reason === 'NotEnoughCoins' ? 'You do not have enough coins to wake the totem.' : 'Stand next to the totem to wake it.'
+    case 'HeroLost':
+      return 'Your journey ends here.'
     case 'VaultConquered':
-      return 'The last guardian falls. The vault is yours!'
+      return 'The Custode falls. The rift closes, and the vault is yours!'
   }
 }

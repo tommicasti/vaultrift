@@ -21,11 +21,25 @@ public sealed record GameStateResponse(
     bool IsConquered,
     string? Biome,
     IReadOnlyList<PositionResponse> Chests,
-    MerchantResponse? Merchant);
+    MerchantResponse? Merchant,
+    Difficulty Difficulty,
+    bool IsLost,
+    GraveResponse? Grave,
+    WaystoneResponse? Waystone,
+    TotemResponse? Totem,
+    int DeepestFloor);
+
+public sealed record GraveResponse(int X, int Y, int Count);
+
+public sealed record WaystoneResponse(int X, int Y, bool IsNearby, IReadOnlyList<DestinationResponse> Destinations);
+
+public sealed record DestinationResponse(int Floor, string? Biome, bool IsCleared);
+
+public sealed record TotemResponse(int X, int Y, bool IsNearby, int Price, string BossName, string BossKind);
 
 public sealed record MerchantResponse(int X, int Y, bool IsNearby, IReadOnlyList<OfferResponse> Offers, int? UpgradePrice, int UpgradeSize);
 
-public sealed record OfferResponse(int Id, ItemResponse Item, int Price);
+public sealed record OfferResponse(int Id, ItemResponse Item, int Price, OfferKind Kind);
 
 public sealed record StairsResponse(int X, int Y, bool IsOpen);
 
@@ -102,7 +116,10 @@ public sealed record EnemyResponse(
     Element? AttackElement,
     bool IsBurning,
     bool IsFrozen,
-    bool IsBoss);
+    bool IsBoss,
+    int MarkedTurns,
+    int VenomStacks,
+    bool IsStaggered);
 public sealed record ModifierResponse(StatType Stat, int Amount);
 
 public sealed record EffectResponse(EffectKind Kind, int Amount);
@@ -155,6 +172,18 @@ public sealed record EventResponse(
     SpellResponse? Spell = null,
     int? Slot = null,
     int? Price = null,
-    SpellResponse? Replaced = null);
+    SpellResponse? Replaced = null,
+    ExoticPower? Power = null);
 
 public sealed record PositionResponse(int X, int Y);
+
+public sealed record StatsPreviewResponse(
+    EquipResult Result,
+    int MaxHealth,
+    int MaxMana,
+    int Attack,
+    int Defense,
+    int Evasion,
+    int Critical,
+    int Block,
+    Element? Resistance);

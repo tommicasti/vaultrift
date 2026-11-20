@@ -20,7 +20,13 @@ public static class StorageSetup
             _ => throw new InvalidOperationException($"Unknown Storage:Provider '{provider}'. Use SqlServer, File or Memory.")
         };
 
-        services.AddSingleton(repository);
+        services.AddSingleton<ISaveRepository>(provider =>
+        {
+            var logger = provider.GetRequiredService<ILoggerFactory>().CreateLogger("Vaultrift.Saves");
+            return new WriteBehindSaveRepository(
+                repository,
+                (error, record) => logger.LogError(error, "Could not save game {GameId} ({Code}); retrying.", record.Id, record.Code));
+        });
         services.AddSingleton<IGameStore, CachedGameStore>();
         return services;
     }

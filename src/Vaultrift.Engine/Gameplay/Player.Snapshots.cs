@@ -33,6 +33,16 @@ public sealed partial class Player
         _spellSlots.Select(scroll => scroll?.Id).ToList(),
         _boosts.Values.Select(boost => new BoostSnapshot(boost.Source.Id, boost.RemainingTurns)).ToList());
 
+    public StatsPreview PreviewEquip(int entryId, EquipmentSlot? hand, IGameContent content)
+    {
+        ArgumentNullException.ThrowIfNull(content);
+
+        var copy = Restore(Capture(), content);
+        var result = copy.Equip(entryId, hand);
+
+        return StatsPreview.Of(result, copy);
+    }
+
     public static Player Restore(PlayerSnapshot snapshot, IGameContent content)
     {
         ArgumentNullException.ThrowIfNull(snapshot);
@@ -92,6 +102,6 @@ public sealed partial class Player
     internal static ItemInstance RestoreItem(ItemSnapshot item, IGameContent content) =>
         new(content.Item(item.Id), item.Element);
 
-    private static InventoryEntry RestoreEntry(EntrySnapshot entry, IGameContent content) =>
+    internal static InventoryEntry RestoreEntry(EntrySnapshot entry, IGameContent content) =>
         new(entry.Id, RestoreItem(entry.Item, content)) { Quantity = entry.Quantity, Mark = entry.Mark };
 }

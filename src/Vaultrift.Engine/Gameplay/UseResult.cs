@@ -11,5 +11,8 @@ public enum UseResult
     ItemIsFavorite,
     NoJunk,
     NotEnoughMana,
-    ScrollNeedsSlot
+    ScrollNeedsSlot,
+    NoWeaponToImbue,
+    WeaponCannotBeImbued,
+    WeaponAlreadyImbued
 }

@@ -11,7 +11,7 @@ public sealed class InventoryEntry
 
     public int Id { get; }
 
-    public ItemInstance Item { get; }
+    public ItemInstance Item { get; internal set; }
 
     public int Quantity { get; internal set; }
 
