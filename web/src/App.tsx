@@ -52,6 +52,9 @@ const maxLogEntries = 30
 const compactView = { columns: 11, rows: 7 }
 const standardView = { columns: 13, rows: 11 }
 
+const incompatibleSaveMessage =
+  'This save comes from an older version of Vaultrift and can no longer be loaded. Start a new adventure!'
+
 function App() {
   const [game, setGame] = useState<GameState | null>(null)
   const [log, setLog] = useState<string[]>([])
@@ -99,10 +102,10 @@ function App() {
       })
       enterGame(state, 'You return to the vault.')
     } catch (failure) {
-      if (failure instanceof ApiError && failure.status === 404) {
+      if (failure instanceof ApiError && (failure.status === 404 || failure.status === 409)) {
         forgetSavedGame()
         setSaved(null)
-        setError('That save no longer exists.')
+        setError(failure.status === 409 ? incompatibleSaveMessage : 'That save no longer exists.')
       } else {
         setError('Could not reach the vault. Try again in a moment.')
       }
@@ -121,7 +124,9 @@ function App() {
       setError(
         failure instanceof ApiError && failure.status === 404
           ? 'No game has that save code.'
-          : 'Could not reach the vault. Try again in a moment.',
+          : failure instanceof ApiError && failure.status === 409
+            ? incompatibleSaveMessage
+            : 'Could not reach the vault. Try again in a moment.',
       )
     } finally {
       setBusy(false)

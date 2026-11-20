@@ -17,6 +17,7 @@ export type EffectKind =
   | 'shards'
   | 'spores'
   | 'overload'
+  | 'coins'
 
 export interface Effect {
   key: string
@@ -25,9 +26,11 @@ export interface Effect {
   kind: EffectKind
   facing: Direction
   delayMs: number
+  label?: string
 }
 
 export const effectDurationMs = 450
+export const coinDurationMs = 900
 export const arrowStepMs = 45
 const chainDelayMs = 150
 const burnDelayMs = 300
@@ -58,8 +61,9 @@ export function effectsForTurn(
   const positionsAfter = new Map<number, TilePosition>(enemiesAfter.map(enemy => [enemy.id, enemy]))
   const effects: Effect[] = []
   let impactDelayMs = 0
+  let lootSpot: TilePosition | undefined
 
-  function add(position: TilePosition | undefined, kind: EffectKind, delayMs: number) {
+  function add(position: TilePosition | undefined, kind: EffectKind, delayMs: number, label?: string) {
     if (!position) return
 
     effects.push({
@@ -69,6 +73,7 @@ export function effectsForTurn(
       kind,
       facing: player.facing,
       delayMs,
+      label,
     })
   }
 
@@ -143,7 +148,14 @@ export function effectsForTurn(
           add(positionsAfter.get(event.enemyId) ?? positionsBefore.get(event.enemyId), 'fire', impactDelayMs + burnDelayMs)
         break
       case 'ChestOpened':
-        add(event.x !== undefined && event.y !== undefined ? { x: event.x, y: event.y } : undefined, 'impact', 0)
+        lootSpot = event.x !== undefined && event.y !== undefined ? { x: event.x, y: event.y } : undefined
+        add(lootSpot, 'impact', 0)
+        break
+      case 'EnemyDefeated':
+        if (event.enemyId !== undefined) lootSpot = positionsBefore.get(event.enemyId) ?? positionsAfter.get(event.enemyId)
+        break
+      case 'CoinsGained':
+        if (event.amount) add(lootSpot ?? player, 'coins', impactDelayMs + chainDelayMs, `+${event.amount}`)
         break
       case 'MimicRevealed':
         add(event.x !== undefined && event.y !== undefined ? { x: event.x, y: event.y } : undefined, 'smoke', 0)
@@ -176,5 +188,8 @@ export function effectsForTurn(
 }
 
 export function effectsDuration(effects: Effect[]): number {
-  return Math.max(0, ...effects.map(effect => effect.delayMs)) + effectDurationMs
+  return Math.max(
+    effectDurationMs,
+    ...effects.map(effect => effect.delayMs + (effect.kind === 'coins' ? coinDurationMs : effectDurationMs)),
+  )
 }

@@ -100,7 +100,9 @@ export function Board({ game, viewColumns, viewRows, effects, onAttack }: BoardP
               className={`effect effect-${effect.kind} toward-${effect.facing.toLowerCase()}`}
               style={{ animationDelay: `${effect.delayMs}ms` }}
               aria-hidden="true"
-            />
+            >
+              {effect.label}
+            </span>
           ))}
         </div>,
       )

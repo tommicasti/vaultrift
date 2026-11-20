@@ -7,7 +7,7 @@ public sealed partial class Game
 {
     private void DropLoot(Enemy enemy, List<GameEvent> events)
     {
-        if (_loot?.RollDrop(enemy, new LootContext(Player.Class?.Id, Player.EffectAmount(EffectKind.Luck))) is not { } item)
+        if (_loot?.RollDrop(enemy, new LootContext(Player.Class?.Id, Player.EffectAmount(EffectKind.Luck), FloorNumber)) is not { } item)
             return;
 
         if (DropSpot(enemy.Position) is not { } spot)

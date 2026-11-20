@@ -37,17 +37,17 @@ public sealed class VaultLoot : ILootTable
 
         var chance = enemy.Rarity switch
         {
-            Rarity.Common => 0.12,
-            Rarity.Rare => 0.25,
-            Rarity.Epic => 0.45,
-            Rarity.Legendary => 0.75,
+            Rarity.Common => 0.06,
+            Rarity.Rare => 0.14,
+            Rarity.Epic => 0.28,
+            Rarity.Legendary => 0.50,
             _ => throw new ArgumentOutOfRangeException(nameof(enemy), enemy.Rarity, "Unknown rarity.")
         };
 
         return Math.Min(1.0, chance * (1 + luck / 100.0));
     }
 
-    public static double DropRarityChance(Enemy enemy, Rarity drop)
+    public static double DropRarityChance(Enemy enemy, Rarity drop, int floor = MaxFloor)
     {
         ArgumentNullException.ThrowIfNull(enemy);
 
@@ -67,10 +67,30 @@ public sealed class VaultLoot : ILootTable
                 _ => throw new ArgumentOutOfRangeException(nameof(enemy), enemy.Rarity, "Unknown rarity.")
             };
 
-        return Share(drop, legendary, epic, rare);
+        return Gated(drop, legendary, epic, rare, floor);
     }
 
-    public static double ChestRarityChance(Rarity drop) => Share(drop, legendary: 0.02, epic: 0.12, rare: 0.40);
+    private static double Gated(Rarity drop, double legendary, double epic, double rare, int floor)
+    {
+        var gatedLegendary = legendary * LegendaryFloorFactor(floor);
+        var gatedEpic = epic * EpicFloorFactor(floor);
+        var demoted = legendary - gatedLegendary + epic - gatedEpic;
+
+        return Share(drop, gatedLegendary, gatedEpic, rare + demoted);
+    }
+
+    public const int MaxFloor = 20;
+    public const int FirstLegendaryFloor = 6;
+    public const int FullLegendaryFloor = 14;
+    public const int FullEpicFloor = 6;
+
+    public static double LegendaryFloorFactor(int floor) =>
+        floor < FirstLegendaryFloor ? 0.0 : Math.Min(1.0, (floor - FirstLegendaryFloor + 1) / (double)(FullLegendaryFloor - FirstLegendaryFloor + 1));
+
+    public static double EpicFloorFactor(int floor) => Math.Min(1.0, Math.Max(1, floor) / (double)FullEpicFloor);
+
+    public static double ChestRarityChance(Rarity drop, int floor = MaxFloor) =>
+        Gated(drop, legendary: 0.02, epic: 0.12, rare: 0.40, floor);
 
     public ItemInstance? RollChest(LootContext context)
     {
@@ -79,7 +99,7 @@ public sealed class VaultLoot : ILootTable
         if (_random.NextDouble() < ChestPotionShare)
             return RollConsumable();
 
-        var rarity = Roll(ChestRarityChance);
+        var rarity = Roll(drop => ChestRarityChance(drop, context.Floor));
 
         if (RollClassMod(rarity, ClassModShare, context.ClassId) is { } classMod)
             return new ItemInstance(classMod);
@@ -109,7 +129,7 @@ public sealed class VaultLoot : ILootTable
         if (!KeepsTreasure(enemy) && _random.NextDouble() < PotionShare)
             return RollConsumable();
 
-        var rarity = Roll(drop => DropRarityChance(enemy, drop));
+        var rarity = Roll(drop => DropRarityChance(enemy, drop, context.Floor));
         var share = KeepsTreasure(enemy) ? BossClassModShare : ClassModShare;
 
         if (RollClassMod(rarity, share, context.ClassId) is { } classMod)

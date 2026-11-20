@@ -12,8 +12,8 @@ public sealed class VaultFloors : IFloorProvider
     public const int FloorsPerBossTier = 5;
 
     private const int IdsPerFloor = 1000;
-    private const int GearPerFloor = 6;
-    private const int PotionsPerFloor = 5;
+    private const int GearPerFloor = 3;
+    private const int PotionsPerFloor = 3;
     private const int ScrollsPerFloor = 1;
     private const int MinChestsPerFloor = 2;
     private const int MaxChestsPerFloor = 3;
@@ -78,8 +78,8 @@ public sealed class VaultFloors : IFloorProvider
 
     public static double GearRarityChance(Rarity rarity, int floor) => rarity switch
     {
-        Rarity.Legendary => Math.Min(0.08, 0.004 * floor),
-        Rarity.Epic => Math.Min(0.25, 0.05 + 0.01 * (floor - 1)),
+        Rarity.Legendary => floor < VaultLoot.FirstLegendaryFloor ? 0.0 : Math.Min(0.05, 0.005 * (floor - VaultLoot.FirstLegendaryFloor + 1)),
+        Rarity.Epic => Math.Min(0.20, 0.02 + 0.01 * (floor - 1)),
         Rarity.Rare => Math.Min(0.35, 0.20 + 0.01 * (floor - 1)),
         _ => throw new ArgumentOutOfRangeException(nameof(rarity), rarity, "Common is whatever is left.")
     };

@@ -1898,3 +1898,54 @@
     display: none;
   }
 }
+
+.effect.effect-coins {
+  z-index: 3;
+  inset: auto;
+  left: 50%;
+  top: 10%;
+  background: none;
+  display: flex;
+  align-items: center;
+  white-space: nowrap;
+  font-size: 0.8em;
+  font-weight: 800;
+  color: #ffd75e;
+  text-shadow:
+    0 1px 0 #5a3b00,
+    0 0 4px rgb(0 0 0 / 70%);
+  animation: coin-rise 900ms ease-out both;
+}
+
+@keyframes coin-rise {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, 20%) scale(0.7);
+  }
+  20% {
+    opacity: 1;
+    transform: translate(-50%, -20%) scale(1.1);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -140%) scale(1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .effect.effect-coins {
+    animation: coin-fade 900ms linear both;
+  }
+}
+
+@keyframes coin-fade {
+  0%,
+  70% {
+    opacity: 1;
+    transform: translate(-50%, -40%);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -40%);
+  }
+}

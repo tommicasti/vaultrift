@@ -25,9 +25,12 @@ builder.Services.Configure<BrotliCompressionProviderOptions>(options => options.
 builder.Services.Configure<GzipCompressionProviderOptions>(options => options.Level = CompressionLevel.Fastest);
 
 builder.Services.AddGameStorage(builder.Configuration, builder.Environment);
+builder.Services.AddProblemDetails();
+builder.Services.AddExceptionHandler<IncompatibleSaveHandler>();
 
 var app = builder.Build();
 
+app.UseExceptionHandler();
 app.UseResponseCompression();
 
 if (app.Environment.IsDevelopment())

@@ -48,7 +48,7 @@ public static class Progression
         return ExperiencePerLevel * level * level;
     }
 
-    public static int ExperienceFor(Enemy enemy, int wisdom = 0)
+    public static int ExperienceFor(Enemy enemy, int wisdom = 0, int playerLevel = 0)
     {
         ArgumentNullException.ThrowIfNull(enemy);
         ArgumentOutOfRangeException.ThrowIfNegative(wisdom);
@@ -57,10 +57,17 @@ public static class Progression
             * RarityExperienceMultiplier(enemy.Rarity)
             * enemy.Level
             * (enemy.Kind.IsBoss ? BossExperienceMultiplier : 1)
-            * (1 + wisdom / 100.0);
+            * (1 + wisdom / 100.0)
+            * LevelGapFactor(playerLevel - enemy.Level);
 
         return Math.Max(1, (int)Math.Round(experience, MidpointRounding.AwayFromZero));
     }
+
+    public const double ExperienceLossPerLevelAbove = 0.25;
+    public const double MinimumExperienceFactor = 0.1;
+
+    public static double LevelGapFactor(int levelsAbove) =>
+        levelsAbove <= 0 ? 1.0 : Math.Max(MinimumExperienceFactor, 1 - ExperienceLossPerLevelAbove * levelsAbove);
 
     public static int RarityExperienceMultiplier(Rarity rarity) => rarity switch
     {

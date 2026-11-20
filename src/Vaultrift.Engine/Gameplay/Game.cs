@@ -11,6 +11,8 @@ public sealed partial class Game
     public const int EnemyWakeDistance = 5;
     public const int HealthRegenInterval = 3;
     public const int HealthRegenAmount = 1;
+    public const int BossPursuitDistance = 3;
+    public const int BossPursuitSteps = 2;
 
     private readonly IFloorProvider _floors;
     private readonly Dictionary<Position, ItemInstance> _floorItems = [];
@@ -277,7 +279,7 @@ public sealed partial class Game
 
         EarnCoins(Progression.CoinsFor(enemy), events);
 
-        var experience = Progression.ExperienceFor(enemy, Player.EffectAmount(EffectKind.Wisdom));
+        var experience = Progression.ExperienceFor(enemy, Player.EffectAmount(EffectKind.Wisdom), Player.Level);
         var levelBefore = Player.Level;
         events.Add(new ExperienceGained(experience));
 
@@ -431,7 +433,7 @@ public sealed partial class Game
                 continue;
             }
 
-            if (enemy.IsResting)
+            if (enemy.IsResting && !Pursues(enemy))
             {
                 enemy.IsResting = false;
                 continue;
@@ -455,12 +457,17 @@ public sealed partial class Game
         if (enemy.Kind.IsStationary)
             return;
 
-        for (var step = 0; step < enemy.StepsPerTurn; step++)
+        var steps = Pursues(enemy) ? Math.Max(BossPursuitSteps, enemy.StepsPerTurn) : enemy.StepsPerTurn;
+
+        for (var step = 0; step < steps; step++)
         {
             if (!StepTowardPlayer(enemy, events) || IsNextToPlayer(enemy))
                 return;
         }
     }
+
+    private bool Pursues(Enemy enemy) =>
+        enemy.Kind.IsBoss && !enemy.Kind.IsStationary && Distance(enemy.Position, Player.Position) >= BossPursuitDistance;
 
     private void AttackPlayer(Enemy enemy, List<GameEvent> events)
     {

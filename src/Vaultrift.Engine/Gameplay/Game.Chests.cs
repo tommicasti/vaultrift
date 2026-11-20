@@ -24,7 +24,7 @@ public sealed partial class Game
             return true;
         }
 
-        var item = _loot?.RollChest(new LootContext(Player.Class?.Id, Player.EffectAmount(EffectKind.Luck)));
+        var item = _loot?.RollChest(new LootContext(Player.Class?.Id, Player.EffectAmount(EffectKind.Luck), FloorNumber));
 
         if (item is not null)
             _floorItems[front] = item;

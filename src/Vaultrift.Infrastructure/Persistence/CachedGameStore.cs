@@ -72,7 +72,17 @@ public sealed class CachedGameStore : IGameStore
         if (record is null)
             return null;
 
-        var session = GameSession.Resume(record.Id, record.Code, SaveFile.FromJson(record.Data));
+        GameSession session;
+
+        try
+        {
+            session = GameSession.Resume(record.Id, record.Code, SaveFile.FromJson(record.Data));
+        }
+        catch (Exception error) when (error is InvalidDataException or KeyNotFoundException or System.Text.Json.JsonException or ArgumentException or InvalidOperationException)
+        {
+            throw new IncompatibleSaveException(record.Code, error);
+        }
+
         return _sessions.GetOrAdd(session.Id, session);
     }
 
