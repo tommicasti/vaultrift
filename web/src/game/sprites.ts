@@ -1,5 +1,13 @@
 import type { CSSProperties } from 'react'
 import type { Element, Rarity } from '../api/types'
+import tinyDungeonSheet from '../assets/tilesets/tiny-dungeon.png'
+import tinyTownSheet from '../assets/tilesets/tiny-town.png'
+import vaultriftItemsSheet from '../assets/tilesets/vaultrift-items.png'
+import vaultriftWorldSheet from '../assets/tilesets/vaultrift-world.png'
+import vaultriftHeroesSheet from '../assets/tilesets/vaultrift-heroes.png'
+import vaultriftDungeonSheet from '../assets/tilesets/vaultrift-dungeon.png'
+import vaultriftOutfitsSheet from '../assets/tilesets/vaultrift-outfits.png'
+import vaultriftBiomesSheet from '../assets/tilesets/vaultrift-biomes.png'
 
 export interface SpriteSheet {
   src: string
@@ -13,14 +21,14 @@ export interface SpriteRef {
 }
 
 export const sheets = {
-  dungeon: { src: '/assets/tilesets/tiny-dungeon.png', columns: 12, rows: 11 },
-  town: { src: '/assets/tilesets/tiny-town.png', columns: 12, rows: 11 },
-  items: { src: '/assets/tilesets/vaultrift-items.png', columns: 8, rows: 15 },
-  world: { src: '/assets/tilesets/vaultrift-world.png', columns: 8, rows: 1 },
-  heroes: { src: '/assets/tilesets/vaultrift-heroes.png', columns: 8, rows: 1 },
-  vault: { src: '/assets/tilesets/vaultrift-dungeon.png', columns: 8, rows: 5 },
-  outfits: { src: '/assets/tilesets/vaultrift-outfits.png', columns: 8, rows: 6 },
-  biomes: { src: '/assets/tilesets/vaultrift-biomes.png', columns: 8, rows: 12 },
+  dungeon: { src: tinyDungeonSheet, columns: 12, rows: 11 },
+  town: { src: tinyTownSheet, columns: 12, rows: 11 },
+  items: { src: vaultriftItemsSheet, columns: 8, rows: 15 },
+  world: { src: vaultriftWorldSheet, columns: 8, rows: 1 },
+  heroes: { src: vaultriftHeroesSheet, columns: 8, rows: 1 },
+  vault: { src: vaultriftDungeonSheet, columns: 8, rows: 5 },
+  outfits: { src: vaultriftOutfitsSheet, columns: 8, rows: 6 },
+  biomes: { src: vaultriftBiomesSheet, columns: 8, rows: 12 },
 } satisfies Record<string, SpriteSheet>
 
 const classSprites: Record<string, SpriteRef> = {

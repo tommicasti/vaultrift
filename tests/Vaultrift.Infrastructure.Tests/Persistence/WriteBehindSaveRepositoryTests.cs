@@ -48,8 +48,7 @@ public class WriteBehindSaveRepositoryTests
 
         repository.Upsert(record);
 
-        WaitFor(() => inner.FindById(record.Id) is not null);
-        Assert.Equal(0, repository.PendingCount);
+        WaitFor(() => inner.FindById(record.Id) is not null && repository.PendingCount == 0);
     }
 
     [Fact]
