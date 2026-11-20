@@ -42,9 +42,38 @@ public sealed class GamesController : ControllerBase
     [HttpGet("code/{code}")]
     public ActionResult<GameStateResponse> GetByCode(string code) => Show(_store.FindByCode(code));
 
+    [HttpGet("{id:guid}/preview/{entryId:int}")]
+    public ActionResult<StatsPreviewResponse> Preview(Guid id, int entryId, [FromQuery] EquipmentSlot? hand)
+    {
+        var session = _store.Find(id);
+
+        if (session is null)
+            return NotFound();
+
+        lock (session.Game)
+        {
+            var preview = session.Game.Player.PreviewEquip(entryId, hand, VaultContent.Instance);
+
+            return new StatsPreviewResponse(
+                preview.Result,
+                preview.MaxHealth,
+                preview.MaxMana,
+                preview.Attack,
+                preview.Defense,
+                preview.Evasion,
+                preview.Critical,
+                preview.Block,
+                preview.Resistance);
+        }
+    }
+
     [HttpPost("{id:guid}/move")]
     public ActionResult<TurnResponse> Move(Guid id, MoveRequest request) =>
         Play(id, game => game.MovePlayer(request.Direction));
+
+    [HttpPost("{id:guid}/face")]
+    public ActionResult<TurnResponse> Face(Guid id, MoveRequest request) =>
+        Play(id, game => game.Face(request.Direction));
 
     [HttpPost("{id:guid}/attack")]
     public ActionResult<TurnResponse> Attack(Guid id) =>

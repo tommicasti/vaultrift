@@ -104,6 +104,12 @@ public sealed partial class Game
 
     private void KnockBack(Enemy target, int damage, int distance, List<GameEvent> events)
     {
+        if (target.Kind.IsBoss)
+        {
+            Slam(target, damage, events);
+            return;
+        }
+
         for (var step = 0; step < distance; step++)
         {
             if (target.IsDead)

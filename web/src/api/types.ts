@@ -413,3 +413,15 @@ export interface TurnResponse {
   events: GameEvent[]
   state: GameState
 }
+
+export interface StatsPreview {
+  result: string
+  maxHealth: number
+  maxMana: number
+  attack: number
+  defense: number
+  evasion: number
+  critical: number
+  block: number
+  resistance?: Element
+}

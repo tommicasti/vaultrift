@@ -158,3 +158,14 @@ public sealed record EventResponse(
     SpellResponse? Replaced = null);
 
 public sealed record PositionResponse(int X, int Y);
+
+public sealed record StatsPreviewResponse(
+    EquipResult Result,
+    int MaxHealth,
+    int MaxMana,
+    int Attack,
+    int Defense,
+    int Evasion,
+    int Critical,
+    int Block,
+    Element? Resistance);

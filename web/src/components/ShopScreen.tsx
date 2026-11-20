@@ -1,5 +1,5 @@
 import type { InventoryEntryState, MerchantState } from '../api/types'
-import { sortBackpack } from '../game/backpackSort'
+import { sortForSale } from '../game/backpackSort'
 import { describeItem, describeKind } from '../game/items'
 import { coinSprite } from '../game/sprites'
 import { ItemIcon } from './ItemIcon'
@@ -110,7 +110,7 @@ export function ShopScreen({
               </button>
             )}
             <ul className="shop-list">
-              {sortBackpack(entries, 'Rarity').map(entry => (
+              {sortForSale(entries).map(entry => (
                 <li key={entry.id} className={`shop-row rarity-${entry.item.rarity.toLowerCase()}`}>
                   <span className="shop-icon">
                     <ItemIcon item={entry.item} />

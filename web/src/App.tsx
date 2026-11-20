@@ -11,8 +11,10 @@ import {
   discardItem,
   discardJunk,
   equip,
+  face,
   getGame,
   getGameByCode,
+  previewEquip,
   learnSpell,
   markItem,
   move,
@@ -32,6 +34,7 @@ import { ResumePanel } from './components/ResumePanel'
 import { SaveCodeChip } from './components/SaveCodeChip'
 import { Controls } from './components/Controls'
 import { EventLog } from './components/EventLog'
+import { HeaderToggles } from './components/HeaderToggles'
 import { InventoryScreen } from './components/InventoryScreen'
 import { StatusBar } from './components/StatusBar'
 import { VictoryScreen } from './components/VictoryScreen'
@@ -49,6 +52,7 @@ const keyDirections: Record<string, Direction> = {
 }
 
 const maxLogEntries = 30
+const stepIntervalMs = 120
 const compactView = { columns: 11, rows: 7 }
 const standardView = { columns: 13, rows: 11 }
 
@@ -63,6 +67,13 @@ function App() {
   const [inventoryOpen, setInventoryOpen] = useState(false)
   const [shopOpen, setShopOpen] = useState(false)
   const [effects, setEffects] = useState<Effect[]>([])
+  const queuedMove = useRef<Direction | null>(null)
+  const lastMoveAt = useRef(0)
+  const moveTimer = useRef<number | null>(null)
+  const [moveTick, setMoveTick] = useState(0)
+  const heldKey = useRef<string | null>(null)
+  const holdTimer = useRef<number | null>(null)
+  const moveRef = useRef<(direction: Direction) => void>(() => undefined)
   const [victoryDismissed, setVictoryDismissed] = useState(false)
   const [saved, setSaved] = useState<SavedGame | null>(loadSavedGame)
   const turnCounter = useRef(0)
@@ -180,7 +191,69 @@ function App() {
   )
 
   const handleMove = useCallback(
-    (direction: Direction) => void play(gameId => move(gameId, direction)),
+    (direction: Direction) => {
+      const wait = stepIntervalMs - (performance.now() - lastMoveAt.current)
+
+      if (busy || wait > 0) {
+        queuedMove.current = direction
+
+        if (!busy && moveTimer.current === null)
+          moveTimer.current = window.setTimeout(() => {
+            moveTimer.current = null
+            setMoveTick(tick => tick + 1)
+          }, wait)
+
+        return
+      }
+
+      lastMoveAt.current = performance.now()
+      void play(gameId => move(gameId, direction))
+    },
+    [play, busy],
+  )
+
+  useEffect(() => {
+    moveRef.current = handleMove
+  }, [handleMove])
+
+  useEffect(() => {
+    function stopHolding() {
+      heldKey.current = null
+      if (holdTimer.current !== null) window.clearInterval(holdTimer.current)
+      holdTimer.current = null
+    }
+
+    const handleKeyUp = (event: KeyboardEvent) => {
+      if (event.code === heldKey.current) stopHolding()
+    }
+
+    window.addEventListener('keyup', handleKeyUp)
+    window.addEventListener('blur', stopHolding)
+    return () => {
+      window.removeEventListener('keyup', handleKeyUp)
+      window.removeEventListener('blur', stopHolding)
+      stopHolding()
+    }
+  }, [])
+
+  useEffect(() => {
+    if (busy || queuedMove.current === null) return
+
+    const direction = queuedMove.current
+    queuedMove.current = null
+    handleMove(direction)
+  }, [busy, handleMove, moveTick])
+
+  const gameId = game?.id
+
+  const handlePreview = useCallback(
+    (entryId: number, hand?: EquipmentSlot) =>
+      gameId ? previewEquip(gameId, entryId, hand) : Promise.reject(new Error('No game')),
+    [gameId],
+  )
+
+  const handleFace = useCallback(
+    (direction: Direction) => void play(gameId => face(gameId, direction)),
     [play],
   )
 
@@ -283,7 +356,20 @@ function App() {
 
       if (direction) {
         event.preventDefault()
+        if (event.repeat) return
+
+        if (event.shiftKey) {
+          handleFace(direction)
+          return
+        }
+
+        heldKey.current = event.code
         handleMove(direction)
+        if (holdTimer.current !== null) window.clearInterval(holdTimer.current)
+        holdTimer.current = window.setInterval(() => {
+          const held = heldKey.current ? keyDirections[heldKey.current] : undefined
+          if (held && !document.querySelector('[role="dialog"]')) moveRef.current(held)
+        }, stepIntervalMs)
       } else if (event.code === 'Space') {
         event.preventDefault()
 
@@ -311,7 +397,7 @@ function App() {
 
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [hasGame, inventoryOpen, shopOpen, spellCount, handleMove, handleAttack, handleUseQuickSlot, handleUseAbility, handleSelectSpell])
+  }, [hasGame, inventoryOpen, shopOpen, spellCount, handleMove, handleFace, handleAttack, handleUseQuickSlot, handleUseAbility, handleSelectSpell])
 
   if (!game) {
     return (
@@ -336,6 +422,7 @@ function App() {
         <h1>Vaultrift</h1>
         <div className="header-actions">
           <SaveCodeChip code={game.saveCode} />
+          <HeaderToggles />
           {game.merchant?.isNearby && <button onClick={() => setShopOpen(true)}>Trade</button>}
           <button onClick={() => setInventoryOpen(true)}>Backpack</button>
           <button onClick={returnToClassSelect} disabled={busy}>
@@ -360,12 +447,13 @@ function App() {
         onSelect={handleSelectSpell}
       />
       <Board game={game} viewColumns={view.columns} viewRows={view.rows} effects={effects} onAttack={handleAttack} />
-      <p className="keyboard-hint">WASD to move · Space or click to attack · E ability · Q R potions · F scroll · 1–4 spells · Tab backpack</p>
+      <p className="keyboard-hint">WASD to move · Shift+WASD to turn · Space or click to attack · E ability · Q R potions · F scroll · 1–4 spells · Tab backpack</p>
       <Controls
-        disabled={busy}
+        disabled={false}
         quickSlots={game.player.quickSlots}
         ability={game.player.ability}
         onMove={handleMove}
+        onFace={handleFace}
         onAttack={handleAttack}
         onUseQuickSlot={handleUseQuickSlot}
         onUseAbility={handleUseAbility}
@@ -401,6 +489,7 @@ function App() {
           onDiscardJunk={handleDiscardJunk}
           onLearn={handleLearn}
           onMark={handleMark}
+          onPreview={handlePreview}
           onClose={() => setInventoryOpen(false)}
         />
       )}

@@ -120,6 +120,12 @@ public sealed partial class Game
         return new TurnResult(TurnPassed: true, events);
     }
 
+    public TurnResult Face(Direction direction)
+    {
+        Player.Facing = direction;
+        return new TurnResult(TurnPassed: false, [new PlayerTurned(direction)]);
+    }
+
     public TurnResult Attack()
     {
         if (IsMerchant(Player.Position.Move(Player.Facing)))

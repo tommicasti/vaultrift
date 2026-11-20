@@ -1,5 +1,5 @@
-import { useState } from 'react'
-import type { EquipmentSlot, InventoryEntryState, ItemInfo, ItemMark, PlayerState, SpellInfo, StatPoint } from '../api/types'
+import { useEffect, useState } from 'react'
+import type { EquipmentSlot, InventoryEntryState, ItemInfo, ItemMark, PlayerState, SpellInfo, StatPoint, StatsPreview } from '../api/types'
 import { coinSprite } from '../game/sprites'
 import { backpackSorts, loadBackpackSort, saveBackpackSort, sortBackpack, type BackpackSort } from '../game/backpackSort'
 import {
@@ -38,8 +38,11 @@ interface InventoryScreenProps {
   onDiscard: (entryId: number) => void
   onDiscardJunk: () => void
   onMark: (entryId: number, mark: ItemMark) => void
+  onPreview: (entryId: number, hand?: EquipmentSlot) => Promise<StatsPreview>
   onClose: () => void
 }
+
+const notWearable = new Set(['Potion', 'Scroll'])
 
 const sortLabels: Record<BackpackSort, string> = {
   Recent: 'Recent',
@@ -74,11 +77,15 @@ export function InventoryScreen({
   onDiscard,
   onDiscardJunk,
   onMark,
+  onPreview,
   onClose,
 }: InventoryScreenProps) {
   const [selectedId, setSelectedId] = useState<number | null>(null)
   const [sort, setSort] = useState<BackpackSort>(loadBackpackSort)
   const [confirmingJunk, setConfirmingJunk] = useState(false)
+  const [junkMode, setJunkMode] = useState(false)
+  const [previewHand, setPreviewHand] = useState<EquipmentSlot | undefined>(undefined)
+  const [loadedPreview, setLoadedPreview] = useState<{ key: string; stats: StatsPreview | null } | null>(null)
 
   const equippedBySlot = new Map(player.equipment.map(equipped => [equipped.slot, equipped]))
   const slotByEntryId = new Map(player.equipment.map(equipped => [equipped.entryId, equipped.slot]))
@@ -117,6 +124,28 @@ export function InventoryScreen({
 
   const selected = selectedId === null ? undefined : allEntries.get(selectedId)
   const selectedSlot = selectedId === null ? undefined : slotByEntryId.get(selectedId)
+  const previewable = selected !== undefined && selectedSlot === undefined && !notWearable.has(selected.item.category)
+  const previewKey = previewable ? `${selected.id}|${previewHand ?? ''}|${player.equipment.map(equipped => equipped.entryId).join(',')}|${player.level}` : null
+
+  const preview = previewKey !== null && loadedPreview?.key === previewKey ? loadedPreview.stats : null
+
+  useEffect(() => {
+    if (previewKey === null || selectedId === null) return
+
+    let current = true
+
+    onPreview(selectedId, previewHand)
+      .then(result => {
+        if (current) setLoadedPreview({ key: previewKey, stats: result.result === 'Equipped' ? result : null })
+      })
+      .catch(() => {
+        if (current) setLoadedPreview({ key: previewKey, stats: null })
+      })
+
+    return () => {
+      current = false
+    }
+  }, [previewKey, selectedId, previewHand, onPreview])
   const mainHand = equippedBySlot.get('MainHand')?.item
   const offHand = equippedBySlot.get('OffHand')?.item
 
@@ -124,11 +153,26 @@ export function InventoryScreen({
     if (disabled) return
 
     if (entry.item.category === 'Potion') onUse(entry.id)
-    else onEquip(entry.id)
+    else if (entry.item.category !== 'Scroll') onEquip(entry.id)
+  }
+
+  function handleBackpackClick(entry: InventoryEntryState, shiftKey: boolean) {
+    if (junkMode) {
+      if (!disabled && entry.mark !== 'Favorite') onMark(entry.id, entry.mark === 'Junk' ? 'None' : 'Junk')
+      return
+    }
+
+    if (shiftKey) handleBackpackDoubleClick(entry)
+    else setSelectedId(entry.id)
   }
 
   function handleSlotDoubleClick(slot: EquipmentSlot) {
     if (!disabled) onUnequip(slot)
+  }
+
+  function handleSlotClick(slot: EquipmentSlot, entryId: number, shiftKey: boolean) {
+    if (shiftKey) handleSlotDoubleClick(slot)
+    else setSelectedId(entryId)
   }
 
   function spendButton(stat: StatPoint, label: string) {
@@ -147,12 +191,13 @@ export function InventoryScreen({
     )
   }
 
-  function statRow(stat: StatPoint, label: string, value: string) {
+  function statRow(stat: StatPoint, label: string, value: string, now?: number, next?: number, suffix = '') {
     return (
       <>
         <dt>{label}</dt>
         <dd>
           {value}
+          <StatChange now={now} next={next} suffix={suffix} />
           {spendButton(stat, label)}
         </dd>
       </>
@@ -203,7 +248,7 @@ export function InventoryScreen({
                     ].join(' ')}
                     disabled={!equipped}
                     aria-label={equipped ? `${slotLabels[slot]}: ${equipped.item.name}` : `${slotLabels[slot]}: empty`}
-                    onClick={() => equipped && setSelectedId(equipped.entryId)}
+                    onClick={event => equipped && handleSlotClick(slot, equipped.entryId, event.shiftKey)}
                     onDoubleClick={() => equipped && handleSlotDoubleClick(slot)}
                   >
                     {equipped ? <ItemIcon item={equipped.item} /> : <span className="slot-label">{slotLabels[slot]}</span>}
@@ -213,20 +258,30 @@ export function InventoryScreen({
               })}
             </div>
             <dl className="combat-stats">
-              {statRow('Health', 'Health', `${player.health} / ${player.maxHealth}`)}
-              {statRow('Mana', 'Mana', `${player.mana} / ${player.maxMana}`)}
-              {statRow('Attack', 'Attack', `${player.attack}`)}
-              {statRow('Defense', 'Defense', `${player.defense}`)}
-              {statRow('Evasion', 'Evasion', `${player.evasion}%`)}
-              {statRow('Critical', 'Critical', `${player.critical}%`)}
-              {player.block > 0 && (
+              {statRow('Health', 'Health', `${player.health} / ${player.maxHealth}`, player.maxHealth, preview?.maxHealth)}
+              {statRow('Mana', 'Mana', `${player.mana} / ${player.maxMana}`, player.maxMana, preview?.maxMana)}
+              {statRow('Attack', 'Attack', `${player.attack}`, player.attack, preview?.attack)}
+              {statRow('Defense', 'Defense', `${player.defense}`, player.defense, preview?.defense)}
+              {statRow('Evasion', 'Evasion', `${player.evasion}%`, player.evasion, preview?.evasion, '%')}
+              {statRow('Critical', 'Critical', `${player.critical}%`, player.critical, preview?.critical, '%')}
+              {(player.block > 0 || (preview?.block ?? 0) > 0) && (
                 <>
                   <dt>Block</dt>
-                  <dd>{player.block}%</dd>
+                  <dd>
+                    {player.block}%
+                    <StatChange now={player.block} next={preview?.block} suffix="%" />
+                  </dd>
                 </>
               )}
               <dt>Resists</dt>
-              <dd>{player.resistance ? elementNames[player.resistance] : '—'}</dd>
+              <dd>
+                {player.resistance ? elementNames[player.resistance] : '—'}
+                {preview && preview.resistance !== player.resistance && (
+                  <span className={preview.resistance ? 'stat-change up' : 'stat-change down'}>
+                    {preview.resistance ? `→ ${elementNames[preview.resistance]}` : '→ —'}
+                  </span>
+                )}
+              </dd>
             </dl>
           </div>
 
@@ -247,6 +302,15 @@ export function InventoryScreen({
                   </button>
                 ))}
               </div>
+              <button
+                className={junkMode ? 'junk-mode active' : 'junk-mode'}
+                aria-pressed={junkMode}
+                title="While on, every click marks or unmarks an item as junk"
+                onClick={() => setJunkMode(on => !on)}
+              >
+                <MarkIcon mark="Junk" />
+                {junkMode ? 'Marking junk: on' : 'Mark junk'}
+              </button>
               {junkCount > 0 && (
                 <button
                   className={confirmingJunk ? 'junk-button confirming' : 'junk-button'}
@@ -259,7 +323,7 @@ export function InventoryScreen({
                 </button>
               )}
             </div>
-            <div className="backpack-grid">
+            <div className={junkMode ? 'backpack-grid junk-mode-on' : 'backpack-grid'}>
               {Array.from({ length: capacity }, (_, index) => {
                 const entry = sortedEntries[index]
 
@@ -277,8 +341,8 @@ export function InventoryScreen({
                     key={entry.id}
                     className={classes}
                     aria-label={isDuplicate ? `${entry.item.name}, duplicate` : entry.item.name}
-                    onClick={() => setSelectedId(entry.id)}
-                    onDoubleClick={() => handleBackpackDoubleClick(entry)}
+                    onClick={event => handleBackpackClick(entry, event.shiftKey)}
+                    onDoubleClick={() => !junkMode && handleBackpackDoubleClick(entry)}
                   >
                     <ItemIcon item={entry.item} />
                     {entry.quantity > 1 && <span className="slot-quantity">{entry.quantity}</span>}
@@ -293,6 +357,7 @@ export function InventoryScreen({
 
         <ItemDetails
           key={selected?.id ?? 'none'}
+          onPreviewHand={setPreviewHand}
           entry={selected}
           equippedSlot={selectedSlot}
           playerClassId={player.classId}
@@ -333,6 +398,7 @@ interface ItemDetailsProps {
   onLearn: (entryId: number, key: number) => void
   onDiscard: (entryId: number) => void
   onMark: (entryId: number, mark: ItemMark) => void
+  onPreviewHand: (hand?: EquipmentSlot) => void
 }
 
 function ItemDetails({
@@ -350,13 +416,14 @@ function ItemDetails({
   onLearn,
   onDiscard,
   onMark,
+  onPreviewHand,
 }: ItemDetailsProps) {
   const [confirmingDiscard, setConfirmingDiscard] = useState(false)
 
   if (!entry) {
     return (
       <div className="item-details">
-        <span className="label">Select an item to see its details. Double-click to equip, use or take off.</span>
+        <span className="label">Select an item to see its details. Shift+click or double-click to equip, use or take off.</span>
       </div>
     )
   }
@@ -457,10 +524,22 @@ function ItemDetails({
         )}
         {!isPotion && !equippedSlot && isOneHanded && (
           <>
-            <button disabled={disabled} onClick={() => onEquip(entry.id, 'MainHand')}>
+            <button
+              disabled={disabled}
+              onPointerEnter={() => onPreviewHand('MainHand')}
+              onFocus={() => onPreviewHand('MainHand')}
+              onPointerLeave={() => onPreviewHand(undefined)}
+              onClick={() => onEquip(entry.id, 'MainHand')}
+            >
               Main hand
             </button>
-            <button disabled={disabled} onClick={() => onEquip(entry.id, 'OffHand')}>
+            <button
+              disabled={disabled}
+              onPointerEnter={() => onPreviewHand('OffHand')}
+              onFocus={() => onPreviewHand('OffHand')}
+              onPointerLeave={() => onPreviewHand(undefined)}
+              onClick={() => onEquip(entry.id, 'OffHand')}
+            >
               Off hand
             </button>
           </>
@@ -506,5 +585,24 @@ function MarkToggle({ entry, mark, label, disabled, onMark }: MarkToggleProps) {
       <MarkIcon mark={mark} />
       <span>{label}</span>
     </button>
+  )
+}
+
+interface StatChangeProps {
+  now?: number
+  next?: number
+  suffix?: string
+}
+
+function StatChange({ now, next, suffix = '' }: StatChangeProps) {
+  if (now === undefined || next === undefined || now === next) return null
+
+  const up = next > now
+
+  return (
+    <span className={up ? 'stat-change up' : 'stat-change down'} title={`${up ? '+' : ''}${next - now}${suffix} if you equip it`}>
+      {up ? '▲' : '▼'} {next}
+      {suffix}
+    </span>
   )
 }

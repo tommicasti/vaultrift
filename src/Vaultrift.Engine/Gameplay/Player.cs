@@ -253,11 +253,42 @@ public sealed partial class Player : Creature
 
     public UseResult UseQuickSlot(int slot = 0)
     {
-        if (QuickSlotEntry(slot) is not { } entry)
+        if ((QuickSlotEntry(slot) ?? Refill(slot)) is not { } entry)
             return QuickSlotIn(slot) is null ? UseResult.QuickSlotEmpty : UseResult.ItemNotFound;
 
-        return Use(entry.Id);
+        var result = Use(entry.Id);
+
+        if (result == UseResult.Used && QuickSlotEntry(slot) is null)
+            Refill(slot);
+
+        return result;
     }
+
+    private InventoryEntry? Refill(int slot)
+    {
+        if (QuickSlotIn(slot) is not PotionDefinition emptied)
+            return null;
+
+        var replacement = Inventory.Entries
+            .Where(entry => entry.Item.Definition is PotionDefinition potion && SameFamily(potion, emptied))
+            .OrderByDescending(entry => entry.Item.Rarity)
+            .ThenByDescending(entry => Strength((PotionDefinition)entry.Item.Definition))
+            .FirstOrDefault();
+
+        if (replacement is null)
+            return null;
+
+        _quickSlots[slot] = replacement.Item.Definition;
+        return replacement;
+    }
+
+    private static bool SameFamily(PotionDefinition candidate, PotionDefinition emptied) =>
+        (emptied.Healing > 0 && candidate.Healing > 0) ||
+        (emptied.ManaRestore > 0 && candidate.ManaRestore > 0) ||
+        (emptied.Boost is { } boost && candidate.Boost?.Stat == boost.Stat);
+
+    private static int Strength(PotionDefinition potion) =>
+        potion.Healing + potion.ManaRestore + (potion.Boost?.Amount ?? 0);
 
     public bool AssignQuickSlot(int entryId, int slot = 0)
     {

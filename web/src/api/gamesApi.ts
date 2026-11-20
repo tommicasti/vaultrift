@@ -1,4 +1,4 @@
-import type { ClassInfo, Direction, EquipmentSlot, GameState, ItemMark, StatPoint, TurnResponse } from './types'
+import type { ClassInfo, Direction, EquipmentSlot, GameState, ItemMark, StatPoint, StatsPreview, TurnResponse } from './types'
 
 export class ApiError extends Error {
   readonly status: number
@@ -39,8 +39,17 @@ export function getGameByCode(code: string): Promise<GameState> {
   return request<GameState>('GET', `/games/code/${encodeURIComponent(code)}`)
 }
 
+export function previewEquip(gameId: string, entryId: number, hand?: EquipmentSlot): Promise<StatsPreview> {
+  const query = hand ? `?hand=${hand}` : ''
+  return request<StatsPreview>('GET', `/games/${gameId}/preview/${entryId}${query}`)
+}
+
 export function move(gameId: string, direction: Direction): Promise<TurnResponse> {
   return request<TurnResponse>('POST', `/games/${gameId}/move`, { direction })
+}
+
+export function face(gameId: string, direction: Direction): Promise<TurnResponse> {
+  return request<TurnResponse>('POST', `/games/${gameId}/face`, { direction })
 }
 
 export function attack(gameId: string): Promise<TurnResponse> {

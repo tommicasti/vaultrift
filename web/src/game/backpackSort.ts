@@ -56,6 +56,14 @@ export function sortBackpack(entries: readonly InventoryEntryState[], sort: Back
   return [...entries].sort((a, b) => favoritesFirst(a, b) || comparers[sort](a, b))
 }
 
+export function sortForSale(entries: readonly InventoryEntryState[]): InventoryEntryState[] {
+  const markRank = (entry: InventoryEntryState) => (entry.mark === 'Junk' ? 0 : entry.mark === 'Favorite' ? 2 : 1)
+
+  return [...entries].sort(
+    (a, b) => markRank(a) - markRank(b) || byRarity(b, a) || byCategory(a, b) || byNewest(a, b),
+  )
+}
+
 export function loadBackpackSort(): BackpackSort {
   try {
     const saved = localStorage.getItem(storageKey)

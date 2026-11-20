@@ -1,4 +1,4 @@
-﻿using Vaultrift.Engine.Combat;
+using Vaultrift.Engine.Combat;
 using Vaultrift.Engine.Gameplay;
 using Vaultrift.Engine.Randomness;
 using Vaultrift.Engine.Tests.Fakes;
@@ -88,6 +88,21 @@ public class GameTests
         Assert.Equal(new Position(startX, startY), game.Player.Position);
         Assert.Equal(direction, game.Player.Facing);
         Assert.Contains(new PlayerTurned(direction), result.Events);
+    }
+
+    [Fact]
+    public void Face_TurnsInPlace_WithoutPassingTheTurn()
+    {
+        var enemy = NewEnemy(1, 4, 1);
+        var game = NewGame(NewPlayer(2, 1), new FixedRandom(), enemy);
+
+        var result = game.Face(Direction.Right);
+
+        Assert.False(result.TurnPassed);
+        Assert.Equal(new Position(2, 1), game.Player.Position);
+        Assert.Equal(Direction.Right, game.Player.Facing);
+        Assert.Equal(new Position(4, 1), enemy.Position);
+        Assert.Equal(0, game.TurnNumber);
     }
 
     [Fact]

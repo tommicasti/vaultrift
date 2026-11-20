@@ -303,7 +303,7 @@ public sealed partial class Game
 
     private void Pull(Enemy enemy, Position center, List<GameEvent> events)
     {
-        if (enemy.Position == center || enemy.Kind.IsStationary)
+        if (enemy.Position == center || enemy.Kind.IsStationary || enemy.Kind.IsBoss)
             return;
 
         foreach (var direction in ApproachDirections(enemy.Position, center))
