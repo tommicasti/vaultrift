@@ -1,4 +1,4 @@
-import type { ClassInfo, Direction, EquipmentSlot, GameState, ItemMark, StatPoint, StatsPreview, TurnResponse } from './types'
+import type { ClassInfo, Difficulty, Direction, EquipmentSlot, GameState, ItemMark, StatPoint, StatsPreview, TurnResponse } from './types'
 
 export class ApiError extends Error {
   readonly status: number
@@ -27,8 +27,8 @@ export function getClasses(): Promise<ClassInfo[]> {
   return request<ClassInfo[]>('GET', '/classes')
 }
 
-export function createGame(classId: string, name: string): Promise<GameState> {
-  return request<GameState>('POST', '/games', { classId, name })
+export function createGame(classId: string, name: string, difficulty: Difficulty): Promise<GameState> {
+  return request<GameState>('POST', '/games', { classId, name, difficulty })
 }
 
 export function getGame(gameId: string): Promise<GameState> {

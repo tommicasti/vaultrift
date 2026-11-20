@@ -18,6 +18,7 @@ public sealed partial class Game
                 Player.Position = target;
                 events.Add(new PlayerDrifted(target));
                 PickUpItemAt(target, events);
+                RecoverGraveAt(target, events);
             }
         }
 
@@ -57,7 +58,10 @@ public sealed partial class Game
         events.Add(new PlayerBlownAway(enemy.Id, Player.Position, damage));
 
         if (moved > 0)
+        {
             PickUpItemAt(Player.Position, events);
+            RecoverGraveAt(Player.Position, events);
+        }
     }
 
     private static Direction AwayFrom(Position from, Position to)

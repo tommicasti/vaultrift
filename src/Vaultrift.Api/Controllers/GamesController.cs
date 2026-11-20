@@ -31,7 +31,7 @@ public sealed class GamesController : ControllerBase
             return ValidationProblem(ModelState);
         }
 
-        var session = _store.Create(playerClass, request.Name);
+        var session = _store.Create(playerClass, request.Name, request.Difficulty);
 
         return CreatedAtAction(nameof(Get), new { id = session.Id }, GameMapper.ToResponse(session));
     }

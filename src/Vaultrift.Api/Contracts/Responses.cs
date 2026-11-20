@@ -21,11 +21,16 @@ public sealed record GameStateResponse(
     bool IsConquered,
     string? Biome,
     IReadOnlyList<PositionResponse> Chests,
-    MerchantResponse? Merchant);
+    MerchantResponse? Merchant,
+    Difficulty Difficulty,
+    bool IsLost,
+    GraveResponse? Grave);
+
+public sealed record GraveResponse(int X, int Y, int Count);
 
 public sealed record MerchantResponse(int X, int Y, bool IsNearby, IReadOnlyList<OfferResponse> Offers, int? UpgradePrice, int UpgradeSize);
 
-public sealed record OfferResponse(int Id, ItemResponse Item, int Price);
+public sealed record OfferResponse(int Id, ItemResponse Item, int Price, OfferKind Kind);
 
 public sealed record StairsResponse(int X, int Y, bool IsOpen);
 

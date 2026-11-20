@@ -67,6 +67,8 @@ public sealed record EnemyKind
 
     public EnemyKind? Minion { get; }
 
+    public IReadOnlyList<BossPhase> Phases { get; init; } = [];
+
     public bool RidesCurrents => !IsBoss && !IsStationary;
 
     public bool IsFireproof =>

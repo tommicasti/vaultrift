@@ -2,7 +2,7 @@ import { useLayoutEffect, useRef, type CSSProperties, type PointerEvent, type Re
 import type { Direction, GameState } from '../api/types'
 import { tileArt } from '../game/biomes'
 import type { Effect } from '../game/effects'
-import { chestSprite, merchantSprite, sheets, stairsSprites } from '../game/sprites'
+import { chestSprite, graveSprite, merchantSprite, sheets, stairsSprites } from '../game/sprites'
 import { EnemyMarker } from './EnemyMarker'
 import { HeroSprite } from './HeroSprite'
 import { ItemIcon } from './ItemIcon'
@@ -125,7 +125,7 @@ export function Board({ game, viewColumns, viewRows, effects, onAttack }: BoardP
       const art = tileArt(game.biome, game.map, x, y)
 
       tiles.push(
-        <div key={`${column},${row}`} className={tileClass(symbol)}>
+        <div key={`${column},${row}`} className={enemy?.kind === 'custode' ? `${tileClass(symbol)} giant` : tileClass(symbol)}>
           {art && <Sprite sheet={sheets.biomes} index={art.base} className={art.deep ? 'tile-art deep' : 'tile-art'} />}
           {art?.overlay !== undefined && <Sprite sheet={sheets.biomes} index={art.overlay} className="tile-art" />}
           {art?.terrain && <span className={`tile-art terrain terrain-${art.terrain}`} aria-hidden="true" />}
@@ -135,6 +135,14 @@ export function Board({ game, viewColumns, viewRows, effects, onAttack }: BoardP
               index={stairs.isOpen ? stairsSprites.open : stairsSprites.sealed}
               className="stairs"
               label={stairs.isOpen ? 'Stairs down' : 'Sealed stairs'}
+            />
+          )}
+          {game.grave && game.grave.x === x && game.grave.y === y && (
+            <Sprite
+              sheet={sheets.dungeon}
+              index={graveSprite}
+              className="grave"
+              label={`Your grave (${game.grave.count} ${game.grave.count === 1 ? 'item' : 'items'})`}
             />
           )}
           {isPlayer && (
@@ -191,7 +199,47 @@ export function Board({ game, viewColumns, viewRows, effects, onAttack }: BoardP
           {tiles}
         </div>
       </div>
+      {game.grave && <GraveCompass game={game} viewColumns={viewColumns} viewRows={viewRows} />}
     </div>
+  )
+}
+
+interface GraveCompassProps {
+  game: GameState
+  viewColumns: number
+  viewRows: number
+}
+
+const compassInset = 9
+
+function GraveCompass({ game, viewColumns, viewRows }: GraveCompassProps) {
+  if (!game.grave) return null
+
+  const dx = game.grave.x - game.player.x
+  const dy = game.grave.y - game.player.y
+  const halfColumns = Math.floor(viewColumns / 2)
+  const halfRows = Math.floor(viewRows / 2)
+
+  if (Math.abs(dx) <= halfColumns && Math.abs(dy) <= halfRows) return null
+
+  const reach = Math.max(Math.abs(dx) / (halfColumns + 0.5), Math.abs(dy) / (halfRows + 0.5))
+  const along = (offset: number) => Math.min(100 - compassInset, Math.max(compassInset, 50 + (offset / reach) * 50))
+  const angle = (Math.atan2(dy, dx) * 180) / Math.PI
+  const distance = Math.abs(dx) + Math.abs(dy)
+
+  return (
+    <span
+      className="grave-compass"
+      style={{ left: `${along(dx / (halfColumns + 0.5))}%`, top: `${along(dy / (halfRows + 0.5))}%` }}
+      title={`Your grave: ${distance} steps away`}
+      aria-label={`Your grave is ${distance} steps away`}
+    >
+      <span className="grave-compass-arrow" style={{ transform: `rotate(${angle}deg)` }} aria-hidden="true">
+        ➜
+      </span>
+      <Sprite sheet={sheets.dungeon} index={graveSprite} className="grave-compass-icon" />
+      <span className="grave-compass-distance">{distance}</span>
+    </span>
   )
 }
 

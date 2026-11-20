@@ -55,8 +55,8 @@ public class VaultDungeonTests
     [InlineData(1)]
     [InlineData(2)]
     [InlineData(3)]
-    [InlineData(VaultFloors.FloorCount)]
-    public void EveryFloor_HasTheBossOfItsBiome_AndOnlyTheLastHasNoStairs(int number)
+    [InlineData(VaultFloors.RolledFloors)]
+    public void EveryRolledFloor_HasTheBossOfItsBiome_AndStairsDown(int number)
     {
         var floors = new VaultFloors(Seeded(number));
         var floor = floors.Create(number);
@@ -64,7 +64,7 @@ public class VaultDungeonTests
 
         Assert.Equal(biome.Id, floor.Biome);
         Assert.Equal(biome.BossId, Assert.Single(floor.Enemies, enemy => enemy.Kind.IsBoss).Kind.Id);
-        Assert.Equal(number < VaultFloors.FloorCount, floor.Stairs is not null);
+        Assert.NotNull(floor.Stairs);
     }
 
     [Theory]
@@ -75,7 +75,7 @@ public class VaultDungeonTests
     {
         var biomes = new VaultFloors(Seeded(seed)).Biomes;
 
-        Assert.Equal(VaultFloors.FloorCount, biomes.Count);
+        Assert.Equal(VaultFloors.RolledFloors, biomes.Count);
         Assert.All(biomes.Zip(biomes.Skip(1)), pair => Assert.NotEqual(pair.First.Id, pair.Second.Id));
     }
 
@@ -118,7 +118,7 @@ public class VaultDungeonTests
     {
         var floors = new VaultFloors(Seeded(seed));
 
-        for (var number = 1; number <= floors.Count; number++)
+        for (var number = 1; number <= VaultFloors.RolledFloors; number++)
         {
             var biome = floors.Biomes[number - 1];
 
@@ -133,7 +133,7 @@ public class VaultDungeonTests
     {
         var floors = new VaultFloors(Seeded(13));
 
-        for (var number = 1; number <= floors.Count; number++)
+        for (var number = 1; number <= VaultFloors.RolledFloors; number++)
         {
             var floor = floors.Create(number);
 
@@ -150,7 +150,7 @@ public class VaultDungeonTests
     {
         var floors = new VaultFloors(Seeded(seed));
 
-        for (var number = 1; number <= floors.Count; number++)
+        for (var number = 1; number <= VaultFloors.RolledFloors; number++)
         {
             var floor = floors.Create(number);
             var reachable = ReachableTiles(floor);
@@ -168,7 +168,7 @@ public class VaultDungeonTests
     {
         var floors = new VaultFloors(Seeded(3));
 
-        for (var number = 1; number <= floors.Count; number++)
+        for (var number = 1; number <= VaultFloors.RolledFloors; number++)
         {
             var floor = floors.Create(number);
 
@@ -182,7 +182,7 @@ public class VaultDungeonTests
     {
         var floors = new VaultFloors(Seeded(5));
 
-        for (var number = 1; number <= floors.Count; number++)
+        for (var number = 1; number <= VaultFloors.RolledFloors; number++)
         {
             Assert.All(
                 floors.Create(number).Enemies.Where(enemy => !enemy.Kind.IsBoss),
@@ -205,7 +205,7 @@ public class VaultDungeonTests
     [Fact]
     public void StrongMonsters_StayUncommonOnEveryFloor()
     {
-        Assert.All(Enumerable.Range(1, VaultFloors.FloorCount), floor =>
+        Assert.All(Enumerable.Range(1, VaultFloors.RolledFloors), floor =>
         {
             var strong = VaultFloors.MonsterRarityChance(Rarity.Epic, floor) + VaultFloors.MonsterRarityChance(Rarity.Legendary, floor);
 
@@ -216,7 +216,7 @@ public class VaultDungeonTests
     [Fact]
     public void RarityChances_NeverAddUpToMoreThanOne()
     {
-        Assert.All(Enumerable.Range(1, VaultFloors.FloorCount), floor =>
+        Assert.All(Enumerable.Range(1, VaultFloors.RolledFloors), floor =>
         {
             var rarities = new[] { Rarity.Legendary, Rarity.Epic, Rarity.Rare };
 
@@ -230,7 +230,7 @@ public class VaultDungeonTests
     {
         Assert.Equal(2, VaultFloors.MaxMonstersPerRoom(1));
         Assert.True(VaultFloors.MaxMonstersPerRoom(10) > VaultFloors.MaxMonstersPerRoom(1));
-        Assert.Equal(5, VaultFloors.MaxMonstersPerRoom(VaultFloors.FloorCount));
+        Assert.Equal(5, VaultFloors.MaxMonstersPerRoom(VaultFloors.RolledFloors));
     }
 
     [Theory]
@@ -240,7 +240,7 @@ public class VaultDungeonTests
     {
         var floors = new VaultFloors(Seeded(seed));
 
-        for (var number = 1; number <= floors.Count; number++)
+        for (var number = 1; number <= VaultFloors.RolledFloors; number++)
         {
             var floor = floors.Create(number);
             var chests = floor.Chests!.Select(chest => chest.Position).ToHashSet();
@@ -293,11 +293,35 @@ public class VaultDungeonTests
         var merchant = floor.Merchant!;
 
         Assert.True(floor.Map.IsWalkable(merchant.Position));
-        Assert.InRange(merchant.Offers.Count, 6, 7);
+        Assert.InRange(merchant.Offers.Count, 8, 9);
+        Assert.Single(merchant.Offers, offer => offer.Item.Definition is RuneDefinition);
         Assert.All(merchant.Offers, offer => Assert.True(offer.Price > 0));
         Assert.All(
             merchant.Offers.Select(offer => offer.Item.Definition).OfType<GearDefinition>().Where(item => item.ClassId is not null),
             mod => Assert.Equal("mage", mod.ClassId));
+
+        var featured = Assert.Single(merchant.Offers, offer => offer.Kind == OfferKind.Featured);
+        var weapon = Assert.IsType<WeaponDefinition>(featured.Item.Definition);
+        Assert.Equal(WeaponType.Staff, weapon.WeaponType);
+        Assert.Equal(VaultFloors.FeaturedRarity(number), weapon.Rarity);
+
+        var unlimited = merchant.Offers.Where(offer => offer.Kind == OfferKind.Unlimited).Select(offer => offer.Item.Definition.Id);
+        Assert.Equal(["potion-greater-healing", "potion-greater-mana"], unlimited);
+    }
+
+    [Fact]
+    public void WithoutAClass_TheMerchantHasNoFeaturedWeapon()
+    {
+        var merchant = new VaultFloors(Seeded(4)).Create(4).Merchant!;
+
+        Assert.DoesNotContain(merchant.Offers, offer => offer.Kind == OfferKind.Featured);
+    }
+
+    [Fact]
+    public void MerchantsGetMoreLikelyDeeperDown()
+    {
+        Assert.True(VaultFloors.MerchantChanceAt(19) > VaultFloors.MerchantChanceAt(3));
+        Assert.True(VaultFloors.MerchantChanceAt(19) <= 0.5);
     }
 
     [Theory]
@@ -330,7 +354,7 @@ public class VaultDungeonTests
     {
         var floors = new VaultFloors(Seeded(4));
 
-        for (var number = 1; number <= floors.Count; number++)
+        for (var number = 1; number <= VaultFloors.RolledFloors; number++)
             Assert.InRange(floors.Create(number).Chests!.Count(chest => chest.IsMimic), 0, 1);
     }
 
@@ -339,7 +363,7 @@ public class VaultDungeonTests
     {
         Assert.Equal(0.05, VaultFloors.MimicChance(1), precision: 6);
         Assert.True(VaultFloors.MimicChance(10) > VaultFloors.MimicChance(1));
-        Assert.Equal(0.4, VaultFloors.MimicChance(VaultFloors.FloorCount), precision: 6);
+        Assert.Equal(0.4, VaultFloors.MimicChance(VaultFloors.RolledFloors), precision: 6);
     }
 
     [Fact]
@@ -365,7 +389,7 @@ public class VaultDungeonTests
     {
         Assert.True(VaultFloors.GearRarityChance(Rarity.Legendary, 1) < 0.01);
         Assert.True(VaultFloors.GearRarityChance(Rarity.Legendary, 10) > VaultFloors.GearRarityChance(Rarity.Legendary, 1));
-        Assert.InRange(VaultFloors.GearRarityChance(Rarity.Legendary, VaultFloors.FloorCount), 0.0, 0.08);
+        Assert.InRange(VaultFloors.GearRarityChance(Rarity.Legendary, VaultFloors.RolledFloors), 0.0, 0.08);
     }
 
     [Theory]
@@ -422,4 +446,63 @@ public class VaultDungeonTests
 
     private static HashSet<Position> ReachableTiles(Floor floor) =>
         FloorGenerator.WalkingDistances(floor.Map, floor.Start).Keys.ToHashSet();
+
+    [Fact]
+    public void TheFinalFloor_IsTheRift_WithOnlyTheCustode()
+    {
+        var floor = new VaultFloors(Seeded(1)).Create(VaultFloors.FinalFloor);
+
+        Assert.Equal(RiftArena.BiomeId, floor.Biome);
+        var guardian = Assert.Single(floor.Enemies);
+        Assert.Equal(RiftArena.GuardianId, guardian.Kind.Id);
+        Assert.Equal(Rarity.Epic, guardian.Rarity);
+        Assert.Equal(VaultFloors.FinalFloor, guardian.Level);
+        Assert.Null(floor.Stairs);
+        Assert.Null(floor.Merchant);
+        Assert.Empty(floor.Chests!);
+    }
+
+    [Fact]
+    public void TheFinalFloor_IsTheSameInEveryRun()
+    {
+        var first = new VaultFloors(Seeded(1)).Create(VaultFloors.FinalFloor);
+        var second = new VaultFloors(Seeded(99)).Create(VaultFloors.FinalFloor);
+
+        Assert.Equal(first.Map.ToRows(), second.Map.ToRows());
+        Assert.Equal(first.Start, second.Start);
+    }
+
+    [Fact]
+    public void TheFinalFloor_IsReachable_FromTheStartToTheCustode()
+    {
+        var floor = new VaultFloors(Seeded(1)).Create(VaultFloors.FinalFloor);
+        var seen = new HashSet<Position> { floor.Start };
+        var queue = new Queue<Position>([floor.Start]);
+
+        while (queue.Count > 0)
+        {
+            var current = queue.Dequeue();
+
+            foreach (var next in Enum.GetValues<Direction>().Select(current.Move))
+            {
+                if (floor.Map.IsWalkable(next) && seen.Add(next))
+                    queue.Enqueue(next);
+            }
+        }
+
+        Assert.Contains(floor.Enemies[0].Position, seen);
+        Assert.All(floor.Items, item => Assert.Contains(item.Position, seen));
+    }
+
+    [Fact]
+    public void TheTwentiethFloor_NowLeadsDown_AndAlwaysHasAMerchant()
+    {
+        Assert.All(Enumerable.Range(1, 5), seed =>
+        {
+            var floor = new VaultFloors(Seeded(seed)).Create(VaultFloors.RolledFloors);
+
+            Assert.NotNull(floor.Stairs);
+            Assert.NotNull(floor.Merchant);
+        });
+    }
 }

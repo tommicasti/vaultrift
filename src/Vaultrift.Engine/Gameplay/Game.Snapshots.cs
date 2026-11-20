@@ -29,7 +29,7 @@ public sealed partial class Game
 
         Merchant = snapshot.Merchant is { } merchant
             ? Merchant.Restore(merchant.Position,
-                merchant.Offers.Select(offer => new Offer(offer.Id, Player.RestoreItem(offer.Item, content), offer.Price)))
+                merchant.Offers.Select(offer => new Offer(offer.Id, Player.RestoreItem(offer.Item, content), offer.Price, offer.Kind)))
             : null;
 
         FloorNumber = snapshot.FloorNumber;
@@ -37,10 +37,15 @@ public sealed partial class Game
         TurnNumber = snapshot.TurnNumber;
         _stepsThisTurn = snapshot.StepsThisTurn;
         _bossDefeatAnnounced = snapshot.BossDefeatAnnounced;
-        IsConquered = snapshot.IsConquered;
+        IsConquered = snapshot.IsConquered && FloorNumber >= FloorCount;
         Biome = snapshot.Biome;
-        Stairs = snapshot.Stairs;
+        Stairs = snapshot.Stairs ?? (FloorNumber < FloorCount ? snapshot.PlayerStart : null);
         _playerStart = snapshot.PlayerStart;
+        Difficulty = snapshot.Difficulty;
+        IsLost = snapshot.IsLost;
+        Grave = snapshot.Grave is { } grave
+            ? new Grave(grave.Position, grave.Items.Select(item => (item.Slot, Player.RestoreEntry(item.Entry, content))).ToList())
+            : null;
     }
 
     public static Game Restore(
@@ -75,9 +80,14 @@ public sealed partial class Game
         _chests.Values.Select(chest => new ChestSnapshot(chest.Position, chest.Mimic is { } mimic ? CaptureEnemy(mimic) : null)).ToList(),
         Merchant is { } merchant
             ? new MerchantSnapshot(merchant.Position,
-                merchant.Offers.Select(offer => new OfferSnapshot(offer.Id, Player.CaptureItem(offer.Item), offer.Price)).ToList())
+                merchant.Offers.Select(offer => new OfferSnapshot(offer.Id, Player.CaptureItem(offer.Item), offer.Price, offer.Kind)).ToList())
             : null,
-        _coolingLava.Select(pair => new CoolingLavaSnapshot(pair.Key, pair.Value)).ToList());
+        _coolingLava.Select(pair => new CoolingLavaSnapshot(pair.Key, pair.Value)).ToList(),
+        Difficulty,
+        IsLost,
+        Grave is { } grave
+            ? new GraveSnapshot(grave.Position, grave.Items.Select(item => new GraveItemSnapshot(item.Slot, Player.CaptureEntry(item.Entry))).ToList())
+            : null);
 
     private static EnemySnapshot CaptureEnemy(Enemy enemy) => new(
         enemy.Id,

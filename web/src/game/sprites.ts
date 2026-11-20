@@ -15,12 +15,12 @@ export interface SpriteRef {
 export const sheets = {
   dungeon: { src: '/assets/tilesets/tiny-dungeon.png', columns: 12, rows: 11 },
   town: { src: '/assets/tilesets/tiny-town.png', columns: 12, rows: 11 },
-  items: { src: '/assets/tilesets/vaultrift-items.png', columns: 8, rows: 10 },
+  items: { src: '/assets/tilesets/vaultrift-items.png', columns: 8, rows: 15 },
   world: { src: '/assets/tilesets/vaultrift-world.png', columns: 8, rows: 1 },
   heroes: { src: '/assets/tilesets/vaultrift-heroes.png', columns: 8, rows: 1 },
   vault: { src: '/assets/tilesets/vaultrift-dungeon.png', columns: 8, rows: 5 },
   outfits: { src: '/assets/tilesets/vaultrift-outfits.png', columns: 8, rows: 6 },
-  biomes: { src: '/assets/tilesets/vaultrift-biomes.png', columns: 8, rows: 11 },
+  biomes: { src: '/assets/tilesets/vaultrift-biomes.png', columns: 8, rows: 12 },
 } satisfies Record<string, SpriteSheet>
 
 const classSprites: Record<string, SpriteRef> = {
@@ -67,6 +67,8 @@ const enemySprites: Record<string, SpriteRef> = {
   harpy: { sheet: sheets.vault, index: 29 },
   gargoyle: { sheet: sheets.vault, index: 30 },
   'storm-griffin': { sheet: sheets.vault, index: 31 },
+  custode: { sheet: sheets.vault, index: 6 },
+  drakeling: { sheet: sheets.vault, index: 7 },
 }
 
 const defaultEnemySprite = enemySprites.rat
@@ -120,6 +122,8 @@ export function outfitSprite(classId: string | undefined, bodyItemId: string | u
 }
 
 export const crownSprite = 29
+
+export const graveSprite = 65
 
 export const chestSprite = { sheet: sheets.dungeon, index: 89 }
 

@@ -27,6 +27,7 @@ const categoryRank: Record<ItemCategory, number> = {
   ClassMod: 12,
   Potion: 13,
   Scroll: 14,
+  Rune: 15,
 }
 
 const storageKey = 'vaultrift.backpackSort'

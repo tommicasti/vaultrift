@@ -28,6 +28,8 @@ public sealed record WeaponDefinition(
     public bool IsTwoHanded => WeaponType.IsTwoHanded();
 
     public SpellDefinition? Spell { get; init; }
+
+    public bool IsSpare { get; init; }
 }
 
 public sealed record GearDefinition(
@@ -59,5 +61,13 @@ public sealed record ScrollDefinition(
     string Name,
     Rarity Rarity,
     SpellDefinition Spell,
+    string? Description = null)
+    : ItemDefinition(Id, Name, Rarity, Description);
+
+public sealed record RuneDefinition(
+    string Id,
+    string Name,
+    Rarity Rarity,
+    Element Element,
     string? Description = null)
     : ItemDefinition(Id, Name, Rarity, Description);

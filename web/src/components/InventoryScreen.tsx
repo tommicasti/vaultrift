@@ -42,7 +42,7 @@ interface InventoryScreenProps {
   onClose: () => void
 }
 
-const notWearable = new Set(['Potion', 'Scroll'])
+const notWearable = new Set(['Potion', 'Scroll', 'Rune'])
 
 const sortLabels: Record<BackpackSort, string> = {
   Recent: 'Recent',
@@ -116,7 +116,7 @@ export function InventoryScreen({
   const copies = new Map<string, number>()
 
   for (const entry of allEntries.values()) {
-    if (entry.item.category === 'Potion') continue
+    if (entry.item.category === 'Potion' || entry.item.category === 'Rune') continue
 
     const key = duplicateKey(entry.item)
     copies.set(key, (copies.get(key) ?? 0) + 1)
@@ -152,7 +152,7 @@ export function InventoryScreen({
   function handleBackpackDoubleClick(entry: InventoryEntryState) {
     if (disabled) return
 
-    if (entry.item.category === 'Potion') onUse(entry.id)
+    if (entry.item.category === 'Potion' || entry.item.category === 'Rune') onUse(entry.id)
     else if (entry.item.category !== 'Scroll') onEquip(entry.id)
   }
 
@@ -430,7 +430,8 @@ function ItemDetails({
 
   const { item } = entry
   const isScroll = item.category === 'Scroll'
-  const isPotion = item.category === 'Potion' || isScroll
+  const isRune = item.category === 'Rune'
+  const isPotion = item.category === 'Potion' || isScroll || isRune
   const isOneHanded = oneHandedCategories.has(item.category)
   const isForeignMod = item.classId !== undefined && item.classId !== playerClassId
   const element = describeElement(item)
@@ -473,7 +474,7 @@ function ItemDetails({
       <div className="item-actions">
         {isPotion && !isScroll && (
           <button disabled={disabled} onClick={() => onUse(entry.id)}>
-            Use
+            {isRune ? 'Use on weapon' : 'Use'}
           </button>
         )}
         {isScroll && (
@@ -499,7 +500,7 @@ function ItemDetails({
             ))}
           </div>
         )}
-        {isPotion && (
+        {isPotion && !isRune && (
           <div className="quick-slot-picker" role="group" aria-label="Quick slot">
             <span className="label">Quick</span>
             {quickSlotKeys.map((key, slot) => ({ key, slot })).filter(({ slot }) => (slot === scrollSlot) === isScroll).map(({ key, slot }) => (

@@ -71,6 +71,8 @@ public sealed class Inventory
         return true;
     }
 
+    internal InventoryEntry CreateEntry(ItemInstance item) => new(_nextId++, item);
+
     public bool CanAdd(ItemInstance item)
     {
         ArgumentNullException.ThrowIfNull(item);
@@ -126,5 +128,5 @@ public sealed class Inventory
             _entries.Remove(entry);
     }
 
-    private static bool IsStackable(ItemInstance item) => item.Definition is PotionDefinition or ScrollDefinition;
+    private static bool IsStackable(ItemInstance item) => item.Definition is PotionDefinition or ScrollDefinition or RuneDefinition;
 }

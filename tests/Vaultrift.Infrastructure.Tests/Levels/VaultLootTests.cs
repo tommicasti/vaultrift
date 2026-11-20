@@ -132,6 +132,23 @@ public class VaultLootTests
     }
 
     [Fact]
+    public void Chests_SometimesHoldARune()
+    {
+        var loot = new VaultLoot(new SystemRandom(new Random(11)));
+        var runes = Enumerable.Range(0, 3000)
+            .Select(_ => loot.RollChest(new LootContext("knight", Luck: 0)))
+            .Count(item => item?.Definition is RuneDefinition);
+
+        Assert.InRange(runes / 3000.0, 0.03, 0.10);
+    }
+
+    [Fact]
+    public void ThereIsOneRunePerElement()
+    {
+        Assert.Equal(Enum.GetValues<Element>().Order(), ItemCatalog.Runes.Select(rune => rune.Element).Order());
+    }
+
+    [Fact]
     public void AMimic_AlwaysDropsEquipment_NeverCommon()
     {
         var mimic = new Enemy(1, new Position(1, 1), BestiaryCatalog.Get("mimic"), Rarity.Rare);

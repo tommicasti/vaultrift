@@ -1,20 +1,32 @@
 import { useState, type FormEvent } from 'react'
-import type { SavedGame } from '../game/savedGame'
+import type { SavedHero } from '../game/savedHeroes'
 import { classSprite } from '../game/sprites'
 import { Sprite } from './Sprite'
 
 const codeLength = 9
 
+const difficultyLabels = {
+  Normal: 'Normal',
+  Hard: 'Hard',
+  Hardcore: 'Hardcore',
+} as const
+
 interface ResumePanelProps {
-  saved: SavedGame | null
+  heroes: SavedHero[]
   disabled: boolean
-  onContinue: (saved: SavedGame) => void
+  onContinue: (hero: SavedHero) => void
+  onForget: (hero: SavedHero) => void
   onLoadCode: (code: string) => void
 }
 
-export function ResumePanel({ saved, disabled, onContinue, onLoadCode }: ResumePanelProps) {
+function heroStatus(hero: SavedHero) {
+  if (hero.isLost) return `Fell on floor ${hero.floor}`
+  if (hero.isConquered) return 'Conquered the vault'
+  return `Floor ${hero.floor}`
+}
+
+export function ResumePanel({ heroes, disabled, onContinue, onForget, onLoadCode }: ResumePanelProps) {
   const [code, setCode] = useState('')
-  const portrait = saved?.classId ? classSprite(saved.classId) : null
   const cleaned = code.trim()
 
   function submit(event: FormEvent) {
@@ -24,20 +36,37 @@ export function ResumePanel({ saved, disabled, onContinue, onLoadCode }: ResumeP
 
   return (
     <section className="resume-panel">
-      {saved && (
-        <div className="resume-card">
-          {portrait && <Sprite sheet={portrait.sheet} index={portrait.index} className="resume-portrait" label={saved.name} />}
-          <div className="resume-details">
-            <strong>{saved.name}</strong>
-            <span className="label">
-              Level {saved.level} · Floor {saved.floor}
-            </span>
-            <span className="label">Save code {saved.code}</span>
-          </div>
-          <button className="primary" disabled={disabled} onClick={() => onContinue(saved)}>
-            Continue
-          </button>
-        </div>
+      {heroes.length > 0 && (
+        <>
+          <h2 className="heroes-title">Your heroes</h2>
+          <ul className="heroes-list">
+            {heroes.map(hero => {
+              const portrait = hero.classId ? classSprite(hero.classId) : null
+              return (
+                <li key={hero.id} className={hero.isLost ? 'resume-card lost' : 'resume-card'}>
+                  {portrait && <Sprite sheet={portrait.sheet} index={portrait.index} className="resume-portrait" label={hero.name} />}
+                  <div className="resume-details">
+                    <strong>{hero.name}</strong>
+                    <span className="label">
+                      Level {hero.level} · {heroStatus(hero)}
+                    </span>
+                    <span className="label">
+                      <span className={`difficulty-badge difficulty-${hero.difficulty.toLowerCase()}`}>{difficultyLabels[hero.difficulty]}</span> <span className="hero-code">{hero.code}</span>
+                    </span>
+                  </div>
+                  <div className="resume-actions">
+                    <button className={hero.isLost ? undefined : 'primary'} disabled={disabled} onClick={() => onContinue(hero)}>
+                      {hero.isLost ? 'View' : 'Continue'}
+                    </button>
+                    <button className="forget-button" disabled={disabled} aria-label={`Forget ${hero.name}`} title="Remove from this list" onClick={() => onForget(hero)}>
+                      ×
+                    </button>
+                  </div>
+                </li>
+              )
+            })}
+          </ul>
+        </>
       )}
       <form className="code-form" onSubmit={submit}>
         <label className="label" htmlFor="save-code">

@@ -6,6 +6,9 @@ public sealed partial class Game
 {
     public TurnResult UseAbility()
     {
+        if (IsLost)
+            return Defeated();
+
         var events = new List<GameEvent>();
         var result = CheckAbility();
 

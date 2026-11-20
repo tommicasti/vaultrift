@@ -25,7 +25,7 @@ import {
   spendPoint,
   unequip,
 } from './api/gamesApi'
-import type { Direction, EquipmentSlot, GameState, ItemMark, StatPoint, TurnResponse } from './api/types'
+import type { Difficulty, Direction, EquipmentSlot, GameState, ItemMark, StatPoint, TurnResponse } from './api/types'
 import { Board } from './components/Board'
 import { ShopScreen } from './components/ShopScreen'
 import { SpellBar } from './components/SpellBar'
@@ -38,9 +38,10 @@ import { HeaderToggles } from './components/HeaderToggles'
 import { InventoryScreen } from './components/InventoryScreen'
 import { StatusBar } from './components/StatusBar'
 import { VictoryScreen } from './components/VictoryScreen'
+import { HeroLostScreen } from './components/HeroLostScreen'
 import { describeEvent } from './game/describeEvent'
 import { effectsDuration, effectsForTurn, type Effect } from './game/effects'
-import { forgetSavedGame, loadSavedGame, rememberGame, type SavedGame } from './game/savedGame'
+import { forgetHero, loadHeroes, rememberHero, type SavedHero } from './game/savedHeroes'
 import { useCompactLandscape } from './game/useCompactLandscape'
 import './App.css'
 
@@ -55,6 +56,12 @@ const maxLogEntries = 30
 const stepIntervalMs = 120
 const compactView = { columns: 11, rows: 7 }
 const standardView = { columns: 13, rows: 11 }
+
+const difficultyIntro: Record<Difficulty, string> = {
+  Normal: 'You enter the vault. It is dark.',
+  Hard: 'You enter the vault. It is dark, and the monsters here are stronger.',
+  Hardcore: 'You enter the vault. It is dark. You will only get one chance.',
+}
 
 const incompatibleSaveMessage =
   'This save comes from an older version of Vaultrift and can no longer be loaded. Start a new adventure!'
@@ -75,7 +82,8 @@ function App() {
   const holdTimer = useRef<number | null>(null)
   const moveRef = useRef<(direction: Direction) => void>(() => undefined)
   const [victoryDismissed, setVictoryDismissed] = useState(false)
-  const [saved, setSaved] = useState<SavedGame | null>(loadSavedGame)
+  const [heroes, setHeroes] = useState<SavedHero[]>(loadHeroes)
+  const [lostDismissed, setLostDismissed] = useState(false)
   const turnCounter = useRef(0)
   const compact = useCompactLandscape()
   const view = compact ? compactView : standardView
@@ -87,14 +95,15 @@ function App() {
     setInventoryOpen(false)
     setShopOpen(false)
     setVictoryDismissed(state.isConquered)
+    setLostDismissed(false)
   }
 
-  async function startGame(classId: string, name: string) {
+  async function startGame(classId: string, name: string, difficulty: Difficulty) {
     setBusy(true)
     setError(null)
 
     try {
-      enterGame(await createGame(classId, name), 'You enter the vault. It is dark.')
+      enterGame(await createGame(classId, name, difficulty), difficultyIntro[difficulty])
     } catch {
       setError('Could not start a new game. Is the API running?')
     } finally {
@@ -102,20 +111,20 @@ function App() {
     }
   }
 
-  async function continueGame(savedGame: SavedGame) {
+  async function continueGame(hero: SavedHero) {
     setBusy(true)
     setError(null)
 
     try {
-      const state = await getGame(savedGame.id).catch(failure => {
-        if (failure instanceof ApiError && failure.status === 404) return getGameByCode(savedGame.code)
+      const state = await getGame(hero.id).catch(failure => {
+        if (failure instanceof ApiError && failure.status === 404) return getGameByCode(hero.code)
         throw failure
       })
-      enterGame(state, 'You return to the vault.')
+      enterGame(state, state.isLost ? `${state.player.name} rests here forever.` : 'You return to the vault.')
     } catch (failure) {
       if (failure instanceof ApiError && (failure.status === 404 || failure.status === 409)) {
-        forgetSavedGame()
-        setSaved(null)
+        forgetHero(hero.id)
+        setHeroes(loadHeroes())
         setError(failure.status === 409 ? incompatibleSaveMessage : 'That save no longer exists.')
       } else {
         setError('Could not reach the vault. Try again in a moment.')
@@ -150,16 +159,21 @@ function App() {
     setError(null)
     setInventoryOpen(false)
     setShopOpen(false)
-    setSaved(loadSavedGame())
+    setHeroes(loadHeroes())
+  }
+
+  function handleForget(hero: SavedHero) {
+    forgetHero(hero.id)
+    setHeroes(loadHeroes())
   }
 
   useEffect(() => {
-    if (game) rememberGame(game)
+    if (game) rememberHero(game)
   }, [game])
 
   const play = useCallback(
     async (action: (gameId: string) => Promise<TurnResponse>) => {
-      if (!game || busy) return
+      if (!game || busy || game.isLost) return
 
       setBusy(true)
       setError(null)
@@ -404,14 +418,15 @@ function App() {
       <main className="app start">
         <h1>Vaultrift</h1>
         <ResumePanel
-          saved={saved}
+          heroes={heroes}
           disabled={busy}
-          onContinue={savedGame => void continueGame(savedGame)}
+          onContinue={hero => void continueGame(hero)}
+          onForget={handleForget}
           onLoadCode={code => void loadByCode(code)}
         />
-        <p className="label">{saved ? 'Or start a new adventure' : 'Choose your hero'}</p>
+        <p className="label">{heroes.length > 0 ? 'Or start a new adventure' : 'Choose your hero'}</p>
         {error && <p className="error">{error}</p>}
-        <ClassSelect disabled={busy} onChoose={(classId, name) => void startGame(classId, name)} />
+        <ClassSelect disabled={busy} onChoose={(classId, name, difficulty) => void startGame(classId, name, difficulty)} />
       </main>
     )
   }
@@ -436,6 +451,7 @@ function App() {
         floor={game.floor}
         floorCount={game.floorCount}
         biome={game.biome}
+        difficulty={game.difficulty}
         onOpenInventory={() => setInventoryOpen(true)}
       />
       <SpellBar
@@ -449,7 +465,7 @@ function App() {
       <Board game={game} viewColumns={view.columns} viewRows={view.rows} effects={effects} onAttack={handleAttack} />
       <p className="keyboard-hint">WASD to move · Shift+WASD to turn · Space or click to attack · E ability · Q R potions · F scroll · 1–4 spells · Tab backpack</p>
       <Controls
-        disabled={false}
+        disabled={game.isLost}
         quickSlots={game.player.quickSlots}
         ability={game.player.ability}
         onMove={handleMove}
@@ -498,6 +514,15 @@ function App() {
           heroName={game.player.name}
           deaths={game.deaths}
           onKeepExploring={() => setVictoryDismissed(true)}
+          onNewGame={returnToClassSelect}
+        />
+      )}
+      {game.isLost && !lostDismissed && (
+        <HeroLostScreen
+          heroName={game.player.name}
+          floor={game.floor}
+          level={game.player.level}
+          onLookAround={() => setLostDismissed(true)}
           onNewGame={returnToClassSelect}
         />
       )}

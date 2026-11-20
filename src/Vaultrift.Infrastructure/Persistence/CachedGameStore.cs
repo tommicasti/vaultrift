@@ -1,4 +1,5 @@
 using System.Collections.Concurrent;
+using Vaultrift.Engine.Gameplay;
 using Vaultrift.Infrastructure.Content;
 
 namespace Vaultrift.Infrastructure.Persistence;
@@ -20,11 +21,11 @@ public sealed class CachedGameStore : IGameStore
 
     public int CachedCount => _sessions.Count;
 
-    public GameSession Create(ClassDefinition playerClass, string? playerName)
+    public GameSession Create(ClassDefinition playerClass, string? playerName, Difficulty difficulty = Difficulty.Normal)
     {
         ArgumentNullException.ThrowIfNull(playerClass);
 
-        var session = GameSession.Start(Guid.NewGuid(), FreeCode(), playerClass, playerName);
+        var session = GameSession.Start(Guid.NewGuid(), FreeCode(), playerClass, playerName, difficulty: difficulty);
         _repository.Upsert(session.ToRecord());
         Remember(session);
         return session;

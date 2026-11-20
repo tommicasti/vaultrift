@@ -81,6 +81,9 @@ public sealed partial class Game
 
     public TurnResult MovePlayer(Direction direction)
     {
+        if (IsLost)
+            return Defeated();
+
         var events = new List<GameEvent>();
         Player.Facing = direction;
 
@@ -98,6 +101,7 @@ public sealed partial class Game
         Player.Position = target;
         events.Add(new PlayerMoved(target));
         PickUpItemAt(target, events);
+        RecoverGraveAt(target, events);
 
         if (target == Stairs)
         {
@@ -122,12 +126,18 @@ public sealed partial class Game
 
     public TurnResult Face(Direction direction)
     {
+        if (IsLost)
+            return Defeated();
+
         Player.Facing = direction;
         return new TurnResult(TurnPassed: false, [new PlayerTurned(direction)]);
     }
 
     public TurnResult Attack()
     {
+        if (IsLost)
+            return Defeated();
+
         if (IsMerchant(Player.Position.Move(Player.Facing)))
             return new TurnResult(TurnPassed: false, [new MerchantGreeted()]);
 
@@ -226,6 +236,9 @@ public sealed partial class Game
 
         events.Add(new ItemUsed(item!));
 
+        if (item!.Definition is RuneDefinition && Player.Weapon is { } imbued)
+            events.Add(new WeaponImbued(imbued));
+
         EndTurn(events);
         return new TurnResult(TurnPassed: true, events);
     }
@@ -248,6 +261,9 @@ public sealed partial class Game
 
     private void EndTurn(List<GameEvent> events)
     {
+        if (IsLost)
+            return;
+
         _stepsThisTurn = 0;
         CoolLava(events);
         EnemiesAct(events);
@@ -277,7 +293,7 @@ public sealed partial class Game
     {
         events.Add(new EnemyDefeated(enemy.Id));
 
-        if (enemy.Kind.Power == BossPower.SummonMinions)
+        if (enemy.Kind.Minion is not null)
             WitherMinions(enemy, events);
 
         if (enemy.IsSummoned)
@@ -305,7 +321,7 @@ public sealed partial class Game
     private void Descend(List<GameEvent> events)
     {
         _stepsThisTurn = 0;
-        LoadFloor(FloorNumber + 1);
+        LoadFloor(FloorNumber + 1, events);
         Player.Facing = Direction.Down;
         Player.RestoreFullHealth();
         Player.RestoreFullMana();
@@ -332,8 +348,11 @@ public sealed partial class Game
     }
 
     [MemberNotNull(nameof(Map))]
-    private void LoadFloor(int number)
+    private void LoadFloor(int number, List<GameEvent>? events = null)
     {
+        if (events is not null)
+            AbandonGrave(events);
+
         var floor = _floors.Create(number) ?? throw new InvalidOperationException($"Floor {number} could not be created.");
         Validate(floor);
 
@@ -446,7 +465,7 @@ public sealed partial class Game
             }
 
             TakeEnemyTurn(enemy, events);
-            enemy.IsResting = enemy.Kind.Speed == Speed.Slow;
+            enemy.IsResting = enemy.Speed == Speed.Slow;
         }
     }
 
@@ -521,11 +540,19 @@ public sealed partial class Game
 
     private void RespawnPlayer(List<GameEvent> events)
     {
+        if (HandleDeath(events))
+            return;
+
         Deaths++;
         events.Add(new PlayerDefeated());
 
+        if (LeavesGraves)
+            DigGrave(events);
+
         DismissMinions();
-        LoseCoins(events);
+
+        if (!LeavesGraves)
+            LoseCoins(events);
 
         foreach (var enemy in _enemies.Where(enemy => !enemy.IsDead))
             enemy.ReturnToStart();
@@ -537,6 +564,7 @@ public sealed partial class Game
         Player.ClearBoosts();
         Player.ClearStatuses();
         events.Add(new PlayerRespawned(_playerStart));
+        TakeSpareWeapon(events);
     }
 
     private bool StepTowardPlayer(Enemy enemy, List<GameEvent> events)

@@ -21,6 +21,7 @@ const biomeRows: Record<string, number> = {
   mines: 8,
   fungal: 9,
   sky: 10,
+  rift: 11,
 }
 
 export const biomeNames: Record<string, string> = {
@@ -35,6 +36,7 @@ export const biomeNames: Record<string, string> = {
   mines: 'Crystal Mines',
   fungal: 'Fungal Grotto',
   sky: 'Sky Temple',
+  rift: 'The Rift',
 }
 
 const terrainSymbols: Record<string, Terrain> = {

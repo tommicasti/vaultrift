@@ -41,7 +41,10 @@ public static class GameMapper
             game.IsConquered,
             game.Biome,
             ToPositions(game.Chests),
-            ToMerchantResponse(game));
+            ToMerchantResponse(game),
+            game.Difficulty,
+            game.IsLost,
+            game.Grave is { } grave ? new GraveResponse(grave.Position.X, grave.Position.Y, grave.Count) : null);
 
     private static PlayerResponse ToPlayerResponse(Game game, Player player, int freeSteps)
     {
@@ -97,7 +100,7 @@ public static class GameMapper
             merchant.Position.X,
             merchant.Position.Y,
             game.IsNextToMerchant,
-            merchant.Offers.Select(offer => new OfferResponse(offer.Id, ToItemResponse(offer.Item), offer.Price)).ToList(),
+            merchant.Offers.Select(offer => new OfferResponse(offer.Id, ToItemResponse(offer.Item), offer.Price, offer.Kind)).ToList(),
             inventory.CanExpand ? Merchant.UpgradePrice(inventory) : null,
             Inventory.ExpansionSize);
     }
@@ -235,6 +238,13 @@ public static class GameMapper
         PlayerBlownAway e => new("PlayerBlownAway", EnemyId: e.EnemyId, X: e.To.X, Y: e.To.Y, Damage: e.Damage, Element: Element.Wind),
         EnemySummoned e => new("EnemySummoned", EnemyId: e.MinionId, X: e.At.X, Y: e.At.Y),
         EnemyWithered e => new("EnemyWithered", EnemyId: e.EnemyId),
+        GraveDug e => new("GraveDug", X: e.At.X, Y: e.At.Y, Amount: e.Count),
+        GraveRecovered e => new("GraveRecovered", Amount: e.Count, Level: e.Left),
+        GraveLost e => new("GraveLost", X: e.At.X, Y: e.At.Y, Amount: e.Count),
+        HeroLost => new("HeroLost"),
+        SpareWeaponTaken e => new("SpareWeaponTaken", Item: ToItemResponse(e.Item)),
+        WeaponImbued e => new("WeaponImbued", Item: ToItemResponse(e.Weapon)),
+        BossPhaseChanged e => new("BossPhaseChanged", EnemyId: e.EnemyId, Level: e.Phase, Reason: e.Power.ToString()),
         _ => throw new ArgumentOutOfRangeException(nameof(gameEvent), gameEvent.GetType().Name, "Unknown game event.")
     };
 
@@ -267,7 +277,7 @@ public static class GameMapper
             potion is { Healing: > 0 } ? potion.Healing : null,
             potion?.Boost is { } boost ? ToModifierResponse(boost) : null,
             potion?.Boost is not null ? potion.BoostTurns : null,
-            instance.Element,
+            instance.Element ?? (item as RuneDefinition)?.Element,
             EffectChanceOf(instance),
             EffectsOf(item),
             item is WeaponDefinition { IsTwoHanded: true },
@@ -307,6 +317,7 @@ public static class GameMapper
         GearDefinition gear => gear.Kind.ToString(),
         PotionDefinition => "Potion",
         ScrollDefinition => "Scroll",
+        RuneDefinition => "Rune",
         _ => throw new ArgumentOutOfRangeException(nameof(item), item.GetType().Name, "Unknown item type.")
     };
 

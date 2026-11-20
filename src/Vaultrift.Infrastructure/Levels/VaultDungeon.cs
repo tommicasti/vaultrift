@@ -27,7 +27,7 @@ public static class VaultDungeon
         var player = new Player(new Position(0, 0), playerClass.Class, playerName);
         GiveStartingKit(player, playerClass.StartingItemIds);
 
-        return new Game(player, floors, random, new VaultLoot(random));
+        return new Game(player, floors, random, new VaultLoot(random)) { Difficulty = floors.Difficulty };
     }
 
     public static Game RestoreGame(GameSnapshot snapshot, IRandom random, VaultFloors floors)

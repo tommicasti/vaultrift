@@ -12,6 +12,7 @@ public sealed class VaultLoot : ILootTable
     public const double BossClassModShare = 0.25;
     public const double OwnClassModShare = 0.70;
     public const double ChestPotionShare = 0.20;
+    public const double ChestRuneShare = 0.08;
     public const double ScrollShare = 0.25;
     public const double EpicScrollShare = 0.25;
 
@@ -98,6 +99,9 @@ public sealed class VaultLoot : ILootTable
 
         if (_random.NextDouble() < ChestPotionShare)
             return RollConsumable();
+
+        if (_random.NextDouble() < ChestRuneShare)
+            return new ItemInstance(_random.Pick(ItemCatalog.Runes));
 
         var rarity = Roll(drop => ChestRarityChance(drop, context.Floor));
 

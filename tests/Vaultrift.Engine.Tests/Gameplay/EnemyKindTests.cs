@@ -33,8 +33,8 @@ public class EnemyKindTests
         Assert.Same(kind, enemy.Kind);
         Assert.Equal(Rarity.Legendary, enemy.Rarity);
         Assert.Equal(3, enemy.Level);
-        Assert.Equal(26, enemy.Stats.MaxHealth);
-        Assert.Equal(26, enemy.Health);
+        Assert.Equal(28, enemy.Stats.MaxHealth);
+        Assert.Equal(28, enemy.Health);
     }
 
     [Fact]

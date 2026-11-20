@@ -1,12 +1,36 @@
 import { useEffect, useState } from 'react'
 import { getClasses } from '../api/gamesApi'
-import type { ClassInfo } from '../api/types'
+import type { ClassInfo, Difficulty } from '../api/types'
 import { abilityDescriptions, abilityNames, describeModifier } from '../game/items'
 import { classSprite } from '../game/sprites'
 import { Sprite } from './Sprite'
 
 const maxNameLength = 16
 const nameStorageKey = 'vaultrift.heroName'
+const difficultyStorageKey = 'vaultrift.difficulty'
+
+const difficulties: { id: Difficulty; name: string; description: string }[] = [
+  { id: 'Normal', name: 'Normal', description: 'Fall and you rise at the start of the floor, a little poorer.' },
+  { id: 'Hard', name: 'Hard', description: 'Monsters are two levels stronger. Fall and your gear stays in a grave: walk over it to take it back.' },
+  { id: 'Hardcore', name: 'Hardcore', description: 'Hard, and you only get one life. Fall once and the run is over.' },
+]
+
+function loadDifficulty(): Difficulty {
+  try {
+    const saved = localStorage.getItem(difficultyStorageKey)
+    return difficulties.find(option => option.id === saved)?.id ?? 'Normal'
+  } catch {
+    return 'Normal'
+  }
+}
+
+function saveDifficulty(difficulty: Difficulty) {
+  try {
+    localStorage.setItem(difficultyStorageKey, difficulty)
+  } catch {
+    return
+  }
+}
 
 function loadSavedName(): string {
   try {
@@ -26,13 +50,14 @@ function saveName(name: string) {
 
 interface ClassSelectProps {
   disabled: boolean
-  onChoose: (classId: string, name: string) => void
+  onChoose: (classId: string, name: string, difficulty: Difficulty) => void
 }
 
 export function ClassSelect({ disabled, onChoose }: ClassSelectProps) {
   const [classes, setClasses] = useState<ClassInfo[] | null>(null)
   const [failed, setFailed] = useState(false)
   const [name, setName] = useState(loadSavedName)
+  const [difficulty, setDifficulty] = useState<Difficulty>(loadDifficulty)
 
   useEffect(() => {
     let ignore = false
@@ -53,7 +78,8 @@ export function ClassSelect({ disabled, onChoose }: ClassSelectProps) {
   function choose(classId: string) {
     const trimmed = name.trim()
     saveName(trimmed)
-    onChoose(classId, trimmed)
+    saveDifficulty(difficulty)
+    onChoose(classId, trimmed, difficulty)
   }
 
   if (failed) return <p className="error">Could not load the heroes. Is the API running?</p>
@@ -73,6 +99,22 @@ export function ClassSelect({ disabled, onChoose }: ClassSelectProps) {
           onChange={event => setName(event.target.value)}
         />
       </label>
+      <fieldset className="difficulty-picker">
+        <legend className="label">Difficulty</legend>
+        {difficulties.map(option => (
+          <label key={option.id} className={option.id === difficulty ? `difficulty-option active difficulty-${option.id.toLowerCase()}` : `difficulty-option difficulty-${option.id.toLowerCase()}`}>
+            <input
+              type="radio"
+              name="difficulty"
+              value={option.id}
+              checked={option.id === difficulty}
+              onChange={() => setDifficulty(option.id)}
+            />
+            <strong>{option.name}</strong>
+            <span>{option.description}</span>
+          </label>
+        ))}
+      </fieldset>
       <div className="class-select">
         {classes.map(heroClass => {
           const portrait = classSprite(heroClass.id)

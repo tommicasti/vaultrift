@@ -35,7 +35,18 @@ public sealed class Enemy : Creature
 
     public bool IsResting { get; internal set; }
 
-    public int StepsPerTurn => Kind.Speed == Speed.Fast ? 2 : 1;
+    public int StepsPerTurn => Speed == Speed.Fast ? 2 : 1;
+
+    public BossPhase? Phase =>
+        Kind.Phases.Count == 0 ? null : Kind.Phases.LastOrDefault(phase => HealthPercent <= phase.FromHealthPercent) ?? Kind.Phases[0];
+
+    public int PhaseNumber => Phase is { } phase ? Kind.Phases.ToList().IndexOf(phase) + 1 : 0;
+
+    public Speed Speed => Phase?.Speed ?? Kind.Speed;
+
+    public BossPower Power => Phase?.Power ?? Kind.Power;
+
+    private int HealthPercent => Stats.MaxHealth == 0 ? 0 : (int)Math.Ceiling(Health * 100.0 / Stats.MaxHealth);
 
     public int BurnTurnsLeft { get; internal set; }
 
@@ -76,6 +87,6 @@ public sealed class Enemy : Creature
     private static Stats ScaledStats(EnemyKind kind, Rarity rarity, int level)
     {
         ArgumentNullException.ThrowIfNull(kind);
-        return EnemyScaling.Scale(kind.BaseStats, rarity, level);
+        return EnemyScaling.Scale(kind.BaseStats, rarity, level, kind.IsBoss);
     }
 }

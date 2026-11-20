@@ -1,5 +1,7 @@
+using Vaultrift.Engine.Gameplay;
 using Vaultrift.Engine.World;
 using Vaultrift.Infrastructure.Content;
+using Vaultrift.Infrastructure.Levels;
 using Vaultrift.Infrastructure.Persistence;
 
 namespace Vaultrift.Infrastructure.Tests.Persistence;
@@ -92,5 +94,52 @@ public class GameSessionTests
         Assert.Equal("Tommaso", record.HeroName);
         Assert.Equal(1, record.Floor);
         Assert.Equal(1, record.Level);
+    }
+
+    [Fact]
+    public void AGameWonBeforeTheRiftExisted_CanStillGoDownToIt()
+    {
+        var session = NewSession();
+        var save = session.ToSave();
+        var oldWin = save with
+        {
+            Game = save.Game with { FloorNumber = VaultFloors.RolledFloors, IsConquered = true, Stairs = null, BossDefeatAnnounced = true }
+        };
+
+        var resumed = GameSession.Resume(session.Id, session.Code, SaveFile.FromJson(oldWin.ToJson()));
+
+        Assert.False(resumed.Game.IsConquered);
+        Assert.Equal(save.Game.PlayerStart, resumed.Game.Stairs);
+        Assert.Equal(VaultFloors.FinalFloor, resumed.Game.FloorCount);
+    }
+
+    [Theory]
+    [InlineData(Difficulty.Hard)]
+    [InlineData(Difficulty.Hardcore)]
+    public void HarderGames_HaveStrongerMonsters_AndRemember(Difficulty difficulty)
+    {
+        var normal = GameSession.Start(Guid.NewGuid(), "ABCD-EFGH", ClassCatalog.Find("knight")!, null, 5);
+        var hard = GameSession.Start(Guid.NewGuid(), "ABCD-EFGH", ClassCatalog.Find("knight")!, null, 5, difficulty);
+
+        Assert.All(hard.Game.Enemies, enemy => Assert.Equal(1 + VaultFloors.HardLevelBonus, enemy.Level));
+        Assert.All(normal.Game.Enemies, enemy => Assert.Equal(1, enemy.Level));
+
+        var resumed = GameSession.Resume(hard.Id, hard.Code, SaveFile.FromJson(hard.ToSave().ToJson()));
+
+        Assert.Equal(difficulty, resumed.Game.Difficulty);
+        Assert.Equal(hard.ToSave().ToJson(), resumed.ToSave().ToJson());
+    }
+
+    [Fact]
+    public void ASaveFromBeforeDifficulties_IsANormalGame()
+    {
+        var json = NewSession().ToSave().ToJson()
+            .Replace(",\"Difficulty\":\"Normal\"", "")
+            .Replace(",\"IsLost\":false", "");
+
+        var resumed = GameSession.Resume(Guid.NewGuid(), "ABCD-EFGH", SaveFile.FromJson(json));
+
+        Assert.Equal(Difficulty.Normal, resumed.Game.Difficulty);
+        Assert.False(resumed.Game.IsLost);
     }
 }

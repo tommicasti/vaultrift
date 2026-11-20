@@ -75,14 +75,14 @@ public class ItemCatalogTests
     }
 
     [Fact]
-    public void EveryWeaponType_HasTwoOfEachRarity_AndThreeLegendaries()
+    public void EveryWeaponType_HasTwoCommonsTwoRaresFourEpicsAndFiveLegendaries()
     {
         foreach (var type in Enum.GetValues<WeaponType>())
         {
-            foreach (var rarity in NonLegendary)
-                Assert.Equal(2, Weapons.Count(weapon => weapon.WeaponType == type && weapon.Rarity == rarity));
-
-            Assert.Equal(3, Weapons.Count(weapon => weapon.WeaponType == type && weapon.Rarity == Rarity.Legendary));
+            Assert.Equal(2, Weapons.Count(weapon => weapon.WeaponType == type && weapon.Rarity == Rarity.Common));
+            Assert.Equal(2, Weapons.Count(weapon => weapon.WeaponType == type && weapon.Rarity == Rarity.Rare));
+            Assert.Equal(4, Weapons.Count(weapon => weapon.WeaponType == type && weapon.Rarity == Rarity.Epic));
+            Assert.Equal(5, Weapons.Count(weapon => weapon.WeaponType == type && weapon.Rarity == Rarity.Legendary));
         }
     }
 

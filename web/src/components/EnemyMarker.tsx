@@ -12,7 +12,7 @@ export function EnemyMarker({ enemy }: EnemyMarkerProps) {
   const healthPercent = (enemy.health / enemy.maxHealth) * 100
   const stars = enemy.isBoss ? 0 : rarityStars[enemy.rarity]
   const sprite = enemySprite(enemy.kind)
-  const actorClasses = ['actor', enemy.isBoss ? 'boss' : '', enemy.isAwake ? '' : 'sleeping', enemy.isFrozen ? 'frozen' : '']
+  const actorClasses = ['actor', `kind-${enemy.kind}`, enemy.isBoss ? 'boss' : '', enemy.isAwake ? '' : 'sleeping', enemy.isFrozen ? 'frozen' : '']
     .filter(Boolean)
     .join(' ')
   const label = enemy.isBoss ? `${enemy.name}, guardian of this floor` : `${enemy.rarity} ${enemy.name}, level ${enemy.level}`

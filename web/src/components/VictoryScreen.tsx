@@ -15,7 +15,7 @@ export function VictoryScreen({ heroName, deaths, onKeepExploring, onNewGame }: 
         <Sprite sheet={sheets.items} index={crownSprite} className="victory-crown" />
         <h2>The vault is yours</h2>
         <p>
-          {heroName} defeated every guardian of the vault
+          {heroName} crossed twenty floors and slew the Custode in the rift
           {deaths === 0 ? ' without falling once.' : ` after falling ${deaths} ${deaths === 1 ? 'time' : 'times'}.`}
         </p>
         <div className="victory-actions">

@@ -18,6 +18,7 @@ export type ItemCategory =
   | 'Potion'
   | 'Staff'
   | 'Scroll'
+  | 'Rune'
 
 export type EquipmentSlot = 'MainHand' | 'OffHand' | 'Head' | 'Body' | 'Feet' | 'Ring1' | 'Ring2' | 'Cloak' | 'ClassMod'
 
@@ -105,6 +106,9 @@ export type UseRejectReason =
   | 'NoJunk'
   | 'NotEnoughMana'
   | 'ScrollNeedsSlot'
+  | 'NoWeaponToImbue'
+  | 'WeaponCannotBeImbued'
+  | 'WeaponAlreadyImbued'
 
 export interface StatModifierInfo {
   stat: StatType
@@ -249,9 +253,20 @@ export interface InventoryEntryState {
   sellPrice: number
 }
 
+export type Difficulty = 'Normal' | 'Hard' | 'Hardcore'
+
+export interface GraveInfo {
+  x: number
+  y: number
+  count: number
+}
+
 export interface GameState {
   id: string
   saveCode: string
+  difficulty: Difficulty
+  isLost: boolean
+  grave?: GraveInfo
   map: string[]
   player: PlayerState
   enemies: EnemyState[]
@@ -268,10 +283,13 @@ export interface GameState {
   merchant?: MerchantState
 }
 
+export type OfferKind = 'Regular' | 'Featured' | 'Unlimited'
+
 export interface OfferInfo {
   id: number
   item: ItemInfo
   price: number
+  kind: OfferKind
 }
 
 export interface MerchantState {
@@ -375,6 +393,13 @@ export type GameEventType =
   | 'PlayerBlownAway'
   | 'EnemySummoned'
   | 'EnemyWithered'
+  | 'BossPhaseChanged'
+  | 'GraveDug'
+  | 'GraveRecovered'
+  | 'GraveLost'
+  | 'HeroLost'
+  | 'SpareWeaponTaken'
+  | 'WeaponImbued'
 
 export interface TilePosition {
   x: number

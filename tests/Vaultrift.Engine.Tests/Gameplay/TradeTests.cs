@@ -62,6 +62,44 @@ public class TradeTests
     }
 
     [Fact]
+    public void AnUnlimitedOffer_StaysOnSale_AndCostsAQuarterMoreEachTime()
+    {
+        var player = NewPlayer(coins: 1000);
+        var potion = new ItemInstance(TestItems.HealingPotion);
+        var merchant = new Merchant(new Position(2, 1), [new StockItem(potion, OfferKind.Unlimited)]);
+        var game = NewGame(player, merchant);
+        var first = merchant.Offers[0].Price;
+
+        game.Buy(merchant.Offers[0].Id);
+        var second = Assert.Single(merchant.Offers);
+        game.Buy(second.Id);
+
+        Assert.Equal(Merchant.Restocked(first), second.Price);
+        Assert.Equal(Merchant.Restocked(second.Price), merchant.Offers[0].Price);
+        Assert.Equal(1000 - first - second.Price, player.Coins);
+        Assert.Equal(2, player.Inventory.Entries.Sum(entry => entry.Quantity));
+    }
+
+    [Fact]
+    public void ARegularOffer_IsGoneOnceBought()
+    {
+        var player = NewPlayer(coins: 1000);
+        var merchant = MerchantAt(2, 1, RareSword);
+        var game = NewGame(player, merchant);
+
+        game.Buy(merchant.Offers[0].Id);
+
+        Assert.Empty(merchant.Offers);
+    }
+
+    [Fact]
+    public void Restocking_RoundsUp()
+    {
+        Assert.Equal(125, Merchant.Restocked(100));
+        Assert.Equal(5, Merchant.Restocked(4));
+    }
+
+    [Fact]
     public void Prices_RiseTenPercentEveryFloor()
     {
         Assert.Equal(18, ItemPrices.SellValue(RareSword.Definition, 1));

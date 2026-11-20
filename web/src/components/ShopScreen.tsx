@@ -62,10 +62,15 @@ export function ShopScreen({
             <h3 className="label">For sale</h3>
             <ul className="shop-list">
               {merchant.offers.map(offer => (
-                <li key={offer.id} className={`shop-row rarity-${offer.item.rarity.toLowerCase()}`}>
+                <li
+                  key={offer.id}
+                  className={`shop-row rarity-${offer.item.rarity.toLowerCase()}${offer.kind === 'Featured' ? ' featured' : ''}`}
+                >
                   <ItemIcon item={offer.item} />
                   <div className="shop-row-text">
                     <span className="item-name">{offer.item.name}</span>
+                    {offer.kind === 'Featured' && <span className="offer-tag featured-tag">Picked for your class</span>}
+                    {offer.kind === 'Unlimited' && <span className="offer-tag">Always in stock · +25% each time</span>}
                     <span className="label">{[describeKind(offer.item).name, describeItem(offer.item)].filter(Boolean).join(' · ')}</span>
                   </div>
                   <button
