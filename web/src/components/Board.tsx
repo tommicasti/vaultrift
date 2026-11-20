@@ -2,7 +2,7 @@ import { useLayoutEffect, useRef, type CSSProperties, type PointerEvent, type Re
 import type { Direction, GameState } from '../api/types'
 import { tileArt } from '../game/biomes'
 import type { Effect } from '../game/effects'
-import { chestSprite, graveSprite, merchantSprite, sheets, stairsSprites } from '../game/sprites'
+import { chestSprite, graveSprite, merchantSprite, totemSprite, waystoneSprite, sheets, stairsSprites } from '../game/sprites'
 import { EnemyMarker } from './EnemyMarker'
 import { HeroSprite } from './HeroSprite'
 import { ItemIcon } from './ItemIcon'
@@ -160,6 +160,12 @@ export function Board({ game, viewColumns, viewRows, effects, onAttack }: BoardP
             <span className="enemy-layer" data-enemy-id={enemy.id}>
               <EnemyMarker enemy={enemy} />
             </span>
+          )}
+          {game.waystone && game.waystone.x === x && game.waystone.y === y && (
+            <Sprite sheet={waystoneSprite.sheet} index={waystoneSprite.index} className="actor waystone" label="Waystone" />
+          )}
+          {game.totem && game.totem.x === x && game.totem.y === y && (
+            <Sprite sheet={totemSprite.sheet} index={totemSprite.index} className="actor totem" label={`Totem of ${game.totem.bossName}`} />
           )}
           {game.merchant && game.merchant.x === x && game.merchant.y === y && (
             <Sprite sheet={merchantSprite.sheet} index={merchantSprite.index} className="actor merchant" label="Merchant" />

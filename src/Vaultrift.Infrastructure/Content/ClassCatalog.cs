@@ -43,7 +43,7 @@ public static class ClassCatalog
                 SpareWeapon = ItemCatalog.Spare("bow-common")
             },
             "Light on their feet and deadly with a bow. Power Shot pierces every enemy in a line for double damage.",
-            ["bow-common", "potion-healing", "potion-healing"]),
+            ["bow-common", "potion-healing", "potion-healing", "potion-healing"]),
         new(
             new CharacterClass(
                 "rogue",
@@ -56,7 +56,7 @@ public static class ClassCatalog
                 SpareWeapon = ItemCatalog.Spare("dagger-common")
             },
             "Two steps ahead of everyone. Invisibility hides you for five turns; the first strike from the shadows is always critical.",
-            ["dagger-common", "potion-healing", "potion-healing"]),
+            ["dagger-common", "potion-healing", "potion-healing", "potion-healing"]),
         new(
             new CharacterClass(
                 "mage",
@@ -68,7 +68,7 @@ public static class ClassCatalog
                 SpareWeapon = ItemCatalog.Spare("staff-oak")
             },
             "Fragile but devastating from afar. Spells cost one less mana with a staff. Overload makes the next spell free and wider.",
-            ["staff-oak", "potion-healing", "potion-mana"])
+            ["staff-oak", "potion-healing", "potion-healing", "potion-mana"])
     ];
 
     public static ClassDefinition? Find(string id) =>

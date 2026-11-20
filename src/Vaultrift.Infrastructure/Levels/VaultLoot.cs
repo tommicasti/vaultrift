@@ -13,6 +13,9 @@ public sealed class VaultLoot : ILootTable
     public const double OwnClassModShare = 0.70;
     public const double ChestPotionShare = 0.20;
     public const double ChestRuneShare = 0.08;
+    public const int FirstExoticFloor = 8;
+    public const double ExoticChance = 0.05;
+    public const double ExoticClassShare = 0.60;
     public const double ScrollShare = 0.25;
     public const double EpicScrollShare = 0.25;
 
@@ -41,7 +44,7 @@ public sealed class VaultLoot : ILootTable
             Rarity.Common => 0.06,
             Rarity.Rare => 0.14,
             Rarity.Epic => 0.28,
-            Rarity.Legendary => 0.50,
+            Rarity.Legendary or Rarity.Exotic => 0.50,
             _ => throw new ArgumentOutOfRangeException(nameof(enemy), enemy.Rarity, "Unknown rarity.")
         };
 
@@ -64,7 +67,7 @@ public sealed class VaultLoot : ILootTable
                 Rarity.Common => (0.003, 0.04, 0.20),
                 Rarity.Rare => (0.01, 0.10, 0.35),
                 Rarity.Epic => (0.03, 0.25, 0.42),
-                Rarity.Legendary => (0.12, 0.40, 0.48),
+                Rarity.Legendary or Rarity.Exotic => (0.12, 0.40, 0.48),
                 _ => throw new ArgumentOutOfRangeException(nameof(enemy), enemy.Rarity, "Unknown rarity.")
             };
 
@@ -114,6 +117,7 @@ public sealed class VaultLoot : ILootTable
     private static double Share(Rarity drop, double legendary, double epic, double rare) => drop switch
     {
         Rarity.Legendary => legendary,
+        Rarity.Exotic => 0.0,
         Rarity.Epic => epic,
         Rarity.Rare => rare,
         Rarity.Common => 1.0 - legendary - epic - rare,
@@ -130,6 +134,9 @@ public sealed class VaultLoot : ILootTable
         if (_random.NextDouble() >= DropChance(enemy, context.Luck))
             return null;
 
+        if (DropsExotic(enemy, context) && _random.NextDouble() < ExoticChance)
+            return new ItemInstance(RollExotic(context.ClassId));
+
         if (!KeepsTreasure(enemy) && _random.NextDouble() < PotionShare)
             return RollConsumable();
 
@@ -140,6 +147,24 @@ public sealed class VaultLoot : ILootTable
             return new ItemInstance(classMod);
 
         return RollEquipment(rarity);
+    }
+
+    public static bool DropsExotic(Enemy enemy, LootContext context)
+    {
+        ArgumentNullException.ThrowIfNull(enemy);
+        ArgumentNullException.ThrowIfNull(context);
+
+        return enemy.Kind.IsBoss && !enemy.IsSummoned && context.Floor >= FirstExoticFloor;
+    }
+
+    private WeaponDefinition RollExotic(string? classId)
+    {
+        var mastery = classId is null ? null : ClassCatalog.Find(classId)?.Class.Mastery.WeaponType;
+        var yours = ItemCatalog.Exotics.Where(weapon => weapon.WeaponType == mastery).ToList();
+
+        return yours.Count > 0 && _random.NextDouble() < ExoticClassShare
+            ? _random.Pick(yours)
+            : _random.Pick(ItemCatalog.Exotics);
     }
 
     private ItemInstance RollConsumable()

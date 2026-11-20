@@ -28,6 +28,11 @@ public sealed class GameSession
 
     public string ClassId { get; }
 
+    public string? BiomeOf(int floor) =>
+        floor >= 1 && floor <= _floors.Biomes.Count ? _floors.Biomes[floor - 1].Id
+        : floor == VaultFloors.FinalFloor ? RiftArena.BiomeId
+        : null;
+
     public Game Game { get; }
 
     public DateTimeOffset LastUsed { get; private set; }

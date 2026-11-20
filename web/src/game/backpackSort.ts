@@ -5,6 +5,7 @@ export type BackpackSort = 'Recent' | 'Rarity' | 'Type'
 export const backpackSorts: BackpackSort[] = ['Recent', 'Rarity', 'Type']
 
 const rarityRank: Record<Rarity, number> = {
+  Exotic: -1,
   Legendary: 0,
   Epic: 1,
   Rare: 2,

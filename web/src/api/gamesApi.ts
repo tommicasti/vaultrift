@@ -107,6 +107,14 @@ export function buyOffer(gameId: string, offerId: number): Promise<TurnResponse>
   return request<TurnResponse>('POST', `/games/${gameId}/buy`, { offerId })
 }
 
+export function travel(gameId: string, floor: number): Promise<TurnResponse> {
+  return request<TurnResponse>('POST', `/games/${gameId}/travel`, { floor })
+}
+
+export function awakenTotem(gameId: string): Promise<TurnResponse> {
+  return request<TurnResponse>('POST', `/games/${gameId}/totem`)
+}
+
 export function buyBackpackUpgrade(gameId: string): Promise<TurnResponse> {
   return request<TurnResponse>('POST', `/games/${gameId}/buy-upgrade`)
 }

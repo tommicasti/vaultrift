@@ -30,6 +30,8 @@ public sealed record WeaponDefinition(
     public SpellDefinition? Spell { get; init; }
 
     public bool IsSpare { get; init; }
+
+    public ExoticPower? Exotic { get; init; }
 }
 
 public sealed record GearDefinition(

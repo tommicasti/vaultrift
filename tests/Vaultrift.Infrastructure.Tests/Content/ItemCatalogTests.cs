@@ -99,7 +99,7 @@ public class ItemCatalogTests
     public void EveryGearKind_ExistsInEveryRarity()
     {
         foreach (var kind in GearKinds)
-            foreach (var rarity in Enum.GetValues<Rarity>())
+            foreach (var rarity in Enum.GetValues<Rarity>().Where(rarity => rarity != Rarity.Exotic))
                 Assert.Contains(Gear, item => item.Kind == kind && item.Rarity == rarity);
     }
 
@@ -261,7 +261,24 @@ public class ItemCatalogTests
     private static int ModifierBudget(Rarity rarity) => rarity switch
     {
         Rarity.Common or Rarity.Rare => 2,
-        Rarity.Epic or Rarity.Legendary => 3,
+        Rarity.Epic or Rarity.Legendary or Rarity.Exotic => 3,
         _ => throw new ArgumentOutOfRangeException(nameof(rarity))
     };
+
+    [Fact]
+    public void ThereAreTwoExoticsPerWeaponType_EachWithItsOwnPower()
+    {
+        foreach (var type in Enum.GetValues<WeaponType>())
+            Assert.Equal(2, ItemCatalog.Exotics.Count(weapon => weapon.WeaponType == type));
+
+        Assert.Equal(Enum.GetValues<ExoticPower>().Order(), ItemCatalog.Exotics.Select(weapon => weapon.Exotic!.Value).Order());
+        Assert.All(ItemCatalog.Exotics, weapon => Assert.False(string.IsNullOrWhiteSpace(weapon.Description)));
+    }
+
+    [Fact]
+    public void Exotics_HitHarderThanTheBestLegendaryOfTheirType()
+    {
+        foreach (var exotic in ItemCatalog.Exotics)
+            Assert.True(BestAttack(exotic.WeaponType, Rarity.Exotic) > BestAttack(exotic.WeaponType, Rarity.Legendary), exotic.Id);
+    }
 }

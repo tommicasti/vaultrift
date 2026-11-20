@@ -123,6 +123,14 @@ public sealed class GamesController : ControllerBase
     public ActionResult<TurnResponse> Buy(Guid id, OfferRequest request) =>
         Play(id, game => game.Buy(request.OfferId));
 
+    [HttpPost("{id:guid}/travel")]
+    public ActionResult<TurnResponse> Travel(Guid id, TravelRequest request) =>
+        Play(id, game => game.Travel(request.Floor));
+
+    [HttpPost("{id:guid}/totem")]
+    public ActionResult<TurnResponse> AwakenTotem(Guid id) =>
+        Play(id, game => game.AwakenTotem());
+
     [HttpPost("{id:guid}/buy-upgrade")]
     public ActionResult<TurnResponse> BuyBackpackUpgrade(Guid id) =>
         Play(id, game => game.BuyBackpackUpgrade());

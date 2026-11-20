@@ -142,6 +142,18 @@ const uniqueSprites: Record<string, number> = {
   'staff-galebranch': 104,
   'staff-glacierheart': 105,
   'staff-sages-lantern': 106,
+  'sword-riftrender': 107,
+  'sword-oathbound': 108,
+  'axe-headsmans-moon': 109,
+  'axe-worldsplitter': 110,
+  'bow-rift-needle': 111,
+  'bow-huntress-promise': 112,
+  'dagger-widows-kiss': 113,
+  'dagger-shadowstep': 114,
+  'spear-last-wall': 115,
+  'spear-starfall-lance': 116,
+  'staff-prism-of-ages': 117,
+  'staff-echo': 118,
 }
 
 export function itemSprite(item: ItemInfo): SpriteRef {

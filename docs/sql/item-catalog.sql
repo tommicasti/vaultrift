@@ -175,4 +175,16 @@ INSERT INTO dbo.ItemCatalog (Id, Name, Rarity, Kind) VALUES
     (N'rune-fire', N'Rune of Fire', N'Rare', N'Rune'),
     (N'rune-ice', N'Rune of Ice', N'Rare', N'Rune'),
     (N'rune-lightning', N'Rune of Lightning', N'Rare', N'Rune'),
-    (N'rune-wind', N'Rune of Wind', N'Rare', N'Rune');
+    (N'rune-wind', N'Rune of Wind', N'Rare', N'Rune'),
+    (N'sword-riftrender', N'Riftrender', N'Exotic', N'Sword'),
+    (N'sword-oathbound', N'Oathbound', N'Exotic', N'Sword'),
+    (N'axe-headsmans-moon', N'Headsman''s Moon', N'Exotic', N'Axe'),
+    (N'axe-worldsplitter', N'Worldsplitter', N'Exotic', N'Axe'),
+    (N'bow-rift-needle', N'Rift Needle', N'Exotic', N'Bow'),
+    (N'bow-huntress-promise', N'Huntress'' Promise', N'Exotic', N'Bow'),
+    (N'dagger-widows-kiss', N'Widow''s Kiss', N'Exotic', N'Dagger'),
+    (N'dagger-shadowstep', N'Shadowstep', N'Exotic', N'Dagger'),
+    (N'spear-last-wall', N'Last Wall', N'Exotic', N'Spear'),
+    (N'spear-starfall-lance', N'Starfall Lance', N'Exotic', N'Spear'),
+    (N'staff-prism-of-ages', N'Prism of Ages', N'Exotic', N'Staff'),
+    (N'staff-echo', N'Echo Staff', N'Exotic', N'Staff');

@@ -305,6 +305,43 @@ public static class ItemCatalog
         Scroll("tempest", Rarity.Epic, "Lightning strikes every enemy within five tiles."),
         Scroll("tornado", Rarity.Epic, "A whirlwind where it lands that drags enemies to its heart."),
 
+        Exotic("sword-riftrender", "Riftrender", WeaponType.Sword, ExoticPower.Riftrender,
+            "It remembers where it cut last. Every third blow in a row on the same foe tears through the rift: double damage that ignores defense.",
+            Attack(15), Critical(5), Evasion(3)),
+        Exotic("sword-oathbound", "Oathbound", WeaponType.Sword, ExoticPower.Oathbound,
+            "Every wound is a promise. Your next attack adds all the melee damage you took since your last one.",
+            Attack(14), Defense(4), Evasion(2)),
+        Exotic("axe-headsmans-moon", "Headsman's Moon", WeaponType.Axe, ExoticPower.HeadsmansMoon,
+            "The moon does not wait its turn. If your sweep kills, the monsters do not get to act.",
+            Attack(16), Defense(3), Critical(3)),
+        Exotic("axe-worldsplitter", "Worldsplitter", WeaponType.Axe, ExoticPower.Worldsplitter,
+            "The ground remembers the blow. Every monster hit by your sweep loses its next turn (bosses keep their footing).",
+            Attack(15), Defense(4), Evasion(1)),
+        Exotic("bow-rift-needle", "Rift Needle", WeaponType.Bow, ExoticPower.RiftNeedle,
+            "Nothing stops it. Arrows pierce every monster in line; each one after the first takes 75% damage.",
+            Attack(15), Evasion(6), Critical(3)),
+        Exotic("bow-huntress-promise", "Huntress' Promise", WeaponType.Bow, ExoticPower.HuntressPromise,
+            "Once marked, never lost. A hit marks the target for 3 turns: it takes 50% more from your weapon, and killing it while marked heals you for 10% of your health.",
+            Attack(14), Evasion(8), Critical(3)),
+        Exotic("dagger-widows-kiss", "Widow's Kiss", WeaponType.Dagger, ExoticPower.WidowsKiss,
+            "Slow, patient, certain. Every hit adds a layer of venom (up to 5); each layer costs the target 2 health every turn, bosses included.",
+            Attack(11), Critical(14), Evasion(4)),
+        Exotic("dagger-shadowstep", "Shadowstep", WeaponType.Dagger, ExoticPower.Shadowstep,
+            "Distance is a suggestion. Attack a monster two tiles away with a free tile between you, and you leap next to it for a guaranteed critical hit. Recharges in 3 turns.",
+            Attack(11), Critical(12), Evasion(6)),
+        Exotic("spear-last-wall", "Last Wall", WeaponType.Spear, ExoticPower.LastWall,
+            "Hold the line. Any monster that steps onto the tile in front of you takes a free hit.",
+            Attack(16), Defense(3), Evasion(1)),
+        Exotic("spear-starfall-lance", "Starfall Lance", WeaponType.Spear, ExoticPower.StarfallLance,
+            "Thrown down from the sky, it still has reach to spare. Your thrust reaches 3 tiles and hits everything in line.",
+            Attack(16), Critical(4), Evasion(2)),
+        ExoticStaff("staff-prism-of-ages", "Prism of Ages", SpellCatalog.Spark, ExoticPower.Prism,
+            "Light bends to find the crack. Your spells always strike the target's weakness, whatever their element.",
+            Attack(14), Mana(15)),
+        ExoticStaff("staff-echo", "Echo Staff", SpellCatalog.FireBolt, ExoticPower.Echo,
+            "Every word is spoken twice. Each spell from the staff is cast a second time, free, at half power.",
+            Attack(13), Mana(20)),
+
         new RuneDefinition("rune-fire", "Rune of Fire", Rarity.Rare, Element.Fire,
             "Use it to give the weapon in your main hand the power of fire, for good. Not for staves or weapons that already have a fixed element."),
         new RuneDefinition("rune-ice", "Rune of Ice", Rarity.Rare, Element.Ice,
@@ -318,6 +355,9 @@ public static class ItemCatalog
     public static IReadOnlyList<ScrollDefinition> Scrolls { get; } = All.OfType<ScrollDefinition>().ToList();
 
     public static IReadOnlyList<RuneDefinition> Runes { get; } = All.OfType<RuneDefinition>().ToList();
+
+    public static IReadOnlyList<WeaponDefinition> Exotics { get; } =
+        All.OfType<WeaponDefinition>().Where(weapon => weapon.Rarity == Rarity.Exotic).ToList();
 
     public static IReadOnlyList<EquipmentDefinition> Equipment { get; } =
         All.OfType<EquipmentDefinition>().Where(item => item.Kind != EquipmentKind.ClassMod).ToList();
@@ -364,6 +404,12 @@ public static class ItemCatalog
 
     private static WeaponDefinition LegendaryWeapon(string id, string name, WeaponType type, string description, Element element, params StatModifier[] modifiers) =>
         new(id, name, Rarity.Legendary, type, modifiers, description, element);
+
+    private static WeaponDefinition Exotic(string id, string name, WeaponType type, ExoticPower power, string description, params StatModifier[] modifiers) =>
+        new(id, name, Rarity.Exotic, type, modifiers, description) { Exotic = power };
+
+    private static WeaponDefinition ExoticStaff(string id, string name, SpellDefinition spell, ExoticPower power, string description, params StatModifier[] modifiers) =>
+        new(id, name, Rarity.Exotic, WeaponType.Staff, modifiers, description, spell.Element) { Spell = spell, Exotic = power };
 
     private static WeaponDefinition Staff(string id, string name, Rarity rarity, SpellDefinition spell, params StatModifier[] modifiers) =>
         new(id, name, rarity, WeaponType.Staff, modifiers, FixedElement: spell.Element) { Spell = spell };

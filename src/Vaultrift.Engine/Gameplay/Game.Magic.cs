@@ -76,14 +76,26 @@ public sealed partial class Game
         }
 
         Cast(spell, staff.Rarity, events);
+
+        if (!Wields(Items.ExoticPower.Echo))
+            return;
+
+        events.Add(new ExoticTriggered(Items.ExoticPower.Echo));
+        _spellPowerPercent = EchoPowerPercent;
+        Cast(spell, staff.Rarity, events, echo: true);
+        _spellPowerPercent = 100;
     }
 
-    private void Cast(SpellDefinition spell, Rarity rarity, List<GameEvent> events)
+    private void Cast(SpellDefinition spell, Rarity rarity, List<GameEvent> events, bool echo = false)
     {
-        Player.SpendMana(Player.SpellCost(spell));
+        if (!echo)
+            Player.SpendMana(Player.SpellCost(spell));
 
-        var overloaded = Player.IsOverloaded;
-        Player.IsOverloaded = false;
+        var overloaded = !echo && Player.IsOverloaded;
+
+        if (!echo)
+            Player.IsOverloaded = false;
+
         var size = spell.Size + (overloaded ? AbilityRules.OverloadAreaBonus : 0);
 
         switch (spell.Shape)
@@ -233,9 +245,14 @@ public sealed partial class Game
     private int SpellHit(Enemy target, SpellDefinition spell, Rarity rarity, List<GameEvent> events, bool triggersElement = true)
     {
         var stats = Player.CombatStats.WithAttack(Player.CombatStats.Attack + spell.Power);
+        var rolled = RollSpell(stats, target);
+
+        if (!rolled.Missed && _spellPowerPercent != 100)
+            rolled = rolled with { Damage = Math.Max(DamageCalculator.MinimumDamage, rolled.Damage * _spellPowerPercent / 100) };
+
         var result = ChargeInWater(ElementRules.Apply(
-            RollSpell(stats, target),
-            spell.Element,
+            rolled,
+            SpellElementAgainst(target, spell),
             target.Kind.Weakness,
             target.Kind.Resistance,
             rarity), target);

@@ -37,7 +37,7 @@ LEFT JOIN dbo.ItemCatalog c ON c.Id = o.ItemId
 ORDER BY
     o.UpdatedAt DESC,
     o.Code,
-    CASE c.Rarity WHEN 'Legendary' THEN 1 WHEN 'Epic' THEN 2 WHEN 'Rare' THEN 3 ELSE 4 END,
+    CASE c.Rarity WHEN 'Exotic' THEN 0 WHEN 'Legendary' THEN 1 WHEN 'Epic' THEN 2 WHEN 'Rare' THEN 3 ELSE 4 END,
     COALESCE(c.Name, o.ItemId);
 
 WITH Owned AS (
@@ -52,6 +52,7 @@ WITH Owned AS (
 SELECT
     o.HeroName AS Eroe,
     o.Code AS Codice,
+    SUM(CASE WHEN c.Rarity = 'Exotic' THEN 1 ELSE 0 END) AS Esotici,
     SUM(CASE WHEN c.Rarity = 'Legendary' THEN 1 ELSE 0 END) AS Leggendari,
     SUM(CASE WHEN c.Rarity = 'Epic' THEN 1 ELSE 0 END) AS Epici,
     SUM(CASE WHEN c.Rarity = 'Rare' THEN 1 ELSE 0 END) AS Rari,

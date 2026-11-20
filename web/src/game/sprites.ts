@@ -90,6 +90,7 @@ export const helmetSprites: Record<Rarity, number> = {
   Rare: 9,
   Epic: 10,
   Legendary: 11,
+  Exotic: 11,
 }
 
 export interface LegendaryOutfit {
@@ -125,6 +126,10 @@ export const crownSprite = 29
 
 export const graveSprite = 65
 
+export const waystoneSprite = { sheet: sheets.vault, index: 10 }
+
+export const totemSprite = { sheet: sheets.vault, index: 11 }
+
 export const chestSprite = { sheet: sheets.dungeon, index: 89 }
 
 export const merchantSprite = { sheet: sheets.vault, index: 32 }
@@ -141,6 +146,7 @@ export const rarityStars: Record<Rarity, number> = {
   Rare: 1,
   Epic: 2,
   Legendary: 3,
+  Exotic: 3,
 }
 
 export const starSprites: Record<Rarity, number> = {
@@ -148,6 +154,7 @@ export const starSprites: Record<Rarity, number> = {
   Rare: 26,
   Epic: 27,
   Legendary: 28,
+  Exotic: 28,
 }
 
 export const elementSprites: Record<Element, number> = {

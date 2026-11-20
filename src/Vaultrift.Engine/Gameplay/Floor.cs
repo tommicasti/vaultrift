@@ -10,4 +10,5 @@ public sealed record Floor(
     Position? Stairs = null,
     string? Biome = null,
     IReadOnlyList<Chest>? Chests = null,
-    Merchant? Merchant = null);
+    Merchant? Merchant = null,
+    Position? Waystone = null);

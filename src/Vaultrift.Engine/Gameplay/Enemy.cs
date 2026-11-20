@@ -56,6 +56,12 @@ public sealed class Enemy : Creature
 
     public int FreezeImmunityTurnsLeft { get; internal set; }
 
+    public int MarkedTurns { get; internal set; }
+
+    public int VenomStacks { get; internal set; }
+
+    public int StaggeredTurns { get; internal set; }
+
     public bool IsBurning => BurnTurnsLeft > 0;
 
     public bool IsFrozen => FrozenTurnsLeft > 0;
@@ -82,6 +88,9 @@ public sealed class Enemy : Creature
         BurnDamage = 0;
         FrozenTurnsLeft = 0;
         FreezeImmunityTurnsLeft = 0;
+        MarkedTurns = 0;
+        VenomStacks = 0;
+        StaggeredTurns = 0;
     }
 
     private static Stats ScaledStats(EnemyKind kind, Rarity rarity, int level)

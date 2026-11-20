@@ -110,4 +110,15 @@ public class ClassCatalogTests
         Assert.Contains("sword-common", kit);
         Assert.Contains(kit, id => ItemCatalog.Get(id) is GearDefinition { Kind: EquipmentKind.Shield });
     }
+
+    [Theory]
+    [InlineData("knight", 2)]
+    [InlineData("berserker", 2)]
+    [InlineData("ranger", 3)]
+    [InlineData("rogue", 3)]
+    [InlineData("mage", 2)]
+    public void FragileClasses_StartWithAnExtraHealingPotion(string classId, int potions)
+    {
+        Assert.Equal(potions, ClassCatalog.Find(classId)!.StartingItemIds.Count(id => id == "potion-healing"));
+    }
 }

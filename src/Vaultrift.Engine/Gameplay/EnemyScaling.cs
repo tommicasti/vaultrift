@@ -13,7 +13,7 @@ public static class EnemyScaling
         Rarity.Common => 1.0,
         Rarity.Rare => 1.3,
         Rarity.Epic => 1.6,
-        Rarity.Legendary => 2.0,
+        Rarity.Legendary or Rarity.Exotic => 2.0,
         _ => throw new ArgumentOutOfRangeException(nameof(rarity), rarity, "Unknown rarity.")
     };
 

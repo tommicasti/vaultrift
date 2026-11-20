@@ -23,7 +23,14 @@ public sealed record GameSnapshot(
     IReadOnlyList<CoolingLavaSnapshot> CoolingLava,
     Difficulty Difficulty = Difficulty.Normal,
     bool IsLost = false,
-    GraveSnapshot? Grave = null);
+    GraveSnapshot? Grave = null,
+    int? DeepestFloor = null,
+    IReadOnlyList<int>? ClearedFloors = null,
+    Position? Waystone = null,
+    TotemSnapshot? Totem = null,
+    int TotemUses = 0);
+
+public sealed record TotemSnapshot(Position Position, EnemySnapshot Boss);
 
 public sealed record GraveSnapshot(Position Position, IReadOnlyList<GraveItemSnapshot> Items);
 
@@ -80,7 +87,10 @@ public sealed record EnemySnapshot(
     int FrozenTurnsLeft,
     int FreezeImmunityTurnsLeft,
     int PowerCharge,
-    int? SummonerId);
+    int? SummonerId,
+    int MarkedTurns = 0,
+    int VenomStacks = 0,
+    int StaggeredTurns = 0);
 
 public sealed record FloorItemSnapshot(Position Position, ItemSnapshot Item);
 

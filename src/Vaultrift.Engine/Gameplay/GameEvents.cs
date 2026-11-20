@@ -181,3 +181,15 @@ public sealed record SpareWeaponTaken(ItemInstance Item) : GameEvent;
 public sealed record HeroLost : GameEvent;
 
 public sealed record WeaponImbued(ItemInstance Weapon) : GameEvent;
+
+public sealed record ExoticTriggered(ExoticPower Power, int? EnemyId = null, int Amount = 0) : GameEvent;
+
+public sealed record EnemyEnvenomed(int EnemyId, int Damage, int Stacks) : GameEvent;
+
+public sealed record Traveled(int Floor, Position Start) : GameEvent;
+
+public sealed record TravelRejected(TravelResult Reason) : GameEvent;
+
+public sealed record TotemAwakened(int EnemyId, int Price) : GameEvent;
+
+public sealed record TotemRejected(TotemResult Reason) : GameEvent;

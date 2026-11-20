@@ -107,6 +107,29 @@ function effectivenessNote(event: GameEvent): string {
   }
 }
 
+function describeExotic(event: GameEvent, enemy: string): string | null {
+  switch (event.power) {
+    case 'Riftrender':
+      return 'Riftrender tears through the rift: double damage, no armor can stop it!'
+    case 'Oathbound':
+      return `Oathbound keeps its promise: +${event.amount} damage for the blows you took.`
+    case 'HeadsmansMoon':
+      return "The Headsman's Moon claims its due: the monsters do not get to act."
+    case 'Worldsplitter':
+      return `${enemy} staggers and loses its next turn.`
+    case 'HuntressPromise':
+      return `The Huntress keeps her promise: you heal ${event.amount} health.`
+    case 'Shadowstep':
+      return 'You step through the shadows and strike!'
+    case 'LastWall':
+      return `${enemy} walks into the Last Wall.`
+    case 'Echo':
+      return 'The Echo Staff repeats your spell.'
+    default:
+      return null
+  }
+}
+
 export function describeEvent(event: GameEvent, enemyNames: ReadonlyMap<number, string>): string | null {
   const critical = event.isCritical ? ' Critical hit!' : ''
   const note = effectivenessNote(event)
@@ -289,6 +312,18 @@ export function describeEvent(event: GameEvent, enemyNames: ReadonlyMap<number, 
       return `The rune sinks into the metal: you now wield a ${event.item?.name ?? 'new weapon'}.`
     case 'SpareWeaponTaken':
       return `You pick up a ${event.item?.name ?? 'spare weapon'} from the entrance. It is worth nothing, and it crumbles when you take your own weapon back.`
+    case 'ExoticTriggered':
+      return describeExotic(event, enemy)
+    case 'EnemyEnvenomed':
+      return `${enemy} loses ${event.damage} health to the venom (${event.amount} ${event.amount === 1 ? 'layer' : 'layers'}).`
+    case 'Traveled':
+      return `The waystone hums, and the rift carries you to floor ${event.floor}. It looks different from how you left it.`
+    case 'TravelRejected':
+      return event.reason === 'NoWaystoneNearby' ? 'Stand next to the waystone to travel.' : 'The waystone cannot take you there.'
+    case 'TotemAwakened':
+      return `You pay ${event.price} coins. The totem cracks open and ${enemyLower} rises again!`
+    case 'TotemRejected':
+      return event.reason === 'NotEnoughCoins' ? 'You do not have enough coins to wake the totem.' : 'Stand next to the totem to wake it.'
     case 'HeroLost':
       return 'Your journey ends here.'
     case 'VaultConquered':

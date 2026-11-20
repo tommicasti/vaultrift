@@ -143,6 +143,14 @@ public sealed partial class Game
 
         var events = new List<GameEvent>();
         PerformAttack(events);
+
+        if (Wields(Items.ExoticPower.HeadsmansMoon) && events.OfType<EnemyDefeated>().Any() && !Player.IsDead)
+        {
+            events.Add(new ExoticTriggered(Items.ExoticPower.HeadsmansMoon));
+            AnnounceBossDefeat(events);
+            return new TurnResult(TurnPassed: false, events);
+        }
+
         EndTurn(events);
         return new TurnResult(TurnPassed: true, events);
     }
@@ -269,6 +277,7 @@ public sealed partial class Game
         EnemiesAct(events);
         DriftCreatures(events);
         BurnEnemies(events);
+        TickExotics(events);
         ScorchCreatures(events);
         BreatheSpores(events);
         SufferPoison(events);
@@ -335,6 +344,7 @@ public sealed partial class Game
             return;
 
         _bossDefeatAnnounced = true;
+        MarkFloorCleared();
 
         if (FloorNumber == FloorCount)
         {
@@ -372,6 +382,7 @@ public sealed partial class Game
         _coolingLava.Clear();
         FloorNumber = number;
         _bossDefeatAnnounced = false;
+        PrepareFloor(floor.Waystone);
     }
 
     private static void Validate(Floor floor)
@@ -458,6 +469,12 @@ public sealed partial class Game
                 continue;
             }
 
+            if (enemy.StaggeredTurns > 0)
+            {
+                enemy.StaggeredTurns--;
+                continue;
+            }
+
             if (enemy.IsResting && !Pursues(enemy))
             {
                 enemy.IsResting = false;
@@ -506,6 +523,7 @@ public sealed partial class Game
 
         Player.TakeDamage(result.Damage);
         events.Add(new EnemyAttackedPlayer(enemy.Id, result));
+        SwearRevenge(result);
 
         if (result.IsBlocked && Player.EffectAmount(EffectKind.BlockReflect) > 0)
             Prick(enemy, DamageCalculator.BaseDamage(enemy.CombatStats, defense), events);
@@ -578,6 +596,7 @@ public sealed partial class Game
 
             enemy.Position = target;
             events.Add(new EnemyMoved(enemy.Id, target));
+            GuardTheWall(enemy, events);
             return true;
         }
 
@@ -613,6 +632,7 @@ public sealed partial class Game
         Map.IsWalkable(position) &&
         !IsChest(position) &&
         !IsMerchant(position) &&
+        !IsFixture(position) &&
         position != Player.Position &&
         FindLivingEnemyAt(position) is null;
 
@@ -620,6 +640,7 @@ public sealed partial class Game
         (enemy.Kind.PassesThroughWalls ? Map.IsInside(position) : Map.IsWalkable(position)) &&
         !IsChest(position) &&
         !IsMerchant(position) &&
+        !IsFixture(position) &&
         !AvoidsLava(enemy, position) &&
         position != Player.Position &&
         FindLivingEnemyAt(position) is null;

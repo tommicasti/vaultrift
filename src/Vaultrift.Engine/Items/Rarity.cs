@@ -9,6 +9,7 @@ namespace Vaultrift.Engine.Items
         Common,
         Rare,
         Epic,
-        Legendary
+        Legendary,
+        Exotic
     }
 }

@@ -121,7 +121,7 @@ public class GameSessionTests
         var normal = GameSession.Start(Guid.NewGuid(), "ABCD-EFGH", ClassCatalog.Find("knight")!, null, 5);
         var hard = GameSession.Start(Guid.NewGuid(), "ABCD-EFGH", ClassCatalog.Find("knight")!, null, 5, difficulty);
 
-        Assert.All(hard.Game.Enemies, enemy => Assert.Equal(1 + VaultFloors.HardLevelBonus, enemy.Level));
+        Assert.All(hard.Game.Enemies, enemy => Assert.Equal(1 + VaultFloors.HardEarlyLevelBonus, enemy.Level));
         Assert.All(normal.Game.Enemies, enemy => Assert.Equal(1, enemy.Level));
 
         var resumed = GameSession.Resume(hard.Id, hard.Code, SaveFile.FromJson(hard.ToSave().ToJson()));
@@ -141,5 +141,30 @@ public class GameSessionTests
 
         Assert.Equal(Difficulty.Normal, resumed.Game.Difficulty);
         Assert.False(resumed.Game.IsLost);
+    }
+
+    [Fact]
+    public void ASaveFromBeforeTheWaystones_GetsOneOnTheCurrentFloor()
+    {
+        var save = NewSession().ToSave();
+        var old = save with { Game = save.Game with { DeepestFloor = null, ClearedFloors = null, Waystone = null, Totem = null, TotemUses = 0 } };
+
+        var resumed = GameSession.Resume(Guid.NewGuid(), "ABCD-EFGH", SaveFile.FromJson(old.ToJson()));
+
+        Assert.Equal(1, resumed.Game.DeepestFloor);
+        Assert.Empty(resumed.Game.ClearedFloors);
+        Assert.NotNull(resumed.Game.Waystone);
+    }
+
+    [Fact]
+    public void TheSessionKnowsTheBiomeOfEveryFloor()
+    {
+        var session = NewSession();
+        var save = session.ToSave();
+
+        Assert.Equal(save.Biomes[0], session.BiomeOf(1));
+        Assert.Equal(save.Biomes[^1], session.BiomeOf(VaultFloors.RolledFloors));
+        Assert.Equal(RiftArena.BiomeId, session.BiomeOf(VaultFloors.FinalFloor));
+        Assert.Null(session.BiomeOf(0));
     }
 }

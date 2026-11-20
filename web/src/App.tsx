@@ -3,7 +3,9 @@ import {
   ApiError,
   activateAbility,
   attack,
+  awakenTotem,
   buyBackpackUpgrade,
+  travel,
   buyOffer,
   consumeItem,
   consumeQuickSlot,
@@ -39,6 +41,7 @@ import { InventoryScreen } from './components/InventoryScreen'
 import { StatusBar } from './components/StatusBar'
 import { VictoryScreen } from './components/VictoryScreen'
 import { HeroLostScreen } from './components/HeroLostScreen'
+import { TravelScreen } from './components/TravelScreen'
 import { describeEvent } from './game/describeEvent'
 import { effectsDuration, effectsForTurn, type Effect } from './game/effects'
 import { forgetHero, loadHeroes, rememberHero, type SavedHero } from './game/savedHeroes'
@@ -73,6 +76,7 @@ function App() {
   const [error, setError] = useState<string | null>(null)
   const [inventoryOpen, setInventoryOpen] = useState(false)
   const [shopOpen, setShopOpen] = useState(false)
+  const [travelOpen, setTravelOpen] = useState(false)
   const [effects, setEffects] = useState<Effect[]>([])
   const queuedMove = useRef<Direction | null>(null)
   const lastMoveAt = useRef(0)
@@ -311,6 +315,12 @@ function App() {
   const handleBuy = useCallback((offerId: number) => void play(gameId => buyOffer(gameId, offerId)), [play])
 
   const handleBuyUpgrade = useCallback(() => void play(buyBackpackUpgrade), [play])
+  const handleAwakenTotem = useCallback(() => void play(awakenTotem), [play])
+
+  function handleTravel(floor: number) {
+    setTravelOpen(false)
+    void play(gameId => travel(gameId, floor))
+  }
 
   const handleSell = useCallback((entryId: number) => void play(gameId => sellItem(gameId, entryId)), [play])
 
@@ -439,6 +449,12 @@ function App() {
           <SaveCodeChip code={game.saveCode} />
           <HeaderToggles />
           {game.merchant?.isNearby && <button onClick={() => setShopOpen(true)}>Trade</button>}
+          {game.waystone?.isNearby && game.waystone.destinations.length > 0 && <button onClick={() => setTravelOpen(true)}>Waystone</button>}
+          {game.totem?.isNearby && (
+            <button disabled={busy || game.player.coins < game.totem.price} onClick={handleAwakenTotem} title={`Fight the ${game.totem.bossName} again`}>
+              Totem · {game.totem.price}
+            </button>
+          )}
           <button onClick={() => setInventoryOpen(true)}>Backpack</button>
           <button onClick={returnToClassSelect} disabled={busy}>
             Menu
@@ -488,6 +504,15 @@ function App() {
           onSell={handleSell}
           onSellJunk={handleSellJunk}
           onClose={() => setShopOpen(false)}
+        />
+      )}
+      {travelOpen && game.waystone && (
+        <TravelScreen
+          waystone={game.waystone}
+          currentFloor={game.floor}
+          disabled={busy}
+          onTravel={handleTravel}
+          onClose={() => setTravelOpen(false)}
         />
       )}
       {inventoryOpen && (

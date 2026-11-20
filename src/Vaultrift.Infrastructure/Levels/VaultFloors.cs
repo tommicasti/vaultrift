@@ -58,10 +58,26 @@ public sealed class VaultFloors : IFloorProvider
     }
 
     public const int HardLevelBonus = 2;
+    public const int HardEarlyLevelBonus = 1;
+    public const int HardEarlyFloors = 5;
+    public const int CyclopsFirstFloor = 4;
 
     public Difficulty Difficulty { get; }
 
-    public int LevelBonus => Difficulty == Difficulty.Normal ? 0 : HardLevelBonus;
+    public int LevelBonusAt(int floor) => Difficulty switch
+    {
+        Difficulty.Normal => 0,
+        _ when floor <= HardEarlyFloors => HardEarlyLevelBonus,
+        _ => HardLevelBonus
+    };
+
+    public static IReadOnlyList<string> MonstersFor(Biome biome, int floor)
+    {
+        ArgumentNullException.ThrowIfNull(biome);
+
+        var allowed = biome.MonsterIds.Where(id => id != "cyclops" || floor >= CyclopsFirstFloor).ToList();
+        return allowed.Count > 0 ? allowed : biome.MonsterIds;
+    }
 
     public string? ClassId => _classId;
 
@@ -102,7 +118,7 @@ public sealed class VaultFloors : IFloorProvider
         ArgumentOutOfRangeException.ThrowIfGreaterThan(number, Count);
 
         if (number == FinalFloor)
-            return RiftArena.Create(number * IdsPerFloor, LevelBonus);
+            return RiftArena.Create(number * IdsPerFloor, LevelBonusAt(number));
 
         var biome = Biomes[number - 1];
         var layout = FloorGenerator.Generate(_random, obstacleDensity: biome.ObstacleDensity, terrain: biome.Terrain);
@@ -120,10 +136,11 @@ public sealed class VaultFloors : IFloorProvider
             BossPosition(layout.BossRoom, occupied),
             BestiaryCatalog.Get(biome.BossId),
             BossRarity(number),
-            number + LevelBonus);
+            number + LevelBonusAt(number));
         var enemies = new List<Enemy> { boss };
         var chests = PlaceChests(layout, number, occupied, () => nextId++);
         var merchant = HasMerchant(number) ? PlaceMerchant(layout, number, occupied, chests) : null;
+        var waystone = PlaceWaystone(map, start, stairs, occupied, chests, merchant);
 
         foreach (var room in layout.Rooms.Where(room => room != layout.StartRoom && room != layout.BossRoom))
         {
@@ -132,8 +149,8 @@ public sealed class VaultFloors : IFloorProvider
             for (var index = 0; index < count && FreeTile(map, room, occupied) is { } position; index++)
             {
                 occupied.Add(position);
-                var kind = BestiaryCatalog.Get(_random.Pick(biome.MonsterIds));
-                enemies.Add(new Enemy(nextId++, position, kind, RollMonsterRarity(number), number + LevelBonus));
+                var kind = BestiaryCatalog.Get(_random.Pick(MonstersFor(biome, number)));
+                enemies.Add(new Enemy(nextId++, position, kind, RollMonsterRarity(number), number + LevelBonusAt(number)));
             }
         }
 
@@ -153,7 +170,26 @@ public sealed class VaultFloors : IFloorProvider
             items.Add(new FloorItem(position, ItemRoller.Roll(definition, _random)));
         }
 
-        return new Floor(map, start, enemies, items, stairs, biome.Id, chests, merchant);
+        return new Floor(map, start, enemies, items, stairs, biome.Id, chests, merchant, waystone);
+    }
+
+    private static Position? PlaceWaystone(DungeonMap map, Position start, Position? stairs, HashSet<Position> occupied, List<Chest> chests, Merchant? merchant)
+    {
+        foreach (var direction in new[] { Direction.Up, Direction.Right, Direction.Left, Direction.Down })
+        {
+            var tile = start.Move(direction);
+
+            var openSides = Enum.GetValues<Direction>().Count(side => map.IsWalkable(tile.Move(side)));
+
+            if (!map.IsWalkable(tile) || openSides < 3 || tile == stairs || occupied.Contains(tile) ||
+                chests.Any(chest => chest.Position == tile) || merchant?.Position == tile)
+                continue;
+
+            occupied.Add(tile);
+            return tile;
+        }
+
+        return null;
     }
 
     public static bool AlwaysHasMerchant(int floor) => floor % MerchantEvery == 0 && floor < FloorCount;

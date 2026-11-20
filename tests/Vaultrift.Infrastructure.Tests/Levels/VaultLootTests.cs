@@ -132,6 +132,32 @@ public class VaultLootTests
     }
 
     [Fact]
+    public void Exotics_DropOnlyFromBosses_FromFloorEight()
+    {
+        var loot = new VaultLoot(new SystemRandom(new Random(21)));
+        var early = Enumerable.Range(0, 2000).Select(_ => loot.RollDrop(Boss(), new LootContext("knight", Luck: 0, Floor: VaultLoot.FirstExoticFloor - 1)));
+        var monsters = Enumerable.Range(0, 2000).Select(_ => loot.RollDrop(Monster(Rarity.Legendary), new LootContext("knight", Luck: 0, Floor: 20)));
+        var late = Enumerable.Range(0, 4000).Select(_ => loot.RollDrop(Boss(), new LootContext("knight", Luck: 0, Floor: VaultLoot.FirstExoticFloor))).ToList();
+
+        Assert.DoesNotContain(early, item => item?.Rarity == Rarity.Exotic);
+        Assert.DoesNotContain(monsters, item => item?.Rarity == Rarity.Exotic);
+        Assert.InRange(late.Count(item => item?.Rarity == Rarity.Exotic) / 4000.0, 0.03, 0.07);
+    }
+
+    [Fact]
+    public void Exotics_LeanTowardTheClassWeapon()
+    {
+        var loot = new VaultLoot(new SystemRandom(new Random(4)));
+        var exotics = Enumerable.Range(0, 20000)
+            .Select(_ => loot.RollDrop(Boss(), new LootContext("ranger", Luck: 0, Floor: 15)))
+            .Where(item => item?.Rarity == Rarity.Exotic)
+            .Select(item => (WeaponDefinition)item!.Definition)
+            .ToList();
+
+        Assert.InRange(exotics.Count(weapon => weapon.WeaponType == WeaponType.Bow) / (double)exotics.Count, 0.55, 0.80);
+    }
+
+    [Fact]
     public void Chests_SometimesHoldARune()
     {
         var loot = new VaultLoot(new SystemRandom(new Random(11)));

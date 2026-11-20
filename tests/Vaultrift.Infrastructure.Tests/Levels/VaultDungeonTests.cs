@@ -309,6 +309,55 @@ public class VaultDungeonTests
         Assert.Equal(["potion-greater-healing", "potion-greater-mana"], unlimited);
     }
 
+    [Theory]
+    [InlineData(2)]
+    [InlineData(7)]
+    [InlineData(13)]
+    public void EveryFloor_HasAWaystoneNextToTheStart_ThatNeverBlocksTheWay(int seed)
+    {
+        var floors = new VaultFloors(Seeded(seed), "knight");
+
+        foreach (var number in Enumerable.Range(1, VaultFloors.FloorCount))
+        {
+            var floor = floors.Create(number);
+            var waystone = Assert.IsType<Position>(floor.Waystone);
+            Assert.Equal(1, Math.Abs(waystone.X - floor.Start.X) + Math.Abs(waystone.Y - floor.Start.Y));
+
+            var blocked = floor.Chests!.Select(chest => chest.Position).Append(waystone).ToHashSet();
+            if (floor.Merchant is { } merchant)
+                blocked.Add(merchant.Position);
+
+            var reachable = WalkableWithout(floor, blocked);
+            Assert.All(floor.Enemies, enemy => Assert.Contains(enemy.Position, reachable));
+            Assert.All(floor.Items, item => Assert.Contains(item.Position, reachable));
+            Assert.DoesNotContain(floor.Items, item => item.Position == waystone);
+
+            if (floor.Stairs is { } stairs)
+                Assert.Contains(stairs, reachable);
+        }
+    }
+
+    [Fact]
+    public void Cyclopes_StayAwayFromTheFirstFloors()
+    {
+        var desert = BiomeCatalog.Get("desert");
+
+        Assert.DoesNotContain("cyclops", VaultFloors.MonstersFor(desert, 1));
+        Assert.DoesNotContain("cyclops", VaultFloors.MonstersFor(desert, VaultFloors.CyclopsFirstFloor - 1));
+        Assert.Contains("cyclops", VaultFloors.MonstersFor(desert, VaultFloors.CyclopsFirstFloor));
+    }
+
+    [Theory]
+    [InlineData(1, 1)]
+    [InlineData(5, 1)]
+    [InlineData(6, 2)]
+    [InlineData(20, 2)]
+    public void OnHard_TheLevelBonusGrowsAfterTheFirstFloors(int floor, int bonus)
+    {
+        Assert.Equal(bonus, new VaultFloors(Seeded(1), "knight", Difficulty.Hard).LevelBonusAt(floor));
+        Assert.Equal(0, new VaultFloors(Seeded(1), "knight").LevelBonusAt(floor));
+    }
+
     [Fact]
     public void WithoutAClass_TheMerchantHasNoFeaturedWeapon()
     {

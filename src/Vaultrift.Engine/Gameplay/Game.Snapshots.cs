@@ -46,7 +46,19 @@ public sealed partial class Game
         Grave = snapshot.Grave is { } grave
             ? new Grave(grave.Position, grave.Items.Select(item => (item.Slot, Player.RestoreEntry(item.Entry, content))).ToList())
             : null;
+        DeepestFloor = snapshot.DeepestFloor ?? FloorNumber;
+        TotemUses = snapshot.TotemUses;
+        Totem = snapshot.Totem is { } totem ? new BossTotem(totem.Position, RestoreEnemy(totem.Boss, content)) : null;
+
+        foreach (var cleared in snapshot.ClearedFloors ?? ClearedBefore(snapshot))
+            _clearedFloors.Add(cleared);
+
+        Waystone = snapshot.DeepestFloor is null ? PlaceWaystone() : snapshot.Waystone;
     }
+
+    private IEnumerable<int> ClearedBefore(GameSnapshot snapshot) =>
+        Enumerable.Range(1, Math.Max(0, snapshot.FloorNumber - 1))
+            .Concat(HasBoss && BossesDefeated ? [snapshot.FloorNumber] : []);
 
     public static Game Restore(
         GameSnapshot snapshot,
@@ -87,7 +99,12 @@ public sealed partial class Game
         IsLost,
         Grave is { } grave
             ? new GraveSnapshot(grave.Position, grave.Items.Select(item => new GraveItemSnapshot(item.Slot, Player.CaptureEntry(item.Entry))).ToList())
-            : null);
+            : null,
+        DeepestFloor,
+        _clearedFloors.ToList(),
+        Waystone,
+        Totem is { } totem ? new TotemSnapshot(totem.Position, CaptureEnemy(totem.Boss)) : null,
+        TotemUses);
 
     private static EnemySnapshot CaptureEnemy(Enemy enemy) => new(
         enemy.Id,
@@ -104,7 +121,10 @@ public sealed partial class Game
         enemy.FrozenTurnsLeft,
         enemy.FreezeImmunityTurnsLeft,
         enemy.PowerCharge,
-        enemy.SummonerId);
+        enemy.SummonerId,
+        enemy.MarkedTurns,
+        enemy.VenomStacks,
+        enemy.StaggeredTurns);
 
     private static Enemy RestoreEnemy(EnemySnapshot snapshot, IGameContent content)
     {
@@ -118,7 +138,10 @@ public sealed partial class Game
             BurnDamage = snapshot.BurnDamage,
             FrozenTurnsLeft = snapshot.FrozenTurnsLeft,
             FreezeImmunityTurnsLeft = snapshot.FreezeImmunityTurnsLeft,
-            PowerCharge = snapshot.PowerCharge
+            PowerCharge = snapshot.PowerCharge,
+            MarkedTurns = snapshot.MarkedTurns,
+            VenomStacks = snapshot.VenomStacks,
+            StaggeredTurns = snapshot.StaggeredTurns
         };
 
         enemy.RestoreHealth(snapshot.Health);

@@ -1,6 +1,20 @@
 export type Direction = 'Up' | 'Down' | 'Left' | 'Right'
 
-export type Rarity = 'Common' | 'Rare' | 'Epic' | 'Legendary'
+export type Rarity = 'Common' | 'Rare' | 'Epic' | 'Legendary' | 'Exotic'
+
+export type ExoticPower =
+  | 'Riftrender'
+  | 'Oathbound'
+  | 'HeadsmansMoon'
+  | 'Worldsplitter'
+  | 'RiftNeedle'
+  | 'HuntressPromise'
+  | 'WidowsKiss'
+  | 'Shadowstep'
+  | 'LastWall'
+  | 'StarfallLance'
+  | 'Prism'
+  | 'Echo'
 
 export type ItemCategory =
   | 'Sword'
@@ -231,6 +245,9 @@ export interface EnemyState {
   isBurning: boolean
   isFrozen: boolean
   isBoss: boolean
+  markedTurns: number
+  venomStacks: number
+  isStaggered: boolean
 }
 
 export interface StairsState {
@@ -281,6 +298,31 @@ export interface GameState {
   biome?: string
   chests: TilePosition[]
   merchant?: MerchantState
+  waystone?: WaystoneState
+  totem?: TotemState
+  deepestFloor: number
+}
+
+export interface DestinationInfo {
+  floor: number
+  biome?: string
+  isCleared: boolean
+}
+
+export interface WaystoneState {
+  x: number
+  y: number
+  isNearby: boolean
+  destinations: DestinationInfo[]
+}
+
+export interface TotemState {
+  x: number
+  y: number
+  isNearby: boolean
+  price: number
+  bossName: string
+  bossKind: string
 }
 
 export type OfferKind = 'Regular' | 'Featured' | 'Unlimited'
@@ -400,6 +442,12 @@ export type GameEventType =
   | 'HeroLost'
   | 'SpareWeaponTaken'
   | 'WeaponImbued'
+  | 'ExoticTriggered'
+  | 'EnemyEnvenomed'
+  | 'Traveled'
+  | 'TravelRejected'
+  | 'TotemAwakened'
+  | 'TotemRejected'
 
 export interface TilePosition {
   x: number
@@ -431,6 +479,7 @@ export interface GameEvent {
   slot?: number
   price?: number
   replaced?: SpellInfo
+  power?: ExoticPower
 }
 
 export interface TurnResponse {

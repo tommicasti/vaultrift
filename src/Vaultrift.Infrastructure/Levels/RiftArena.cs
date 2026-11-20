@@ -33,6 +33,7 @@ public static class RiftArena
 
     private static readonly Position GuardianStart = new(12, 4);
     private static readonly Position HeroStart = new(12, 14);
+    public static readonly Position Waystone = new(11, 14);
     private static readonly Position[] Potions = [new(11, 13), new(13, 13)];
 
     public static Floor Create(int firstId, int levelBonus = 0)
@@ -43,7 +44,7 @@ public static class RiftArena
             .Select(position => new FloorItem(position, new ItemInstance(ItemCatalog.Get("potion-greater-healing"))))
             .ToList();
 
-        return new Floor(map, HeroStart, [guardian], items, Stairs: null, BiomeId, Chests: [], Merchant: null);
+        return new Floor(map, HeroStart, [guardian], items, Stairs: null, BiomeId, Chests: [], Merchant: null, Waystone);
     }
 
     public static IReadOnlyList<string> Rows() => Layout;

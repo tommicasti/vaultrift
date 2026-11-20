@@ -33,10 +33,21 @@ export function EnemyMarker({ enemy }: EnemyMarkerProps) {
           ))}
         </span>
       )}
-      {(enemy.isBurning || enemy.isFrozen) && (
+      {(enemy.isBurning || enemy.isFrozen || enemy.markedTurns > 0 || enemy.venomStacks > 0 || enemy.isStaggered) && (
         <span className="enemy-statuses">
           {enemy.isBurning && <ElementIcon element="Fire" className="status-icon" />}
           {enemy.isFrozen && <ElementIcon element="Ice" className="status-icon" />}
+          {enemy.markedTurns > 0 && <span className="status-badge marked" title="Marked" />}
+          {enemy.venomStacks > 0 && (
+            <span className="status-badge venom" title={`Venom ×${enemy.venomStacks}`}>
+              {enemy.venomStacks}
+            </span>
+          )}
+          {enemy.isStaggered && (
+            <span className="status-badge staggered" title="Staggered">
+              !
+            </span>
+          )}
         </span>
       )}
       {!enemy.isBoss && <LevelBadge level={enemy.level} />}
