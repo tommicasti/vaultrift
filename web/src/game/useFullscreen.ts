@@ -2,13 +2,33 @@ import { useCallback, useEffect, useState } from 'react'
 
 type LockableOrientation = ScreenOrientation & { lock?: (orientation: 'landscape') => Promise<void> }
 
+const displayQuery = '(display-mode: fullscreen)'
+
 function readFullscreen(): boolean {
   return document.fullscreenElement !== null
+}
+
+function readDisplayFullscreen(): boolean {
+  return typeof window !== 'undefined' && window.matchMedia?.(displayQuery).matches === true
 }
 
 export function useFullscreen() {
   const supported = typeof document !== 'undefined' && document.fullscreenEnabled === true
   const [active, setActive] = useState(() => supported && readFullscreen())
+  const [displayed, setDisplayed] = useState(readDisplayFullscreen)
+
+  useEffect(() => {
+    const media = window.matchMedia?.(displayQuery)
+    if (!media) return
+
+    const update = () => setDisplayed(media.matches)
+    media.addEventListener('change', update)
+    window.addEventListener('resize', update)
+    return () => {
+      media.removeEventListener('change', update)
+      window.removeEventListener('resize', update)
+    }
+  }, [])
 
   useEffect(() => {
     if (!supported) return
@@ -36,5 +56,5 @@ export function useFullscreen() {
     }
   }, [supported])
 
-  return { supported, active, toggle }
+  return { supported, active, immersive: active || displayed, toggle }
 }

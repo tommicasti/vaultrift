@@ -97,11 +97,13 @@ const spellRejectMessages: Record<SpellRejectReason, string> = {
 }
 
 function effectivenessNote(event: GameEvent): string {
+  const element = event.element ? elementNames[event.element] : 'The element'
+  const subject = element.charAt(0).toUpperCase() + element.slice(1)
   switch (event.effectiveness) {
     case 'Effective':
-      return " It's super effective!"
+      return ` Weakness! ${subject} is super effective.`
     case 'Resisted':
-      return " It's resisted."
+      return ` Resisted! ${subject} deals less damage.`
     default:
       return ''
   }
@@ -278,6 +280,8 @@ export function describeEvent(event: GameEvent, enemyNames: ReadonlyMap<number, 
       return `A tentacle drags you toward ${enemyLower}!`
     case 'CrystalShattered':
       return 'The crystal shatters into a spray of shards!'
+    case 'ObstacleSmashed':
+      return 'You smash the obstacle to pieces.'
     case 'EnemyShardHit':
       return `Shards cut ${enemyLower} for ${event.damage} damage.`
     case 'PlayerShardHit':

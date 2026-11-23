@@ -62,3 +62,58 @@ JOIN dbo.ItemCatalog c ON c.Id = o.ItemId
 WHERE c.Kind <> 'Potion'
 GROUP BY o.HeroName, o.Code
 ORDER BY Leggendari DESC, Epici DESC, Rari DESC;
+
+SELECT
+    s.HeroName AS Eroe,
+    s.ClassId AS Classe,
+    s.Level AS Livello,
+    s.Floor AS Piano,
+    CAST(COALESCE(JSON_VALUE(s.Data, '$.PlaySeconds'), '0') AS BIGINT) / 3600 AS Ore,
+    CAST(COALESCE(JSON_VALUE(s.Data, '$.PlaySeconds'), '0') AS BIGINT) % 3600 / 60 AS Minuti,
+    CAST(JSON_VALUE(s.Data, '$.Game.TurnNumber') AS INT) AS Turni,
+    s.Code AS Codice,
+    CONVERT(VARCHAR(16), s.UpdatedAt AT TIME ZONE 'Central European Standard Time', 120) AS UltimaVolta
+FROM dbo.SavedGames s
+ORDER BY CAST(COALESCE(JSON_VALUE(s.Data, '$.PlaySeconds'), '0') AS BIGINT) DESC;
+
+SELECT
+    s.HeroName AS Eroe,
+    COUNT(*) AS Partite,
+    SUM(CAST(COALESCE(JSON_VALUE(s.Data, '$.PlaySeconds'), '0') AS BIGINT)) / 3600 AS Ore,
+    SUM(CAST(COALESCE(JSON_VALUE(s.Data, '$.PlaySeconds'), '0') AS BIGINT)) % 3600 / 60 AS Minuti,
+    SUM(CAST(JSON_VALUE(s.Data, '$.Game.TurnNumber') AS INT)) AS Turni
+FROM dbo.SavedGames s
+GROUP BY s.HeroName
+ORDER BY SUM(CAST(COALESCE(JSON_VALUE(s.Data, '$.PlaySeconds'), '0') AS BIGINT)) DESC;
+
+SELECT
+    a.UserName AS Account,
+    CONVERT(VARCHAR(16), a.CreatedAt AT TIME ZONE 'Central European Standard Time', 120) AS Registrato,
+    COUNT(s.Id) AS Partite,
+    SUM(CAST(COALESCE(JSON_VALUE(s.Data, '$.PlaySeconds'), '0') AS BIGINT)) / 3600 AS Ore,
+    SUM(CAST(COALESCE(JSON_VALUE(s.Data, '$.PlaySeconds'), '0') AS BIGINT)) % 3600 / 60 AS Minuti,
+    MAX(s.Level) AS LivelloMassimo,
+    CONVERT(VARCHAR(16), MAX(s.UpdatedAt) AT TIME ZONE 'Central European Standard Time', 120) AS UltimaVolta
+FROM dbo.Accounts a
+LEFT JOIN dbo.AccountGames g ON g.AccountId = a.Id
+LEFT JOIN dbo.SavedGames s ON s.Id = g.GameId
+GROUP BY a.UserName, a.CreatedAt
+ORDER BY SUM(CAST(COALESCE(JSON_VALUE(s.Data, '$.PlaySeconds'), '0') AS BIGINT)) DESC;
+
+SELECT
+    a.UserName AS Account,
+    t.TrophyId AS Trofeo,
+    CONVERT(VARCHAR(16), t.UnlockedAt AT TIME ZONE 'Central European Standard Time', 120) AS Sbloccato
+FROM dbo.AccountTrophies t
+JOIN dbo.Accounts a ON a.Id = t.AccountId
+ORDER BY t.UnlockedAt DESC;
+
+SELECT
+    a.UserName AS Account,
+    COUNT(t.TrophyId) AS Trofei,
+    COALESCE(MAX(CASE WHEN c.Name = 'coins' THEN c.Value END), 0) AS MoneteRaccolte
+FROM dbo.Accounts a
+LEFT JOIN dbo.AccountTrophies t ON t.AccountId = a.Id
+LEFT JOIN dbo.AccountCounters c ON c.AccountId = a.Id AND c.Name = 'coins'
+GROUP BY a.UserName
+ORDER BY COUNT(t.TrophyId) DESC;

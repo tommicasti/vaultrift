@@ -72,7 +72,8 @@ public sealed record PlayerResponse(
     bool IsOverloaded,
     IReadOnlyList<ActiveBoostResponse> Boosts,
     Element? Resistance,
-    int PoisonTurns);
+    int PoisonTurns,
+    int OffHandAttack);
 
 public sealed record QuickSlotResponse(ItemResponse? Item, int Quantity);
 
@@ -146,7 +147,9 @@ public sealed record FloorItemResponse(int X, int Y, ItemResponse Item);
 
 public sealed record InventoryEntryResponse(int Id, ItemResponse Item, int Quantity, ItemMark Mark, int SellPrice);
 
-public sealed record TurnResponse(bool TurnPassed, IReadOnlyList<EventResponse> Events, GameStateResponse State);
+public sealed record TurnResponse(bool TurnPassed, IReadOnlyList<EventResponse> Events, GameStateResponse State, IReadOnlyList<TrophyResponse>? Trophies = null);
+
+public sealed record TrophyResponse(string Id, string Name, string Description, DateTimeOffset? UnlockedAt = null, long Progress = 0, long Goal = 0);
 
 public sealed record EventResponse(
     string Type,

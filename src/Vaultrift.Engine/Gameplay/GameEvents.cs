@@ -114,6 +114,8 @@ public sealed record PlayerPulled(int EnemyId, Position To) : GameEvent;
 
 public sealed record CrystalShattered(Position At) : GameEvent;
 
+public sealed record ObstacleSmashed(Position At) : GameEvent;
+
 public sealed record EnemyShardHit(int EnemyId, int Damage) : GameEvent;
 
 public sealed record PlayerShardHit(int Damage) : GameEvent;

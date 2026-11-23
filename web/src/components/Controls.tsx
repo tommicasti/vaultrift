@@ -38,7 +38,6 @@ export function Controls({
   const turned = useRef(false)
 
   function startHold(direction: Direction) {
-    tap()
     turned.current = false
     cancelHold()
     holdTimer.current = window.setTimeout(() => {
@@ -61,6 +60,7 @@ export function Controls({
       return
     }
 
+    tap()
     onMove(direction)
   }
 
@@ -91,8 +91,10 @@ export function Controls({
               className="use"
               aria-label={`Use quick slot ${quickSlotKeys[slot]}`}
               disabled={disabled}
-              onPointerDown={tap}
-              onClick={() => onUseQuickSlot(slot)}
+              onClick={() => {
+                tap()
+                onUseQuickSlot(slot)
+              }}
             >
               {quickSlot.item ? <ItemIcon item={quickSlot.item} /> : quickSlotKeys[slot]}
               {quickSlot.item && <span className="slot-quantity">{quickSlot.quantity}</span>}
@@ -104,13 +106,22 @@ export function Controls({
             className={ability.activeTurns > 0 ? 'ability active' : 'ability'}
             aria-label={`Use ${abilityNames[ability.kind]}`}
             disabled={disabled || ability.cooldown > 0}
-            onPointerDown={tap}
-            onClick={onUseAbility}
+            onClick={() => {
+              tap()
+              onUseAbility()
+            }}
           >
             {ability.cooldown > 0 ? ability.cooldown : abilityNames[ability.kind]}
           </button>
         )}
-        <button className="attack" disabled={disabled} onPointerDown={tap} onClick={onAttack}>
+        <button
+          className="attack"
+          disabled={disabled}
+          onClick={() => {
+            tap()
+            onAttack()
+          }}
+        >
           Attack
         </button>
       </div>

@@ -160,4 +160,30 @@ public class CrystalTests
         Assert.Contains(new CrystalShattered(new Position(4, 1)), result.Events);
         Assert.Contains(new EnemyShardHit(1, 5), result.Events);
     }
+
+    [Fact]
+    public void StrikingAnObstacle_SmashesIt_AndOpensThePath()
+    {
+        var player = NewPlayer();
+        var game = NewGame(["#####", "#.o.#", "#####"], player);
+
+        var result = game.Attack();
+
+        Assert.Contains(new ObstacleSmashed(new Position(2, 1)), result.Events);
+        Assert.True(result.TurnPassed);
+        Assert.True(game.Map.IsWalkable(new Position(2, 1)));
+    }
+
+    [Fact]
+    public void AMonsterStandingBesideAnObstacle_IsStillTheTarget()
+    {
+        var player = NewPlayer();
+        var enemy = new Enemy(1, new Position(2, 1), Dummy);
+        var game = NewGame(["#####", "#...#", "#.o.#", "#####"], player, enemy);
+
+        var result = game.Attack();
+
+        Assert.DoesNotContain(result.Events, e => e is ObstacleSmashed);
+        Assert.Equal(TileType.Obstacle, game.Map.GetTile(new Position(2, 2)));
+    }
 }

@@ -1,3 +1,4 @@
+using Vaultrift.Infrastructure.Accounts;
 using Vaultrift.Api.Contracts;
 using Vaultrift.Engine.Combat;
 using Vaultrift.Engine.Gameplay;
@@ -11,11 +12,12 @@ public static class GameMapper
 {
     public static GameStateResponse ToResponse(GameSession session) => ToResponse(session.Id, session.Code, session.Game, session.BiomeOf);
 
-    public static TurnResponse ToResponse(GameSession session, TurnResult result) =>
+    public static TurnResponse ToResponse(GameSession session, TurnResult result, IReadOnlyList<TrophyDefinition>? trophies = null) =>
         new(
             result.TurnPassed,
             result.Events.Select(ToResponse).ToList(),
-            ToResponse(session));
+            ToResponse(session),
+            trophies is null || trophies.Count == 0 ? null : trophies.Select(trophy => new TrophyResponse(trophy.Id, trophy.Name, trophy.Description)).ToList());
 
     private static GameStateResponse ToResponse(Guid id, string saveCode, Game game, Func<int, string?> biomeOf) =>
         new(
@@ -94,7 +96,8 @@ public static class GameMapper
                     boost.RemainingTurns))
                 .ToList(),
             player.Resistance,
-            player.PoisonTurns);
+            player.PoisonTurns,
+            player.OffHandWeapon is null ? 0 : player.OffHandStats.Attack);
     }
 
     private static MerchantResponse? ToMerchantResponse(Game game)
@@ -238,6 +241,7 @@ public static class GameMapper
         PlayerPulled e => new("PlayerPulled", EnemyId: e.EnemyId, X: e.To.X, Y: e.To.Y),
         LavaCooled e => new("LavaCooled", Tiles: ToPositions(e.Tiles)),
         CrystalShattered e => new("CrystalShattered", X: e.At.X, Y: e.At.Y),
+        ObstacleSmashed e => new("ObstacleSmashed", X: e.At.X, Y: e.At.Y),
         EnemyShardHit e => new("EnemyShardHit", EnemyId: e.EnemyId, Damage: e.Damage),
         PlayerShardHit e => new("PlayerShardHit", Damage: e.Damage),
         CrystalsGrew e => new("CrystalsGrew", EnemyId: e.EnemyId, Tiles: ToPositions(e.Tiles)),
