@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, type ReactNode } from 'react'
 import type { EquipmentSlot, InventoryEntryState, ItemInfo, ItemMark, PlayerState, SpellInfo, StatPoint, StatsPreview } from '../api/types'
 import { coinSprite } from '../game/sprites'
 import { backpackSorts, loadBackpackSort, saveBackpackSort, sortBackpack, type BackpackSort } from '../game/backpackSort'
@@ -40,6 +40,7 @@ interface InventoryScreenProps {
   onMark: (entryId: number, mark: ItemMark) => void
   onPreview: (entryId: number, hand?: EquipmentSlot) => Promise<StatsPreview>
   onClose: () => void
+  portrait?: ReactNode
 }
 
 const notWearable = new Set(['Potion', 'Scroll', 'Rune'])
@@ -79,6 +80,7 @@ export function InventoryScreen({
   onMark,
   onPreview,
   onClose,
+  portrait,
 }: InventoryScreenProps) {
   const [selectedId, setSelectedId] = useState<number | null>(null)
   const [sort, setSort] = useState<BackpackSort>(loadBackpackSort)
@@ -217,9 +219,13 @@ export function InventoryScreen({
         <div className="inventory-body">
           <div className="character-panel">
             <div className="character-portrait">
-              <HeroSprite player={player} className="portrait-sprite" />
-              {mainHand && <ItemIcon item={mainHand} className="held-weapon" />}
-              {offHand && <ItemIcon item={offHand} className="held-off-hand" />}
+              {portrait ?? (
+                <>
+                  <HeroSprite player={player} className="portrait-sprite" />
+                  {mainHand && <ItemIcon item={mainHand} className="held-weapon" />}
+                  {offHand && <ItemIcon item={offHand} className="held-off-hand" />}
+                </>
+              )}
             </div>
             <div className="hero-name">
               {player.name} · Lv {player.level}
@@ -261,6 +267,12 @@ export function InventoryScreen({
               {statRow('Health', 'Health', `${player.health} / ${player.maxHealth}`, player.maxHealth, preview?.maxHealth)}
               {statRow('Mana', 'Mana', `${player.mana} / ${player.maxMana}`, player.maxMana, preview?.maxMana)}
               {statRow('Attack', 'Attack', `${player.attack}`, player.attack, preview?.attack)}
+              {player.offHandAttack > 0 && (
+                <>
+                  <dt title="The off-hand weapon strikes again after the main hand, for half damage">Off hand</dt>
+                  <dd title="The off-hand weapon strikes again after the main hand, for half damage">{player.offHandAttack} · ½ damage</dd>
+                </>
+              )}
               {statRow('Defense', 'Defense', `${player.defense}`, player.defense, preview?.defense)}
               {statRow('Evasion', 'Evasion', `${player.evasion}%`, player.evasion, preview?.evasion, '%')}
               {statRow('Critical', 'Critical', `${player.critical}%`, player.critical, preview?.critical, '%')}

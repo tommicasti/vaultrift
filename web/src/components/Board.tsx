@@ -1,8 +1,9 @@
 import { useLayoutEffect, useRef, type CSSProperties, type PointerEvent, type ReactElement } from 'react'
-import type { Direction, GameState } from '../api/types'
+import type { Direction, EnemyState, GameState } from '../api/types'
 import { tileArt } from '../game/biomes'
 import type { Effect } from '../game/effects'
-import { chestSprite, graveSprite, merchantSprite, totemSprite, waystoneSprite, sheets, stairsSprites } from '../game/sprites'
+import { chestSprite, crownSprite, graveSprite, merchantSprite, totemSprite, waystoneSprite, sheets, stairsSprites } from '../game/sprites'
+import { Compass } from './Compass'
 import { EnemyMarker } from './EnemyMarker'
 import { HeroSprite } from './HeroSprite'
 import { ItemIcon } from './ItemIcon'
@@ -21,13 +22,14 @@ interface BoardProps {
   viewColumns: number
   viewRows: number
   effects: Effect[]
+  bossTarget?: EnemyState
   onAttack: () => void
 }
 
 const cameraSlideMs = 120
 const margin = 1
 
-export function Board({ game, viewColumns, viewRows, effects, onAttack }: BoardProps) {
+export function Board({ game, viewColumns, viewRows, effects, bossTarget, onAttack }: BoardProps) {
   const boardRef = useRef<HTMLDivElement>(null)
   const cameraRef = useRef<HTMLDivElement>(null)
   const heroRef = useRef<HTMLSpanElement>(null)
@@ -205,47 +207,31 @@ export function Board({ game, viewColumns, viewRows, effects, onAttack }: BoardP
           {tiles}
         </div>
       </div>
-      {game.grave && <GraveCompass game={game} viewColumns={viewColumns} viewRows={viewRows} />}
+      {game.grave && (
+        <Compass
+          from={game.player}
+          to={game.grave}
+          viewColumns={viewColumns}
+          viewRows={viewRows}
+          sheet={sheets.dungeon}
+          icon={graveSprite}
+          label="Your grave"
+          variant="grave"
+        />
+      )}
+      {bossTarget && (
+        <Compass
+          from={game.player}
+          to={bossTarget}
+          viewColumns={viewColumns}
+          viewRows={viewRows}
+          sheet={sheets.items}
+          icon={crownSprite}
+          label={bossTarget.name}
+          variant="boss"
+        />
+      )}
     </div>
-  )
-}
-
-interface GraveCompassProps {
-  game: GameState
-  viewColumns: number
-  viewRows: number
-}
-
-const compassInset = 9
-
-function GraveCompass({ game, viewColumns, viewRows }: GraveCompassProps) {
-  if (!game.grave) return null
-
-  const dx = game.grave.x - game.player.x
-  const dy = game.grave.y - game.player.y
-  const halfColumns = Math.floor(viewColumns / 2)
-  const halfRows = Math.floor(viewRows / 2)
-
-  if (Math.abs(dx) <= halfColumns && Math.abs(dy) <= halfRows) return null
-
-  const reach = Math.max(Math.abs(dx) / (halfColumns + 0.5), Math.abs(dy) / (halfRows + 0.5))
-  const along = (offset: number) => Math.min(100 - compassInset, Math.max(compassInset, 50 + (offset / reach) * 50))
-  const angle = (Math.atan2(dy, dx) * 180) / Math.PI
-  const distance = Math.abs(dx) + Math.abs(dy)
-
-  return (
-    <span
-      className="grave-compass"
-      style={{ left: `${along(dx / (halfColumns + 0.5))}%`, top: `${along(dy / (halfRows + 0.5))}%` }}
-      title={`Your grave: ${distance} steps away`}
-      aria-label={`Your grave is ${distance} steps away`}
-    >
-      <span className="grave-compass-arrow" style={{ transform: `rotate(${angle}deg)` }} aria-hidden="true">
-        ➜
-      </span>
-      <Sprite sheet={sheets.dungeon} index={graveSprite} className="grave-compass-icon" />
-      <span className="grave-compass-distance">{distance}</span>
-    </span>
   )
 }
 

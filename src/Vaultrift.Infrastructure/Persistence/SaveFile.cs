@@ -9,7 +9,8 @@ public sealed record SaveFile(
     ulong RandomState,
     string ClassId,
     IReadOnlyList<string> Biomes,
-    GameSnapshot Game)
+    GameSnapshot Game,
+    long PlaySeconds = 0)
 {
     public const int CurrentVersion = 1;
 

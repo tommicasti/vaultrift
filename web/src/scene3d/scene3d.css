@@ -1,0 +1,230 @@
+.scene3d {
+  position: relative;
+  isolation: isolate;
+  container-type: inline-size;
+  width: 100%;
+  aspect-ratio: var(--columns, 13) / var(--rows, 11);
+  overflow: hidden;
+  border-radius: 6px;
+  cursor: crosshair;
+  user-select: none;
+  touch-action: none;
+  background: #000;
+}
+
+.scene3d canvas {
+  display: block;
+}
+
+.scene3d-vignette {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: radial-gradient(circle at 50% 56%, transparent 55%, rgb(0 0 0 / 45%) 100%);
+}
+
+.scene3d-zoom {
+  position: absolute;
+  right: 8px;
+  bottom: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  z-index: 40;
+}
+
+.scene3d-zoom button {
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  border-radius: 50%;
+  border: 1px solid rgb(255 255 255 / 35%);
+  background: rgb(0 0 0 / 55%);
+  color: #f2ece0;
+  font-size: 1.2rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.scene3d-zoom button:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+.scene3d-loading {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #0c0a10;
+  color: #e8e0d0;
+  font-size: 0.95rem;
+  white-space: nowrap;
+}
+
+.scene3d-label-anchor {
+  pointer-events: none;
+}
+
+.scene3d-label {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  pointer-events: none;
+  white-space: nowrap;
+}
+
+.scene3d-name {
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: #f2ece0;
+  text-shadow: 0 1px 2px #000, 0 0 4px #000;
+}
+
+.scene3d-mark {
+  font-size: 0.85rem;
+  vertical-align: -2px;
+  margin-right: 1px;
+}
+
+.scene3d-venom {
+  margin-left: 2px;
+  color: #b0f070;
+}
+
+.scene3d-name small {
+  font-weight: 400;
+  opacity: 0.8;
+}
+
+.scene3d-label.rarity-rare .scene3d-name {
+  color: #7ac0ff;
+}
+
+.scene3d-label.rarity-epic .scene3d-name {
+  color: #d08aff;
+}
+
+.scene3d-label.rarity-legendary .scene3d-name {
+  color: #ffb24a;
+}
+
+.scene3d-label.boss .scene3d-name {
+  font-size: 0.82rem;
+  color: #ff7a6a;
+}
+
+.scene3d-health {
+  width: 46px;
+  height: 5px;
+  border-radius: 3px;
+  background: rgb(0 0 0 / 65%);
+  border: 1px solid rgb(0 0 0 / 80%);
+  overflow: hidden;
+}
+
+.scene3d-label.boss .scene3d-health {
+  width: 80px;
+  height: 7px;
+}
+
+.scene3d-health span {
+  display: block;
+  transition: width 250ms ease var(--hit-delay, 380ms);
+  height: 100%;
+  background: var(--weakness, linear-gradient(#ff6a5a, #c8281e));
+}
+
+.scene3d-popup {
+  display: inline-block;
+  font-weight: 800;
+  font-size: 1.05rem;
+  white-space: nowrap;
+  pointer-events: none;
+  text-shadow: 0 2px 3px #000, 0 0 5px #000;
+  opacity: 0;
+  animation: scene3d-rise 900ms ease-out both;
+}
+
+.scene3d-popup.tone-enemy {
+  color: #fff3c8;
+}
+
+.scene3d-popup.tone-player {
+  color: #ff5a4a;
+}
+
+.scene3d-popup.tone-heal {
+  color: #6aff8a;
+}
+
+.scene3d-popup.tone-miss {
+  color: #c8d0e0;
+  font-size: 0.85rem;
+}
+
+.scene3d-popup.tone-gold {
+  color: #ffd84a;
+}
+
+.scene3d-popup.tone-weak {
+  margin-top: -1.4rem;
+  color: #ffb02a;
+  font-size: 0.85rem;
+  letter-spacing: 0.04em;
+}
+
+.scene3d-popup.tone-resisted {
+  margin-top: -1.4rem;
+  color: #9aa4b8;
+  font-size: 0.8rem;
+}
+
+.scene3d-popup.tone-xp {
+  color: #9ad0ff;
+  font-size: 0.8rem;
+}
+
+@keyframes scene3d-rise {
+  0% {
+    opacity: 0;
+    transform: translateY(8px) scale(0.7);
+  }
+  15% {
+    opacity: 1;
+    transform: translateY(0) scale(1.15);
+  }
+  70% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-34px) scale(1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .scene3d-popup {
+    animation-duration: 1ms;
+    opacity: 1;
+  }
+}
+
+.scene3d-zoom[hidden] {
+  display: none;
+}
+
+.scene3d-crosshair {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 6px;
+  height: 6px;
+  margin: -3px 0 0 -3px;
+  border-radius: 50%;
+  background: rgb(255 255 255 / 55%);
+  box-shadow: 0 0 3px #000;
+  pointer-events: none;
+}

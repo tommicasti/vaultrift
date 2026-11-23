@@ -6,7 +6,7 @@ public sealed class SqlSaveRepository : ISaveRepository
 {
     private const int MaxAttempts = 6;
 
-    private static readonly HashSet<int> TransientErrors =
+    internal static readonly HashSet<int> TransientErrors =
         [-2, 20, 64, 233, 4060, 4221, 10053, 10054, 10060, 10928, 10929, 40143, 40197, 40501, 40613, 49918, 49919, 49920];
 
     private const string CreateTable = """

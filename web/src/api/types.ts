@@ -226,6 +226,7 @@ export interface PlayerState {
   boosts: ActiveBoostInfo[]
   resistance?: Element
   poisonTurns: number
+  offHandAttack: number
 }
 
 export interface EnemyState {
@@ -424,6 +425,7 @@ export type GameEventType =
   | 'LavaCooled'
   | 'PlayerPulled'
   | 'CrystalShattered'
+  | 'ObstacleSmashed'
   | 'EnemyShardHit'
   | 'PlayerShardHit'
   | 'CrystalsGrew'
@@ -482,10 +484,20 @@ export interface GameEvent {
   power?: ExoticPower
 }
 
+export interface TrophyInfo {
+  id: string
+  name: string
+  description: string
+  unlockedAt?: string
+  progress?: number
+  goal?: number
+}
+
 export interface TurnResponse {
   turnPassed: boolean
   events: GameEvent[]
   state: GameState
+  trophies?: TrophyInfo[]
 }
 
 export interface StatsPreview {

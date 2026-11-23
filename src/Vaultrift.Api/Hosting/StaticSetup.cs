@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.StaticFiles;
 using Microsoft.Net.Http.Headers;
 
 namespace Vaultrift.Api.Hosting;
@@ -13,6 +14,7 @@ public static class StaticSetup
         app.UseDefaultFiles();
         app.UseStaticFiles(new StaticFileOptions
         {
+            ContentTypeProvider = ContentTypes(),
             OnPrepareResponse = context =>
                 context.Context.Response.Headers[HeaderNames.CacheControl] = CachePolicy(context.Context.Request.Path)
         });
@@ -29,6 +31,13 @@ public static class StaticSetup
         });
 
         return app;
+    }
+
+    public static FileExtensionContentTypeProvider ContentTypes()
+    {
+        var provider = new FileExtensionContentTypeProvider();
+        provider.Mappings[".glb"] = "model/gltf-binary";
+        return provider;
     }
 
     private static string CachePolicy(PathString path)

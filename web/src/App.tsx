@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react'
 import {
   ApiError,
   activateAbility,
@@ -27,7 +27,7 @@ import {
   spendPoint,
   unequip,
 } from './api/gamesApi'
-import type { Difficulty, Direction, EquipmentSlot, GameState, ItemMark, StatPoint, TurnResponse } from './api/types'
+import type { Difficulty, Direction, EquipmentSlot, GameState, ItemMark, StatPoint, TrophyInfo, TurnResponse } from './api/types'
 import { Board } from './components/Board'
 import { ShopScreen } from './components/ShopScreen'
 import { SpellBar } from './components/SpellBar'
@@ -41,11 +41,19 @@ import { InventoryScreen } from './components/InventoryScreen'
 import { StatusBar } from './components/StatusBar'
 import { VictoryScreen } from './components/VictoryScreen'
 import { HeroLostScreen } from './components/HeroLostScreen'
+import { DeathBanner } from './components/DeathBanner'
+import { AccountPanel } from './components/AccountPanel'
+import { TrophyToast } from './components/TrophyToast'
+import { getAccount, logout, type AccountInfo } from './api/accountApi'
 import { TravelScreen } from './components/TravelScreen'
 import { describeEvent } from './game/describeEvent'
 import { effectsDuration, effectsForTurn, type Effect } from './game/effects'
-import { forgetHero, loadHeroes, rememberHero, type SavedHero } from './game/savedHeroes'
+import { forgetHero, loadHeroes, mergeHeroes, rememberHero, type SavedHero } from './game/savedHeroes'
 import { useCompactLandscape } from './game/useCompactLandscape'
+import { useFullscreen } from './game/useFullscreen'
+import type { Turn } from './scene3d/turnCues'
+import { relativeIntent, type Intent } from './scene3d/firstPerson'
+import { loadCameraMode, loadViewMode, saveCameraMode, saveViewMode, type CameraMode, type ViewMode } from './scene3d/viewMode'
 import './App.css'
 
 const keyDirections: Record<string, Direction> = {
@@ -57,6 +65,9 @@ const keyDirections: Record<string, Direction> = {
 
 const maxLogEntries = 30
 const stepIntervalMs = 120
+const Scene3D = lazy(() => import('./scene3d/Scene3D'))
+const HeroPortrait3D = lazy(() => import('./scene3d/HeroPortrait3D'))
+
 const compactView = { columns: 11, rows: 7 }
 const standardView = { columns: 13, rows: 11 }
 
@@ -78,22 +89,98 @@ function App() {
   const [shopOpen, setShopOpen] = useState(false)
   const [travelOpen, setTravelOpen] = useState(false)
   const [effects, setEffects] = useState<Effect[]>([])
+  const [lastTurn, setLastTurn] = useState<Turn | null>(null)
+  const [viewMode, setViewMode] = useState<ViewMode>(loadViewMode)
+  const [cameraMode, setCameraMode] = useState<CameraMode>(loadCameraMode)
+  const firstPerson = viewMode === '3d' && cameraMode === 'first'
+  const [seenBosses, setSeenBosses] = useState<ReadonlySet<string>>(() => new Set())
   const queuedMove = useRef<Direction | null>(null)
   const lastMoveAt = useRef(0)
   const moveTimer = useRef<number | null>(null)
   const [moveTick, setMoveTick] = useState(0)
   const heldKey = useRef<string | null>(null)
+  const heldDirection = useRef<Direction | null>(null)
   const holdTimer = useRef<number | null>(null)
   const moveRef = useRef<(direction: Direction) => void>(() => undefined)
   const [victoryDismissed, setVictoryDismissed] = useState(false)
   const [heroes, setHeroes] = useState<SavedHero[]>(loadHeroes)
+  const [account, setAccount] = useState<AccountInfo | null>(null)
+  const [notice, setNotice] = useState<string | null>(null)
+  const [trophyQueue, setTrophyQueue] = useState<TrophyInfo[]>([])
+  const nextTrophy = useCallback(() => setTrophyQueue(queue => queue.slice(1)), [])
+
+  const adoptAccount = useCallback((info: AccountInfo | null) => {
+    setAccount(info)
+    if (!info) return
+    mergeHeroes(info.heroes)
+    setHeroes(loadHeroes())
+    if (info.claimed > 0) setNotice(`${info.claimed} ${info.claimed === 1 ? 'hero is' : 'heroes are'} now linked to your account.`)
+  }, [])
+
+  const onStartScreen = game === null
+
+  useEffect(() => {
+    if (!onStartScreen) return
+    let cancelled = false
+    getAccount()
+      .then(info => {
+        if (!cancelled) adoptAccount(info)
+      })
+      .catch(() => undefined)
+    return () => {
+      cancelled = true
+    }
+  }, [adoptAccount, onStartScreen])
+
+  const handleSignOut = useCallback(() => {
+    void logout()
+      .catch(() => undefined)
+      .finally(() => {
+        setAccount(null)
+        setNotice(null)
+      })
+  }, [])
   const [lostDismissed, setLostDismissed] = useState(false)
   const turnCounter = useRef(0)
   const compact = useCompactLandscape()
+  const fullscreen = useFullscreen()
+  const [fallenAt, setFallenAt] = useState<number | null>(null)
   const view = compact ? compactView : standardView
   const hasGame = game !== null
 
+  function toggleViewMode() {
+    const next: ViewMode = viewMode === '3d' ? '2d' : '3d'
+    saveViewMode(next)
+    setViewMode(next)
+  }
+
+  const toggleCameraMode = useCallback(() => {
+    setCameraMode(current => {
+      const next: CameraMode = current === 'first' ? 'third' : 'first'
+      saveCameraMode(next)
+      return next
+    })
+  }, [])
+
+  const changeFirstPerson = useCallback((value: boolean) => {
+    const next: CameraMode = value ? 'first' : 'third'
+    saveCameraMode(next)
+    setCameraMode(next)
+  }, [])
+
+  const noticeBoss = useCallback(
+    (state: GameState) => {
+      const boss = state.enemies.find(enemy => enemy.isBoss)
+      if (!boss) return
+      const near = Math.abs(boss.x - state.player.x) <= view.columns / 2 && Math.abs(boss.y - state.player.y) <= view.rows / 2
+      const key = `${state.id}:${state.floor}`
+      if (near) setSeenBosses(current => (current.has(key) ? current : new Set(current).add(key)))
+    },
+    [view.columns, view.rows],
+  )
+
   function enterGame(state: GameState, message: string) {
+    noticeBoss(state)
     setGame(state)
     setLog([message])
     setInventoryOpen(false)
@@ -190,9 +277,27 @@ function App() {
         const messages = turn.events
           .map(gameEvent => describeEvent(gameEvent, enemyNames))
           .filter((message): message is string => message !== null)
+        const trophies = turn.trophies ?? []
+        if (trophies.length > 0) {
+          setTrophyQueue(queue => [...queue, ...trophies])
+          messages.push(...trophies.map(trophy => `Trophy unlocked: ${trophy.name}!`))
+          setAccount(current =>
+            current
+              ? {
+                  ...current,
+                  trophies: current.trophies.map(owned =>
+                    trophies.some(trophy => trophy.id === owned.id) ? { ...owned, unlockedAt: new Date().toISOString() } : owned,
+                  ),
+                }
+              : current,
+          )
+        }
 
         turnCounter.current++
         setEffects(effectsForTurn(turn.events, game.enemies, turn.state.enemies, turn.state.player, turnCounter.current))
+        setLastTurn({ id: turnCounter.current, events: turn.events, enemiesBefore: game.enemies })
+        if (!turn.state.isLost && turn.events.some(gameEvent => gameEvent.type === 'PlayerDefeated')) setFallenAt(turnCounter.current)
+        noticeBoss(turn.state)
         setGame(turn.state)
 
         if (turn.events.some(gameEvent => gameEvent.type === 'MerchantGreeted')) setShopOpen(true)
@@ -205,7 +310,7 @@ function App() {
         setBusy(false)
       }
     },
-    [game, busy],
+    [game, busy, noticeBoss],
   )
 
   const handleMove = useCallback(
@@ -276,6 +381,17 @@ function App() {
   )
 
   const handleAttack = useCallback(() => void play(attack), [play])
+
+  const facing = game?.player.facing ?? 'Down'
+
+  const handleRelative = useCallback(
+    (pressed: Direction) => {
+      const intent = relativeIntent(pressed, facing)
+      if (intent.kind === 'move') handleMove(intent.direction)
+      else handleFace(intent.direction)
+    },
+    [facing, handleMove, handleFace],
+  )
 
   const handleEquip = useCallback(
     (entryId: number, hand?: EquipmentSlot) => void play(gameId => equip(gameId, entryId, hand)),
@@ -382,16 +498,21 @@ function App() {
         event.preventDefault()
         if (event.repeat) return
 
-        if (event.shiftKey) {
-          handleFace(direction)
+        const intent: Intent = firstPerson
+          ? relativeIntent(direction, facing)
+          : { kind: event.shiftKey ? 'face' : 'move', direction }
+
+        if (intent.kind === 'face') {
+          handleFace(intent.direction)
           return
         }
 
         heldKey.current = event.code
-        handleMove(direction)
+        heldDirection.current = intent.direction
+        handleMove(intent.direction)
         if (holdTimer.current !== null) window.clearInterval(holdTimer.current)
         holdTimer.current = window.setInterval(() => {
-          const held = heldKey.current ? keyDirections[heldKey.current] : undefined
+          const held = heldKey.current ? heldDirection.current : null
           if (held && !document.querySelector('[role="dialog"]')) moveRef.current(held)
         }, stepIntervalMs)
       } else if (event.code === 'Space') {
@@ -416,17 +537,22 @@ function App() {
       } else if (event.code === 'KeyE') {
         event.preventDefault()
         handleUseAbility()
+      } else if (event.code === 'KeyV' && viewMode === '3d') {
+        event.preventDefault()
+        toggleCameraMode()
       }
     }
 
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [hasGame, inventoryOpen, shopOpen, spellCount, handleMove, handleFace, handleAttack, handleUseQuickSlot, handleUseAbility, handleSelectSpell])
+  }, [hasGame, inventoryOpen, shopOpen, spellCount, firstPerson, facing, viewMode, toggleCameraMode, handleMove, handleFace, handleAttack, handleUseQuickSlot, handleUseAbility, handleSelectSpell])
 
   if (!game) {
     return (
       <main className="app start">
         <h1>Vaultrift</h1>
+        <AccountPanel account={account} codes={heroes.map(hero => hero.code)} onSignedIn={adoptAccount} onSignOut={handleSignOut} />
+        {notice && <p className="account-notice">{notice}</p>}
         <ResumePanel
           heroes={heroes}
           disabled={busy}
@@ -441,13 +567,35 @@ function App() {
     )
   }
 
+  const bossTarget = seenBosses.has(`${game.id}:${game.floor}`) ? game.enemies.find(enemy => enemy.isBoss) : undefined
+
   return (
-    <main className="app">
+    <main className={viewMode === '3d' && (compact || fullscreen.immersive) ? 'app immersive' : 'app'}>
+      {fallenAt !== null && <DeathBanner key={fallenAt} onDone={() => setFallenAt(null)} />}
+      {trophyQueue.length > 0 && <TrophyToast key={trophyQueue[0].id} trophy={trophyQueue[0]} onDone={nextTrophy} />}
       <header className="app-header">
         <h1>Vaultrift</h1>
         <div className="header-actions">
           <SaveCodeChip code={game.saveCode} />
           <HeaderToggles />
+          <button
+            className="icon-toggle"
+            aria-pressed={viewMode === '3d'}
+            title={viewMode === '3d' ? 'Switch to the 2D board' : 'Switch to the 3D view'}
+            onClick={toggleViewMode}
+          >
+            {viewMode === '3d' ? '2D' : '3D'}
+          </button>
+          {viewMode === '3d' && (
+            <button
+              className="icon-toggle"
+              aria-pressed={firstPerson}
+              title={firstPerson ? 'Switch to the third-person camera (V)' : 'Switch to the first-person camera (V)'}
+              onClick={toggleCameraMode}
+            >
+              {firstPerson ? '3rd' : '1st'}
+            </button>
+          )}
           {game.merchant?.isNearby && <button onClick={() => setShopOpen(true)}>Trade</button>}
           {game.waystone?.isNearby && game.waystone.destinations.length > 0 && <button onClick={() => setTravelOpen(true)}>Waystone</button>}
           {game.totem?.isNearby && (
@@ -478,14 +626,34 @@ function App() {
         disabled={busy}
         onSelect={handleSelectSpell}
       />
-      <Board game={game} viewColumns={view.columns} viewRows={view.rows} effects={effects} onAttack={handleAttack} />
-      <p className="keyboard-hint">WASD to move · Shift+WASD to turn · Space or click to attack · E ability · Q R potions · F scroll · 1–4 spells · Tab backpack</p>
+      {viewMode === '3d' ? (
+        <Suspense fallback={<div className="scene3d-placeholder">Loading the 3D view…</div>}>
+          <Scene3D
+            game={game}
+            viewColumns={view.columns}
+            viewRows={view.rows}
+            effects={effects}
+            turn={lastTurn}
+            bossTarget={bossTarget}
+            firstPerson={firstPerson}
+            onFirstPersonChange={changeFirstPerson}
+            onTurn={handleFace}
+            onAttack={handleAttack}
+          />
+        </Suspense>
+      ) : (
+        <Board game={game} viewColumns={view.columns} viewRows={view.rows} effects={effects} bossTarget={bossTarget} onAttack={handleAttack} />
+      )}
+      <p className="keyboard-hint">
+        {firstPerson ? 'W forward · A D turn · S turn around · drag the mouse to look' : 'WASD to move · Shift+WASD to turn'} · Space or click to attack · E ability · Q R potions · F scroll · 1–4 spells · Tab backpack
+        {viewMode === '3d' && ' · V camera'}
+      </p>
       <Controls
         disabled={game.isLost}
         quickSlots={game.player.quickSlots}
         ability={game.player.ability}
-        onMove={handleMove}
-        onFace={handleFace}
+        onMove={firstPerson ? handleRelative : handleMove}
+        onFace={firstPerson ? handleRelative : handleFace}
         onAttack={handleAttack}
         onUseQuickSlot={handleUseQuickSlot}
         onUseAbility={handleUseAbility}
@@ -532,6 +700,13 @@ function App() {
           onMark={handleMark}
           onPreview={handlePreview}
           onClose={() => setInventoryOpen(false)}
+          portrait={
+            viewMode === '3d' ? (
+              <Suspense fallback={null}>
+                <HeroPortrait3D player={game.player} />
+              </Suspense>
+            ) : undefined
+          }
         />
       )}
       {game.isConquered && !victoryDismissed && (

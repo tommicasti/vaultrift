@@ -1,7 +1,9 @@
 using Microsoft.AspNetCore.Mvc;
 using Vaultrift.Api.Contracts;
+using Vaultrift.Api.Hosting;
 using Vaultrift.Api.Mapping;
 using Vaultrift.Engine.Gameplay;
+using Vaultrift.Infrastructure.Accounts;
 using Vaultrift.Infrastructure.Content;
 using Vaultrift.Infrastructure.Persistence;
 
@@ -12,11 +14,15 @@ namespace Vaultrift.Api.Controllers;
 public sealed class GamesController : ControllerBase
 {
     private readonly IGameStore _store;
+    private readonly AccountService _accounts;
+    private readonly TrophyService _trophies;
     private readonly ILogger<GamesController> _logger;
 
-    public GamesController(IGameStore store, ILogger<GamesController> logger)
+    public GamesController(IGameStore store, AccountService accounts, TrophyService trophies, ILogger<GamesController> logger)
     {
         _store = store;
+        _accounts = accounts;
+        _trophies = trophies;
         _logger = logger;
     }
 
@@ -32,6 +38,11 @@ public sealed class GamesController : ControllerBase
         }
 
         var session = _store.Create(playerClass, request.Name, request.Difficulty);
+
+        _trophies.StartFloor(session.Id, session.Game.FloorNumber);
+
+        if (User.AccountId() is { } accountId)
+            _accounts.Link(accountId, session.Id);
 
         return CreatedAtAction(nameof(Get), new { id = session.Id }, GameMapper.ToResponse(session));
     }
@@ -173,7 +184,20 @@ public sealed class GamesController : ControllerBase
         {
             var result = action(session.Game);
             Save(session);
-            return GameMapper.ToResponse(session, result);
+            return GameMapper.ToResponse(session, result, Trophies(session, result));
+        }
+    }
+
+    private IReadOnlyList<TrophyDefinition> Trophies(GameSession session, TurnResult result)
+    {
+        try
+        {
+            return _trophies.Record(session, result);
+        }
+        catch (Exception error)
+        {
+            _logger.LogError(error, "Could not record trophies for game {GameId}.", session.Id);
+            return [];
         }
     }
 

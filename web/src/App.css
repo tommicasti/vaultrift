@@ -319,6 +319,36 @@
   background-position-y: 0%;
 }
 
+.effect.effect-levelup {
+  inset: -60% -35% -15%;
+  background-image: radial-gradient(ellipse at 50% 70%, rgb(255 240 150 / 90%) 0%, rgb(255 205 50 / 55%) 32%, rgb(255 190 30 / 0%) 68%);
+  background-size: 100% 100%;
+  image-rendering: auto;
+  mix-blend-mode: screen;
+  animation: levelup-glow 1400ms ease-out both;
+}
+
+@keyframes levelup-glow {
+  0% {
+    opacity: 0;
+    transform: scale(0.6);
+  }
+  20% {
+    opacity: 1;
+    transform: scale(1.05);
+  }
+  45% {
+    opacity: 0.75;
+  }
+  60% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: scale(1.2) translateY(-12%);
+  }
+}
+
 .effect-ice {
   background-position-y: 7.143%;
 }
@@ -2488,5 +2518,418 @@
 @media (prefers-reduced-motion: reduce) {
   .floor-item.rarity-exotic::before {
     animation: none;
+  }
+}
+
+.scene3d-placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  aspect-ratio: 13 / 11;
+  border-radius: 6px;
+  background: #0c0a10;
+  color: #e8e0d0;
+}
+
+.hero-portrait-3d {
+  position: absolute !important;
+  inset: 0;
+}
+
+.compass-boss {
+  box-shadow: 0 0 0 2px rgb(255 90 70 / 80%);
+}
+
+.compass-boss .grave-compass-arrow {
+  color: rgb(255 110 90);
+}
+
+.app.immersive {
+  --overlay: color-mix(in srgb, var(--surface) 40%, transparent);
+  --overlay-border: color-mix(in srgb, var(--muted) 45%, transparent);
+  max-width: none;
+  height: 100dvh;
+  padding: 0;
+}
+
+.app.immersive .scene3d {
+  position: fixed;
+  inset: 0;
+  width: 100vw;
+  height: 100dvh;
+  aspect-ratio: auto;
+  border-radius: 0;
+  z-index: 0;
+}
+
+.app.immersive .app-header {
+  position: fixed;
+  top: 0.5rem;
+  left: 0.75rem;
+  right: auto;
+  z-index: 2;
+}
+
+.app.immersive .app-header h1 {
+  display: none;
+}
+
+.app.immersive .app-header button {
+  padding: 0.3rem 0.7rem;
+  font-size: 0.8rem;
+  background: var(--overlay);
+  border-color: var(--overlay-border);
+}
+
+.app.immersive .status-bar {
+  position: fixed;
+  top: 0.4rem;
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(17rem, 32vw);
+  padding: 0.2rem 0.7rem 0.3rem;
+  border-radius: 12px;
+  background: var(--overlay);
+  z-index: 2;
+}
+
+.app.immersive .status-bar .label {
+  font-size: 0.68rem;
+  color: #f2ece0;
+  text-shadow: 0 1px 2px #000;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.app.immersive .status-bar .health {
+  flex: 1 1 100%;
+}
+
+.app.immersive .status-bar .stats,
+.app.immersive .status-bar > .label,
+.app.immersive .status-extras {
+  display: none;
+}
+
+.app.immersive .controls {
+  position: fixed;
+  inset: 0;
+  justify-content: space-between;
+  align-items: flex-end;
+  padding: 0 1.25rem 1.25rem;
+  pointer-events: none;
+  z-index: 1;
+}
+
+.app.immersive .controls button {
+  pointer-events: auto;
+}
+
+.app.immersive .dpad button,
+.app.immersive .use,
+.app.immersive .ability {
+  background: var(--overlay);
+  border-color: var(--overlay-border);
+}
+
+.app.immersive .attack {
+  width: 5rem;
+  height: 5rem;
+  background: color-mix(in srgb, var(--danger) 55%, transparent);
+}
+
+.app.immersive .event-log {
+  position: fixed;
+  bottom: 0.5rem;
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(26rem, 40vw);
+  height: auto;
+  padding: 0.3rem 0.8rem;
+  background: var(--overlay);
+  overflow: hidden;
+  pointer-events: none;
+  font-size: 0.75rem;
+  z-index: 1;
+}
+
+.app.immersive .event-log p:nth-child(n + 3) {
+  display: none;
+}
+
+.app.immersive .keyboard-hint {
+  display: none;
+}
+
+.app.immersive .spell-bar {
+  position: fixed;
+  top: 2.75rem;
+  left: 0.75rem;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.25rem;
+  z-index: 2;
+}
+
+.app.immersive .error {
+  position: fixed;
+  top: 3rem;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 0.4rem 0.8rem;
+  border-radius: 8px;
+  background: var(--surface);
+  z-index: 3;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .app.immersive .controls {
+    display: none;
+  }
+}
+
+.death-banner {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  z-index: 60;
+  animation: death-veil 3600ms ease-in-out both;
+}
+
+.death-banner-band {
+  width: 100%;
+  padding: 1.6rem 0;
+  text-align: center;
+  background: linear-gradient(transparent, rgb(0 0 0 / 82%) 25%, rgb(0 0 0 / 82%) 75%, transparent);
+}
+
+.death-banner-text {
+  display: inline-block;
+  font-family: 'Cinzel', 'Trajan Pro', 'Times New Roman', Georgia, serif;
+  font-size: clamp(2.2rem, 7vw, 5rem);
+  font-weight: 400;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: #a3141a;
+  text-shadow: 0 0 18px rgb(160 10 20 / 55%);
+  animation: death-grow 3600ms ease-out both;
+}
+
+@keyframes death-veil {
+  0% {
+    opacity: 0;
+  }
+  18% {
+    opacity: 1;
+  }
+  78% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+@keyframes death-grow {
+  from {
+    transform: scale(0.94);
+  }
+  to {
+    transform: scale(1.06);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .death-banner-text {
+    animation: none;
+  }
+}
+
+.account-panel {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.6rem;
+  width: min(100%, 34rem);
+  margin: 0 auto 1rem;
+  padding: 0.7rem 1rem;
+  border: 1px solid color-mix(in srgb, var(--muted) 35%, transparent);
+  border-radius: 10px;
+  background: var(--surface);
+}
+
+.account-panel.signed-in {
+  font-size: 0.9rem;
+}
+
+.account-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.account-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.7rem;
+  width: 100%;
+}
+
+.account-form h2 {
+  margin: 0;
+  font-size: 1.1rem;
+}
+
+.account-form label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.account-form input {
+  padding: 0.5rem 0.6rem;
+  font-size: 1rem;
+}
+
+.account-cancel {
+  margin-left: auto;
+}
+
+.account-notice {
+  margin: -0.4rem auto 1rem;
+  font-size: 0.85rem;
+  color: var(--health);
+}
+
+.trophy-toast {
+  position: fixed;
+  top: 4.2rem;
+  left: 50%;
+  z-index: 70;
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+  max-width: min(26rem, calc(100vw - 2rem));
+  padding: 0.7rem 1.1rem;
+  border: 1px solid #d4a017;
+  border-radius: 12px;
+  background: linear-gradient(135deg, rgb(40 30 8 / 94%), rgb(70 52 12 / 94%));
+  color: #fff4d0;
+  box-shadow: 0 6px 24px rgb(0 0 0 / 45%), 0 0 18px rgb(255 200 60 / 35%);
+  pointer-events: none;
+  animation: trophy-toast 4200ms ease both;
+}
+
+.trophy-toast-icon {
+  font-size: 2rem;
+}
+
+.trophy-toast-text {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+}
+
+.trophy-toast-title {
+  font-size: 0.7rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: #ffd26a;
+}
+
+.trophy-toast-description {
+  font-size: 0.8rem;
+  opacity: 0.85;
+}
+
+@keyframes trophy-toast {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, -14px) scale(0.96);
+  }
+  8%,
+  88% {
+    opacity: 1;
+    transform: translate(-50%, 0) scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -8px) scale(0.98);
+  }
+}
+
+.trophy-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  max-height: 60vh;
+  margin: 0;
+  padding: 0;
+  overflow-y: auto;
+  list-style: none;
+  text-align: left;
+}
+
+.trophy {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.7rem;
+  padding: 0.55rem 0.7rem;
+  border: 1px solid color-mix(in srgb, var(--muted) 30%, transparent);
+  border-radius: 10px;
+  opacity: 0.65;
+}
+
+.trophy.unlocked {
+  border-color: #d4a017;
+  opacity: 1;
+}
+
+.trophy-icon {
+  font-size: 1.4rem;
+}
+
+.trophy-details {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  flex: 1;
+}
+
+.trophy-progress {
+  position: relative;
+  display: block;
+  height: 1.1rem;
+  margin-top: 0.2rem;
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--muted) 20%, transparent);
+  overflow: hidden;
+}
+
+.trophy-progress > span {
+  display: block;
+  height: 100%;
+  background: linear-gradient(90deg, #b8860b, #ffd24a);
+}
+
+.trophy-progress small {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.7rem;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .trophy-toast {
+    animation: none;
+    transform: translate(-50%, 0);
   }
 }
