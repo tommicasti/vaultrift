@@ -83,9 +83,9 @@ function Geometry({ shape }: { shape: Shape }) {
 export function Bursts({ bursts }: { bursts: Burst3D[] }) {
   return (
     <>
-      {bursts.map(burst =>
-        burst.kind === 'levelup' ? <LevelUpAura key={burst.key} burst={burst} /> : <BurstView key={burst.key} burst={burst} />,
-      )}
+      {bursts.map(burst => (
+        <BurstView key={burst.key} burst={burst} />
+      ))}
     </>
   )
 }
@@ -162,7 +162,7 @@ function BurstView({ burst }: { burst: Burst3D }) {
   )
 }
 
-const levelUpSeconds = 1.9
+export const levelUpSeconds = 2.8
 const levelUpSparks = 16
 
 function fade(progress: number): number {
@@ -170,7 +170,7 @@ function fade(progress: number): number {
   return Math.max(0, 1 - (progress - 0.15) / 0.85)
 }
 
-function LevelUpAura({ burst }: { burst: Burst3D }) {
+export function LevelUpAura({ burst, x, y }: { burst: Burst3D; x: number; y: number }) {
   const group = useRef<Group>(null)
   const [born] = useState(() => performance.now() + burst.delayMs)
   const materials = useMemo(
@@ -186,10 +186,11 @@ function LevelUpAura({ burst }: { burst: Burst3D }) {
     return Array.from({ length: levelUpSparks }, (_, index) => ({ angle: (index / levelUpSparks) * Math.PI * 2 + random(), speed: 0.7 + random() * 0.6, lag: random() * 0.3 }))
   }, [burst.key])
 
-  useFrame(({ clock }) => {
+  useFrame(({ clock }, delta) => {
     const root = group.current
     if (!root) return
 
+    root.position.lerp(new Vector3(x * cell, 0, y * cell), Math.min(1, Math.min(delta, 1 / 20) * 8))
     const progress = (performance.now() - born) / 1000 / levelUpSeconds
     root.visible = progress >= 0 && progress <= 1
     if (!root.visible) return
