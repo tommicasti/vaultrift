@@ -27,7 +27,7 @@ export function heroGear(equipment: EquippedItem[]): HeroGear {
     mainHand,
     offHand,
     mainHandModel: weaponModel(mainHand),
-    offHandModel: mainHand?.twoHanded ? undefined : offHandModel(offHand),
+    offHandModel: mainHand?.isTwin ? 'axe' : mainHand?.twoHanded ? undefined : offHandModel(offHand),
     outfit: {
       head: worn('Head') !== undefined,
       cloak: cloak ? (cloak.element ? elementCloth[cloak.element] : '') : null,

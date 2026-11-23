@@ -10,6 +10,7 @@ namespace Vaultrift.Engine.Items
         Rare,
         Epic,
         Legendary,
-        Exotic
+        Exotic,
+        Platinum
     }
 }

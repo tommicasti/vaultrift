@@ -26,7 +26,7 @@ public static class Progression
         Rarity.Common => 1,
         Rarity.Rare => 2,
         Rarity.Epic => 3,
-        Rarity.Legendary or Rarity.Exotic => 5,
+        Rarity.Legendary or Rarity.Exotic or Rarity.Platinum => 5,
         _ => throw new ArgumentOutOfRangeException(nameof(rarity), rarity, "Unknown rarity.")
     };
 
@@ -74,7 +74,7 @@ public static class Progression
         Rarity.Common => 1,
         Rarity.Rare => 2,
         Rarity.Epic => 3,
-        Rarity.Legendary or Rarity.Exotic => 5,
+        Rarity.Legendary or Rarity.Exotic or Rarity.Platinum => 5,
         _ => throw new ArgumentOutOfRangeException(nameof(rarity), rarity, "Unknown rarity.")
     };
 

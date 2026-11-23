@@ -288,6 +288,7 @@ const itemKinds: Record<Exclude<ItemCategory, 'ClassMod'>, ItemKind> = {
 }
 
 export function describeKind(item: ItemInfo): ItemKind {
+  if (item.isTwin) return { name: 'Twin axes', hint: 'Sweeps the target and both tiles beside it, then strikes the target again' }
   if (item.category !== 'ClassMod') return itemKinds[item.category]
   const ability = item.classId !== undefined ? classAbilities[item.classId] : undefined
   const target = ability ? abilityNames[ability] : 'the class ability'

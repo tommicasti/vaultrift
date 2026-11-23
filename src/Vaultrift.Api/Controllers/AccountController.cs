@@ -91,12 +91,15 @@ public sealed class AccountController : ControllerBase
     private int Claim(Account account, IReadOnlyList<string>? codes) =>
         codes is null || codes.Count == 0 ? 0 : _accounts.Claim(account.Id, codes);
 
-    private AccountResponse Describe(Account account, int claimed = 0) =>
-        new(
+    private AccountResponse Describe(Account account, int claimed = 0)
+    {
+        var heroes = _accounts.HeroesOf(account.Id);
+        _trophies.CatchUp(account.Id, heroes);
+
+        return new(
             account.UserName,
             account.Email is not null,
-            _accounts
-                .HeroesOf(account.Id)
+            heroes
                 .Select(hero => new HeroSummaryResponse(
                     hero.Id,
                     hero.Code,
@@ -121,6 +124,7 @@ public sealed class AccountController : ControllerBase
                     status.Trophy.Goal))
                 .ToList(),
             claimed);
+    }
 
     private Task SignIn(Account account)
     {

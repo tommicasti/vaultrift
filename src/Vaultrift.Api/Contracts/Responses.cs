@@ -141,7 +141,9 @@ public sealed record ItemResponse(
     bool TwoHanded,
     string? ClassId,
     int? ManaRestore,
-    SpellResponse? Spell);
+    SpellResponse? Spell,
+    bool IsTwin = false,
+    bool IsBound = false);
 
 public sealed record FloorItemResponse(int X, int Y, ItemResponse Item);
 

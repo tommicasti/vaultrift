@@ -1,3 +1,4 @@
+using Vaultrift.Engine.Gameplay;
 using Vaultrift.Engine.Items;
 
 namespace Vaultrift.Infrastructure.Content;
@@ -375,12 +376,36 @@ public static class ItemCatalog
         Spares.FirstOrDefault(spare => spare.Id == SparePrefix + weaponId)
         ?? throw new KeyNotFoundException($"No spare exists for '{weaponId}'.");
 
+    public const int DragonShardTiers = 3;
+
+    public static IReadOnlyList<WeaponDefinition> DragonShards { get; } =
+        Enumerable.Range(1, DragonShardTiers).Select(DragonShard).ToList();
+
+    public static WeaponDefinition DragonShardFor(int tier) => DragonShards[Math.Clamp(tier, 1, DragonShardTiers) - 1];
+
     public static ItemDefinition Get(string id) =>
         All.FirstOrDefault(item => item.Id == id)
         ?? Spares.FirstOrDefault(item => item.Id == id) as ItemDefinition
+        ?? DragonShards.FirstOrDefault(item => item.Id == id) as ItemDefinition
         ?? throw new KeyNotFoundException($"No item with id '{id}' exists in the catalog.");
 
     private const string SparePrefix = "spare-";
+
+    private static WeaponDefinition DragonShard(int tier) =>
+        new(
+            $"dragon-shard-{tier}",
+            $"Scheggia del Drago{tier switch { 2 => " II", 3 => " III", _ => "" }}",
+            Rarity.Platinum,
+            WeaponType.Axe,
+            [Attack(18 + 3 * tier), Defense(2 + tier), Critical(4 + tier)],
+            $"Twin axes cut from the Custode's heart, earned on {(Difficulty)(tier - 1)}. Every attack sweeps and then strikes a second time. "
+            + "They grow with you: +1 attack every 2 levels and +1% critical every 5. Bound to your account: they cannot be sold, thrown away or left in a grave.",
+            Element.Fire)
+        {
+            IsTwin = true,
+            IsBound = true,
+            ScalesWithLevel = true
+        };
 
     private static StatModifier Attack(int amount) => new(StatType.Attack, amount);
 

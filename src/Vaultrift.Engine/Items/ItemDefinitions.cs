@@ -32,6 +32,12 @@ public sealed record WeaponDefinition(
     public bool IsSpare { get; init; }
 
     public ExoticPower? Exotic { get; init; }
+
+    public bool IsTwin { get; init; }
+
+    public bool IsBound { get; init; }
+
+    public bool ScalesWithLevel { get; init; }
 }
 
 public sealed record GearDefinition(
