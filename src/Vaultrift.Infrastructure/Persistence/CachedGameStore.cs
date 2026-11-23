@@ -65,6 +65,7 @@ public sealed class CachedGameStore : IGameStore
         ArgumentNullException.ThrowIfNull(session);
 
         session.Touch();
+        session.RecordPlay(DateTimeOffset.UtcNow);
         _repository.Upsert(session.ToRecord());
     }
 

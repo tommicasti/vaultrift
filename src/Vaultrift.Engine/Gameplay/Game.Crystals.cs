@@ -16,6 +16,18 @@ public sealed partial class Game
         return true;
     }
 
+    private bool TrySmashObstacle(List<GameEvent> events)
+    {
+        var front = Player.Position.Move(Player.Facing);
+
+        if (Map.GetTile(front) != TileType.Obstacle || FindLivingEnemyAt(front) is not null)
+            return false;
+
+        Map.SetTile(front, TileType.Floor);
+        events.Add(new ObstacleSmashed(front));
+        return true;
+    }
+
     private void Shatter(Position crystal, List<GameEvent> events)
     {
         Map.SetTile(crystal, TileType.Floor);

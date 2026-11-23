@@ -1,8 +1,7 @@
 const storageKey = 'vaultrift.haptics'
-const tapMs = 10
+const tapMs = 30
 
 let enabled = readSetting()
-let iosSwitch: HTMLLabelElement | null = null
 
 function readSetting(): boolean {
   try {
@@ -33,29 +32,27 @@ export function hapticsSupported(): boolean {
 export function tap() {
   if (!enabled) return
 
-  if (typeof navigator.vibrate === 'function') {
-    navigator.vibrate(tapMs)
+  try {
+    if (typeof navigator.vibrate === 'function' && navigator.vibrate(tapMs)) return
+    if (isAppleTouchDevice()) flipAppleSwitch()
+  } catch {
     return
   }
-
-  if (isAppleTouchDevice()) appleSwitch().click()
 }
 
 function isAppleTouchDevice(): boolean {
   return /iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)
 }
 
-function appleSwitch(): HTMLLabelElement {
-  if (iosSwitch) return iosSwitch
-
+function flipAppleSwitch() {
   const label = document.createElement('label')
   const input = document.createElement('input')
   input.type = 'checkbox'
   input.setAttribute('switch', '')
   label.append(input)
   label.setAttribute('aria-hidden', 'true')
-  label.style.cssText = 'position:fixed;width:1px;height:1px;overflow:hidden;opacity:0;pointer-events:none;left:-10px;top:-10px'
-  document.body.append(label)
-  iosSwitch = label
-  return label
+  label.style.display = 'none'
+  document.head.append(label)
+  label.click()
+  label.remove()
 }

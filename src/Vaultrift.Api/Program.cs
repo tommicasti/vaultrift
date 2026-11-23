@@ -25,6 +25,7 @@ builder.Services.Configure<BrotliCompressionProviderOptions>(options => options.
 builder.Services.Configure<GzipCompressionProviderOptions>(options => options.Level = CompressionLevel.Fastest);
 
 builder.Services.AddGameStorage(builder.Configuration, builder.Environment);
+builder.Services.AddAccounts(builder.Configuration, builder.Environment);
 builder.Services.AddProblemDetails();
 builder.Services.AddExceptionHandler<IncompatibleSaveHandler>();
 
@@ -40,6 +41,7 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseGameClient();
+app.UseAccounts();
 app.UseAuthorization();
 app.MapControllers();
 app.MapGameClientFallback();

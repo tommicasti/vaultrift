@@ -167,4 +167,43 @@ public class GameSessionTests
         Assert.Equal(RiftArena.BiomeId, session.BiomeOf(VaultFloors.FinalFloor));
         Assert.Null(session.BiomeOf(0));
     }
+
+    [Fact]
+    public void ActiveTurns_AddUpToThePlayTime_AndSurviveAReload()
+    {
+        var session = NewSession();
+        var start = DateTimeOffset.UtcNow.AddMinutes(1);
+
+        session.RecordPlay(start);
+        session.RecordPlay(start.AddSeconds(40));
+        session.RecordPlay(start.AddSeconds(100));
+
+        var resumed = GameSession.Resume(session.Id, session.Code, SaveFile.FromJson(session.ToSave().ToJson()));
+
+        Assert.Equal(session.PlaySeconds, resumed.PlaySeconds);
+        Assert.True(resumed.PlaySeconds >= 100);
+    }
+
+    [Fact]
+    public void LongPauses_DoNotCountAsPlayTime()
+    {
+        var session = NewSession();
+        var start = DateTimeOffset.UtcNow.AddMinutes(1);
+
+        session.RecordPlay(start);
+        var before = session.PlaySeconds;
+        session.RecordPlay(start.AddHours(5));
+        session.RecordPlay(start.AddHours(5).AddSeconds(30));
+
+        Assert.Equal(before + 30, session.PlaySeconds);
+    }
+
+    [Fact]
+    public void SavesWithoutPlayTime_StillLoad()
+    {
+        var json = NewSession().ToSave().ToJson().Replace(",\"PlaySeconds\":0", "");
+        var save = SaveFile.FromJson(json);
+
+        Assert.Equal(0, save.PlaySeconds);
+    }
 }

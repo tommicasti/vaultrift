@@ -16,7 +16,7 @@ public sealed partial class Game
 
     private void PerformAttack(List<GameEvent> events)
     {
-        if (TryOpenChest(events) || TryShatterCrystal(events))
+        if (TryOpenChest(events) || TryShatterCrystal(events) || TrySmashObstacle(events))
             return;
 
         BeginAmbush();

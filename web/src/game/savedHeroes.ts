@@ -1,8 +1,9 @@
+import type { HeroSummary } from '../api/accountApi'
 import type { Difficulty, GameState } from '../api/types'
 
 const storageKey = 'vaultrift.heroes'
 const legacyKey = 'vaultrift.savedGame'
-const maxHeroes = 12
+const maxHeroes = 20
 
 export interface SavedHero {
   id: string
@@ -95,6 +96,34 @@ export function rememberHero(game: GameState) {
 export function forgetHero(id: string) {
   try {
     write(loadHeroes().filter(hero => hero.id !== id))
+  } catch {
+    return
+  }
+}
+
+export function mergeHeroes(summaries: HeroSummary[]) {
+  try {
+    const local = loadHeroes()
+    const known = new Map(local.map(hero => [hero.id, hero]))
+
+    for (const summary of summaries) {
+      const playedAt = Date.parse(summary.updatedAt) || 0
+      const existing = known.get(summary.id)
+      known.set(summary.id, {
+        id: summary.id,
+        code: summary.code,
+        name: summary.name,
+        classId: summary.classId,
+        floor: summary.floor,
+        level: summary.level,
+        difficulty: difficulties.find(option => option === summary.difficulty) ?? 'Normal',
+        isLost: summary.isLost,
+        isConquered: summary.isConquered,
+        playedAt: Math.max(playedAt, existing?.playedAt ?? 0),
+      })
+    }
+
+    write([...known.values()].sort((left, right) => right.playedAt - left.playedAt).slice(0, maxHeroes))
   } catch {
     return
   }
