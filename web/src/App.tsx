@@ -145,6 +145,13 @@ function App() {
   const compact = useCompactLandscape()
   const fullscreen = useFullscreen()
   const [fallenAt, setFallenAt] = useState<number | null>(null)
+  const [levelUpAt, setLevelUpAt] = useState<number | null>(null)
+
+  useEffect(() => {
+    if (levelUpAt === null) return
+    const timer = window.setTimeout(() => setLevelUpAt(null), 3000)
+    return () => window.clearTimeout(timer)
+  }, [levelUpAt])
   const view = compact ? compactView : standardView
   const hasGame = game !== null
 
@@ -297,6 +304,7 @@ function App() {
         setEffects(effectsForTurn(turn.events, game.enemies, turn.state.enemies, turn.state.player, turnCounter.current))
         setLastTurn({ id: turnCounter.current, events: turn.events, enemiesBefore: game.enemies })
         if (!turn.state.isLost && turn.events.some(gameEvent => gameEvent.type === 'PlayerDefeated')) setFallenAt(turnCounter.current)
+        if (turn.events.some(gameEvent => gameEvent.type === 'LeveledUp')) setLevelUpAt(turnCounter.current)
         noticeBoss(turn.state)
         setGame(turn.state)
 
@@ -642,7 +650,7 @@ function App() {
           />
         </Suspense>
       ) : (
-        <Board game={game} viewColumns={view.columns} viewRows={view.rows} effects={effects} bossTarget={bossTarget} onAttack={handleAttack} />
+        <Board game={game} viewColumns={view.columns} viewRows={view.rows} effects={effects} bossTarget={bossTarget} levelUp={levelUpAt} onAttack={handleAttack} />
       )}
       <p className="keyboard-hint">
         {firstPerson ? 'W forward · A D turn · S turn around · drag the mouse to look' : 'WASD to move · Shift+WASD to turn'} · Space or click to attack · E ability · Q R potions · F scroll · 1–4 spells · Tab backpack

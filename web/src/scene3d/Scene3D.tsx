@@ -14,7 +14,7 @@ import { Decor } from './Decor'
 import { GridLines, TargetMarks } from './Grid'
 import { Weather } from './Weather'
 import { DungeonMap } from './DungeonMap'
-import { Arcs, Bursts, Projectiles } from './Effects3D'
+import { Arcs, Bursts, LevelUpAura, levelUpSeconds, Projectiles, type Burst3D } from './Effects3D'
 import { FirstPersonHands } from './FirstPersonHands'
 import { buildBow, buildItem, buildSpear, buildStairs, buildTotem } from './creatures'
 import { useKit, useKitObjects, type KitPiece } from './kit'
@@ -54,6 +54,11 @@ interface Scene3DProps {
 const heroScale = 1.3
 const voidColor = '#000000'
 const corpseMs = 1900
+
+interface Aura {
+  burst: Burst3D
+  until: number
+}
 
 interface Corpse {
   enemy: EnemyState
@@ -333,6 +338,30 @@ function World({ game, effects, turn, zoom, firstPerson, lookOffset }: WorldProp
     [turn, game.enemies, player, mainHand, offHand],
   )
   const [corpses, setCorpses] = useState<Corpse[]>([])
+  const [auras, setAuras] = useState<Aura[]>([])
+
+  useEffect(() => {
+    const fresh = cues.bursts.filter(burst => burst.kind === 'levelup')
+    if (fresh.length === 0) return
+    const add = window.setTimeout(() => {
+      const now = performance.now()
+      setAuras(current => [
+        ...current.filter(aura => !fresh.some(burst => burst.key === aura.burst.key)),
+        ...fresh.map(burst => ({ burst, until: now + burst.delayMs + levelUpSeconds * 1000 + 200 })),
+      ])
+    }, 0)
+    return () => window.clearTimeout(add)
+  }, [cues.bursts])
+
+  useEffect(() => {
+    if (auras.length === 0) return
+    const next = Math.min(...auras.map(aura => aura.until))
+    const prune = window.setTimeout(() => {
+      const now = performance.now()
+      setAuras(current => current.filter(aura => aura.until > now))
+    }, Math.max(0, next - performance.now()))
+    return () => window.clearTimeout(prune)
+  }, [auras])
 
   useEffect(() => {
     if (cues.dying.length === 0) return
@@ -454,9 +483,12 @@ function World({ game, effects, turn, zoom, firstPerson, lookOffset }: WorldProp
           ...effects.filter(
             effect => !['coins', 'arrow', 'power', 'levelup'].includes(effect.kind) && !cues.trail.has(`${effect.x},${effect.y}`) && visible(effect.x, effect.y),
           ),
-          ...cues.bursts.filter(burst => visible(burst.x, burst.y)),
+          ...cues.bursts.filter(burst => burst.kind !== 'levelup' && visible(burst.x, burst.y)),
         ]}
       />
+      {auras.map(aura => (
+        <LevelUpAura key={aura.burst.key} burst={aura.burst} x={player.x} y={player.y} />
+      ))}
       <Projectiles projectiles={cues.projectiles} />
       <Arcs arcs={cues.arcs} />
       <Popups popups={cues.popups.filter(popup => visible(popup.x, popup.y))} />

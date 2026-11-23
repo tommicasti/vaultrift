@@ -18,7 +18,6 @@ export type EffectKind =
   | 'spores'
   | 'overload'
   | 'coins'
-  | 'levelup'
 
 export interface Effect {
   key: string
@@ -32,7 +31,6 @@ export interface Effect {
 
 export const effectDurationMs = 450
 export const coinDurationMs = 900
-export const levelUpDurationMs = 1400
 export const arrowStepMs = 45
 const chainDelayMs = 150
 const burnDelayMs = 300
@@ -162,9 +160,6 @@ export function effectsForTurn(
       case 'CoinsGained':
         if (event.amount) add(lootSpot ?? player, 'coins', impactDelayMs + chainDelayMs, `+${event.amount}`)
         break
-      case 'LeveledUp':
-        add(player, 'levelup', impactDelayMs + chainDelayMs)
-        break
       case 'MimicRevealed':
         add(event.x !== undefined && event.y !== undefined ? { x: event.x, y: event.y } : undefined, 'smoke', 0)
         break
@@ -198,6 +193,6 @@ export function effectsForTurn(
 export function effectsDuration(effects: Effect[]): number {
   return Math.max(
     effectDurationMs,
-    ...effects.map(effect => effect.delayMs + (effect.kind === 'coins' ? coinDurationMs : effect.kind === 'levelup' ? levelUpDurationMs : effectDurationMs)),
+    ...effects.map(effect => effect.delayMs + (effect.kind === 'coins' ? coinDurationMs : effectDurationMs)),
   )
 }

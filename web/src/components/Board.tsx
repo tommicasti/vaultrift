@@ -23,13 +23,14 @@ interface BoardProps {
   viewRows: number
   effects: Effect[]
   bossTarget?: EnemyState
+  levelUp?: number | null
   onAttack: () => void
 }
 
 const cameraSlideMs = 120
 const margin = 1
 
-export function Board({ game, viewColumns, viewRows, effects, bossTarget, onAttack }: BoardProps) {
+export function Board({ game, viewColumns, viewRows, effects, bossTarget, levelUp, onAttack }: BoardProps) {
   const boardRef = useRef<HTMLDivElement>(null)
   const cameraRef = useRef<HTMLDivElement>(null)
   const heroRef = useRef<HTMLSpanElement>(null)
@@ -202,6 +203,18 @@ export function Board({ game, viewColumns, viewRows, effects, bossTarget, onAtta
       style={{ '--columns': viewColumns, '--rows': viewRows, '--grid-columns': columns, '--grid-rows': rows } as CSSProperties}
       onPointerDown={handlePointerDown}
     >
+      {levelUp != null && (
+        <span
+          key={levelUp}
+          className="board-levelup"
+          aria-hidden="true"
+          style={{
+            left: `${((Math.floor(viewColumns / 2) + 0.5) / viewColumns) * 100}%`,
+            top: `${((Math.floor(viewRows / 2) + 0.5) / viewRows) * 100}%`,
+            width: `${(100 / viewColumns) * 2.2}%`,
+          }}
+        />
+      )}
       <div ref={cameraRef} className="board-camera">
         <div className="board-grid" style={{ transform: gridOffset(columns, rows) }}>
           {tiles}
