@@ -16,7 +16,7 @@ interface ResumePanelProps {
   disabled: boolean
   onContinue: (hero: SavedHero) => void
   onForget: (hero: SavedHero) => void
-  onLoadCode: (code: string) => void
+  onClaimCode: (code: string) => void
 }
 
 function heroStatus(hero: SavedHero) {
@@ -25,13 +25,15 @@ function heroStatus(hero: SavedHero) {
   return `Floor ${hero.floor}`
 }
 
-export function ResumePanel({ heroes, disabled, onContinue, onForget, onLoadCode }: ResumePanelProps) {
+export function ResumePanel({ heroes, disabled, onContinue, onForget, onClaimCode }: ResumePanelProps) {
   const [code, setCode] = useState('')
   const cleaned = code.trim()
 
   function submit(event: FormEvent) {
     event.preventDefault()
-    if (cleaned.length > 0) onLoadCode(cleaned)
+    if (cleaned.length === 0) return
+    onClaimCode(cleaned)
+    setCode('')
   }
 
   return (
@@ -51,14 +53,14 @@ export function ResumePanel({ heroes, disabled, onContinue, onForget, onLoadCode
                       Level {hero.level} · {heroStatus(hero)}
                     </span>
                     <span className="label">
-                      <span className={`difficulty-badge difficulty-${hero.difficulty.toLowerCase()}`}>{difficultyLabels[hero.difficulty]}</span> <span className="hero-code">{hero.code}</span>
+                      <span className={`difficulty-badge difficulty-${hero.difficulty.toLowerCase()}`}>{difficultyLabels[hero.difficulty]}</span>
                     </span>
                   </div>
                   <div className="resume-actions">
                     <button className={hero.isLost ? undefined : 'primary'} disabled={disabled} onClick={() => onContinue(hero)}>
                       {hero.isLost ? 'View' : 'Continue'}
                     </button>
-                    <button className="forget-button" disabled={disabled} aria-label={`Forget ${hero.name}`} title="Remove from this list" onClick={() => onForget(hero)}>
+                    <button className="forget-button" disabled={disabled} aria-label={`Forget ${hero.name}`} title="Remove from your account" onClick={() => onForget(hero)}>
                       ×
                     </button>
                   </div>
@@ -70,7 +72,7 @@ export function ResumePanel({ heroes, disabled, onContinue, onForget, onLoadCode
       )}
       <form className="code-form" onSubmit={submit}>
         <label className="label" htmlFor="save-code">
-          Playing on another device? Enter your save code
+          Have a save code from before accounts? Link it to your account
         </label>
         <div className="code-form-row">
           <input
@@ -84,7 +86,7 @@ export function ResumePanel({ heroes, disabled, onContinue, onForget, onLoadCode
             onChange={event => setCode(event.target.value.toUpperCase())}
           />
           <button type="submit" disabled={disabled || cleaned.length === 0}>
-            Load
+            Link
           </button>
         </div>
       </form>

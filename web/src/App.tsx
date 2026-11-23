@@ -1,4 +1,4 @@
-import { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react'
+import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   ApiError,
   activateAbility,
@@ -15,7 +15,6 @@ import {
   equip,
   face,
   getGame,
-  getGameByCode,
   previewEquip,
   learnSpell,
   markItem,
@@ -33,7 +32,6 @@ import { ShopScreen } from './components/ShopScreen'
 import { SpellBar } from './components/SpellBar'
 import { ClassSelect } from './components/ClassSelect'
 import { ResumePanel } from './components/ResumePanel'
-import { SaveCodeChip } from './components/SaveCodeChip'
 import { Controls } from './components/Controls'
 import { EventLog } from './components/EventLog'
 import { HeaderToggles } from './components/HeaderToggles'
@@ -44,11 +42,11 @@ import { HeroLostScreen } from './components/HeroLostScreen'
 import { DeathBanner } from './components/DeathBanner'
 import { AccountPanel } from './components/AccountPanel'
 import { TrophyToast } from './components/TrophyToast'
-import { getAccount, logout, type AccountInfo } from './api/accountApi'
+import { claimCodes, forgetHero, getAccount, logout, type AccountInfo } from './api/accountApi'
 import { TravelScreen } from './components/TravelScreen'
 import { describeEvent } from './game/describeEvent'
 import { effectsDuration, effectsForTurn, type Effect } from './game/effects'
-import { forgetHero, loadHeroes, mergeHeroes, rememberHero, type SavedHero } from './game/savedHeroes'
+import { clearLocalHeroes, heroFromSummary, localSaveCodes, type SavedHero } from './game/savedHeroes'
 import { useCompactLandscape } from './game/useCompactLandscape'
 import { useFullscreen } from './game/useFullscreen'
 import type { Turn } from './scene3d/turnCues'
@@ -103,8 +101,11 @@ function App() {
   const holdTimer = useRef<number | null>(null)
   const moveRef = useRef<(direction: Direction) => void>(() => undefined)
   const [victoryDismissed, setVictoryDismissed] = useState(false)
-  const [heroes, setHeroes] = useState<SavedHero[]>(loadHeroes)
-  const [account, setAccount] = useState<AccountInfo | null>(null)
+  const [account, setAccount] = useState<AccountInfo | null | undefined>(undefined)
+  const heroes = useMemo(
+    () => (account ? account.heroes.map(heroFromSummary).sort((left, right) => right.playedAt - left.playedAt) : []),
+    [account],
+  )
   const [notice, setNotice] = useState<string | null>(null)
   const [trophyQueue, setTrophyQueue] = useState<TrophyInfo[]>([])
   const nextTrophy = useCallback(() => setTrophyQueue(queue => queue.slice(1)), [])
@@ -112,10 +113,16 @@ function App() {
   const adoptAccount = useCallback((info: AccountInfo | null) => {
     setAccount(info)
     if (!info) return
-    mergeHeroes(info.heroes)
-    setHeroes(loadHeroes())
     if (info.claimed > 0) setNotice(`${info.claimed} ${info.claimed === 1 ? 'hero is' : 'heroes are'} now linked to your account.`)
   }, [])
+
+  const handleSignedIn = useCallback(
+    (info: AccountInfo) => {
+      clearLocalHeroes()
+      adoptAccount(info)
+    },
+    [adoptAccount],
+  )
 
   const onStartScreen = game === null
 
@@ -123,10 +130,15 @@ function App() {
     if (!onStartScreen) return
     let cancelled = false
     getAccount()
-      .then(info => {
-        if (!cancelled) adoptAccount(info)
+      .then(async info => {
+        const codes = info ? localSaveCodes() : []
+        const linked = codes.length > 0 ? await claimCodes(codes) : info
+        if (codes.length > 0) clearLocalHeroes()
+        if (!cancelled) adoptAccount(linked)
       })
-      .catch(() => undefined)
+      .catch(() => {
+        if (!cancelled) setAccount(current => current ?? null)
+      })
     return () => {
       cancelled = true
     }
@@ -196,14 +208,21 @@ function App() {
     setLostDismissed(false)
   }
 
+  function signedOut() {
+    setGame(null)
+    setAccount(null)
+    setError('Your session has expired. Sign in again.')
+  }
+
   async function startGame(classId: string, name: string, difficulty: Difficulty) {
     setBusy(true)
     setError(null)
 
     try {
       enterGame(await createGame(classId, name, difficulty), difficultyIntro[difficulty])
-    } catch {
-      setError('Could not start a new game. Is the API running?')
+    } catch (failure) {
+      if (failure instanceof ApiError && failure.status === 401) signedOut()
+      else setError('Could not start a new game. Is the API running?')
     } finally {
       setBusy(false)
     }
@@ -214,15 +233,12 @@ function App() {
     setError(null)
 
     try {
-      const state = await getGame(hero.id).catch(failure => {
-        if (failure instanceof ApiError && failure.status === 404) return getGameByCode(hero.code)
-        throw failure
-      })
+      const state = await getGame(hero.id)
       enterGame(state, state.isLost ? `${state.player.name} rests here forever.` : 'You return to the vault.')
     } catch (failure) {
-      if (failure instanceof ApiError && (failure.status === 404 || failure.status === 409)) {
-        forgetHero(hero.id)
-        setHeroes(loadHeroes())
+      if (failure instanceof ApiError && failure.status === 401) {
+        signedOut()
+      } else if (failure instanceof ApiError && (failure.status === 404 || failure.status === 409)) {
         setError(failure.status === 409 ? incompatibleSaveMessage : 'That save no longer exists.')
       } else {
         setError('Could not reach the vault. Try again in a moment.')
@@ -232,20 +248,17 @@ function App() {
     }
   }
 
-  async function loadByCode(code: string) {
+  async function claimCode(code: string) {
     setBusy(true)
     setError(null)
+    setNotice(null)
 
     try {
-      enterGame(await getGameByCode(code), 'You return to the vault.')
-    } catch (failure) {
-      setError(
-        failure instanceof ApiError && failure.status === 404
-          ? 'No game has that save code.'
-          : failure instanceof ApiError && failure.status === 409
-            ? incompatibleSaveMessage
-            : 'Could not reach the vault. Try again in a moment.',
-      )
+      const info = await claimCodes([code])
+      adoptAccount(info)
+      if (info.claimed === 0) setError('No hero to link with that code: it does not exist or it already belongs to an account.')
+    } catch {
+      setError('Could not reach the vault. Try again in a moment.')
     } finally {
       setBusy(false)
     }
@@ -257,17 +270,21 @@ function App() {
     setError(null)
     setInventoryOpen(false)
     setShopOpen(false)
-    setHeroes(loadHeroes())
   }
 
-  function handleForget(hero: SavedHero) {
-    forgetHero(hero.id)
-    setHeroes(loadHeroes())
-  }
+  async function handleForget(hero: SavedHero) {
+    if (!window.confirm(`Remove ${hero.name} from your account? You will not be able to continue this hero.`)) return
 
-  useEffect(() => {
-    if (game) rememberHero(game)
-  }, [game])
+    setBusy(true)
+    setError(null)
+    try {
+      adoptAccount(await forgetHero(hero.id))
+    } catch {
+      setError('Could not reach the vault. Try again in a moment.')
+    } finally {
+      setBusy(false)
+    }
+  }
 
   const play = useCallback(
     async (action: (gameId: string) => Promise<TurnResponse>) => {
@@ -312,8 +329,12 @@ function App() {
         else if (!turn.state.merchant?.isNearby) setShopOpen(false)
 
         setLog(previous => [...messages.reverse(), ...previous].slice(0, maxLogEntries))
-      } catch {
-        setError('The action failed. Try again.')
+      } catch (failure) {
+        if (failure instanceof ApiError && failure.status === 401) {
+          setGame(null)
+          setAccount(null)
+          setError('Your session has expired. Sign in again.')
+        } else setError('The action failed. Try again.')
       } finally {
         setBusy(false)
       }
@@ -559,18 +580,26 @@ function App() {
     return (
       <main className="app start">
         <h1>Vaultrift</h1>
-        <AccountPanel account={account} codes={heroes.map(hero => hero.code)} onSignedIn={adoptAccount} onSignOut={handleSignOut} />
+        {account === undefined ? (
+          <p className="label">Opening the vault…</p>
+        ) : (
+          <AccountPanel account={account} codes={localSaveCodes()} onSignedIn={handleSignedIn} onSignOut={handleSignOut} />
+        )}
         {notice && <p className="account-notice">{notice}</p>}
-        <ResumePanel
-          heroes={heroes}
-          disabled={busy}
-          onContinue={hero => void continueGame(hero)}
-          onForget={handleForget}
-          onLoadCode={code => void loadByCode(code)}
-        />
-        <p className="label">{heroes.length > 0 ? 'Or start a new adventure' : 'Choose your hero'}</p>
         {error && <p className="error">{error}</p>}
-        <ClassSelect disabled={busy} onChoose={(classId, name, difficulty) => void startGame(classId, name, difficulty)} />
+        {account && (
+          <>
+            <ResumePanel
+              heroes={heroes}
+              disabled={busy}
+              onContinue={hero => void continueGame(hero)}
+              onForget={hero => void handleForget(hero)}
+              onClaimCode={code => void claimCode(code)}
+            />
+            <p className="label">{heroes.length > 0 ? 'Or start a new adventure' : 'Choose your hero'}</p>
+            <ClassSelect disabled={busy} onChoose={(classId, name, difficulty) => void startGame(classId, name, difficulty)} />
+          </>
+        )}
       </main>
     )
   }
@@ -584,7 +613,6 @@ function App() {
       <header className="app-header">
         <h1>Vaultrift</h1>
         <div className="header-actions">
-          <SaveCodeChip code={game.saveCode} />
           <HeaderToggles />
           <button
             className="icon-toggle"

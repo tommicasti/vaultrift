@@ -35,10 +35,6 @@ export function getGame(gameId: string): Promise<GameState> {
   return request<GameState>('GET', `/games/${gameId}`)
 }
 
-export function getGameByCode(code: string): Promise<GameState> {
-  return request<GameState>('GET', `/games/code/${encodeURIComponent(code)}`)
-}
-
 export function previewEquip(gameId: string, entryId: number, hand?: EquipmentSlot): Promise<StatsPreview> {
   const query = hand ? `?hand=${hand}` : ''
   return request<StatsPreview>('GET', `/games/${gameId}/preview/${entryId}${query}`)

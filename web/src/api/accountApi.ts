@@ -45,7 +45,7 @@ async function readDetail(response: Response): Promise<string | undefined> {
   }
 }
 
-async function send(method: 'GET' | 'POST', path: string, body?: unknown): Promise<Response> {
+async function send(method: 'GET' | 'POST' | 'DELETE', path: string, body?: unknown): Promise<Response> {
   const response = await fetch(`/api/account${path}`, {
     method,
     headers: { 'Content-Type': 'application/json' },
@@ -71,6 +71,16 @@ export async function register(userName: string, password: string, email: string
 
 export async function login(userName: string, password: string, codes: string[]): Promise<AccountInfo> {
   const response = await send('POST', '/login', { userName, password, codes })
+  return (await response.json()) as AccountInfo
+}
+
+export async function claimCodes(codes: string[]): Promise<AccountInfo> {
+  const response = await send('POST', '/claim', { codes })
+  return (await response.json()) as AccountInfo
+}
+
+export async function forgetHero(gameId: string): Promise<AccountInfo> {
+  const response = await send('DELETE', `/games/${gameId}`)
   return (await response.json()) as AccountInfo
 }
 

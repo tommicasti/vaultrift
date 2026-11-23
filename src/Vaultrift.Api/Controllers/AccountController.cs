@@ -88,6 +88,17 @@ public sealed class AccountController : ControllerBase
         return Describe(account, Claim(account, request.Codes));
     }
 
+    [HttpDelete("games/{id:guid}")]
+    public ActionResult<AccountResponse> Forget(Guid id)
+    {
+        var account = User.AccountId() is { } accountId ? _accounts.Find(accountId) : null;
+
+        if (account is null)
+            return Unauthorized();
+
+        return _accounts.Unlink(account.Id, id) ? Describe(account) : NotFound();
+    }
+
     private int Claim(Account account, IReadOnlyList<string>? codes) =>
         codes is null || codes.Count == 0 ? 0 : _accounts.Claim(account.Id, codes);
 

@@ -47,6 +47,12 @@ public sealed class MemoryAccountRepository : IAccountRepository
         }
     }
 
+    public bool Unlink(Guid accountId, Guid gameId)
+    {
+        lock (_gate)
+            return _owners.TryGetValue(gameId, out var owner) && owner == accountId && _owners.Remove(gameId);
+    }
+
     public IReadOnlyList<Guid> GamesOf(Guid accountId)
     {
         lock (_gate)
