@@ -82,7 +82,7 @@ public class ElementRulesTests
     {
         foreach (var element in Enum.GetValues<Element>())
         {
-            var chances = Enum.GetValues<Rarity>().Where(rarity => rarity != Rarity.Exotic).Select(rarity => ElementRules.EffectChance(element, rarity)).ToList();
+            var chances = Enum.GetValues<Rarity>().Where(rarity => rarity is not (Rarity.Exotic or Rarity.Platinum)).Select(rarity => ElementRules.EffectChance(element, rarity)).ToList();
 
             Assert.Equal(chances.OrderBy(chance => chance).ToList(), chances);
             Assert.Equal(chances.Count, chances.Distinct().Count());

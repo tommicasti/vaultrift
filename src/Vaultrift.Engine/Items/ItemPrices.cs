@@ -21,6 +21,7 @@ public static class ItemPrices
             Rarity.Epic => 45,
             Rarity.Legendary => 120,
             Rarity.Exotic => 300,
+            Rarity.Platinum => 0,
             _ => throw new ArgumentOutOfRangeException(nameof(item), item.Rarity, "Unknown rarity.")
         };
 

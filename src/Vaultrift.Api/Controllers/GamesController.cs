@@ -3,6 +3,7 @@ using Vaultrift.Api.Contracts;
 using Vaultrift.Api.Hosting;
 using Vaultrift.Api.Mapping;
 using Vaultrift.Engine.Gameplay;
+using Vaultrift.Engine.Items;
 using Vaultrift.Infrastructure.Accounts;
 using Vaultrift.Infrastructure.Content;
 using Vaultrift.Infrastructure.Persistence;
@@ -42,7 +43,10 @@ public sealed class GamesController : ControllerBase
         _trophies.StartFloor(session.Id, session.Game.FloorNumber);
 
         if (User.AccountId() is { } accountId)
+        {
             _accounts.Link(accountId, session.Id);
+            GrantDragonShard(accountId, session);
+        }
 
         return CreatedAtAction(nameof(Get), new { id = session.Id }, GameMapper.ToResponse(session));
     }
@@ -185,6 +189,26 @@ public sealed class GamesController : ControllerBase
             var result = action(session.Game);
             Save(session);
             return GameMapper.ToResponse(session, result, Trophies(session, result));
+        }
+    }
+
+    private void GrantDragonShard(Guid accountId, GameSession session)
+    {
+        try
+        {
+            var tier = _trophies.DragonShardTier(accountId);
+            if (tier == 0)
+                return;
+
+            lock (session.Game)
+            {
+                if (session.Game.Player.Inventory.TryAddBound(new ItemInstance(ItemCatalog.DragonShardFor(tier))))
+                    Save(session);
+            }
+        }
+        catch (Exception error)
+        {
+            _logger.LogError(error, "Could not hand the Scheggia del Drago to game {GameId}.", session.Id);
         }
     }
 

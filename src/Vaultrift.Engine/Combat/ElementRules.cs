@@ -20,15 +20,15 @@ public static class ElementRules
         (Element.Fire, Rarity.Common) => 0.10,
         (Element.Fire, Rarity.Rare) => 0.15,
         (Element.Fire, Rarity.Epic) => 0.20,
-        (Element.Fire, Rarity.Legendary or Rarity.Exotic) => 0.40,
+        (Element.Fire, Rarity.Legendary or Rarity.Exotic or Rarity.Platinum) => 0.40,
         (Element.Ice, Rarity.Common) => 0.08,
         (Element.Ice, Rarity.Rare) => 0.12,
         (Element.Ice, Rarity.Epic) => 0.18,
-        (Element.Ice, Rarity.Legendary or Rarity.Exotic) => 0.30,
+        (Element.Ice, Rarity.Legendary or Rarity.Exotic or Rarity.Platinum) => 0.30,
         (Element.Lightning or Element.Wind, Rarity.Common) => 0.25,
         (Element.Lightning or Element.Wind, Rarity.Rare) => 0.40,
         (Element.Lightning or Element.Wind, Rarity.Epic) => 0.60,
-        (Element.Lightning or Element.Wind, Rarity.Legendary or Rarity.Exotic) => 1.0,
+        (Element.Lightning or Element.Wind, Rarity.Legendary or Rarity.Exotic or Rarity.Platinum) => 1.0,
         _ => throw new ArgumentOutOfRangeException(nameof(element), element, "Unknown element or rarity.")
     };
 

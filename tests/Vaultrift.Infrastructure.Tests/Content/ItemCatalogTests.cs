@@ -99,7 +99,7 @@ public class ItemCatalogTests
     public void EveryGearKind_ExistsInEveryRarity()
     {
         foreach (var kind in GearKinds)
-            foreach (var rarity in Enum.GetValues<Rarity>().Where(rarity => rarity != Rarity.Exotic))
+            foreach (var rarity in Enum.GetValues<Rarity>().Where(rarity => rarity is not (Rarity.Exotic or Rarity.Platinum)))
                 Assert.Contains(Gear, item => item.Kind == kind && item.Rarity == rarity);
     }
 

@@ -187,4 +187,7 @@ INSERT INTO dbo.ItemCatalog (Id, Name, Rarity, Kind) VALUES
     (N'spear-last-wall', N'Last Wall', N'Exotic', N'Spear'),
     (N'spear-starfall-lance', N'Starfall Lance', N'Exotic', N'Spear'),
     (N'staff-prism-of-ages', N'Prism of Ages', N'Exotic', N'Staff'),
-    (N'staff-echo', N'Echo Staff', N'Exotic', N'Staff');
+    (N'staff-echo', N'Echo Staff', N'Exotic', N'Staff'),
+    (N'dragon-shard-1', N'Scheggia del Drago', N'Platinum', N'Axe'),
+    (N'dragon-shard-2', N'Scheggia del Drago II', N'Platinum', N'Axe'),
+    (N'dragon-shard-3', N'Scheggia del Drago III', N'Platinum', N'Axe');

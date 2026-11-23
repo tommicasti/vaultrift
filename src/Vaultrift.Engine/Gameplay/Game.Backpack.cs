@@ -37,6 +37,9 @@ public sealed partial class Game
         if (entry is null)
             return new TurnResult(TurnPassed: false, [new UseRejected(UseResult.ItemNotFound)]);
 
+        if (Player.IsBound(entry) && mark != ItemMark.Favorite)
+            return new TurnResult(TurnPassed: false, [new UseRejected(UseResult.ItemIsFavorite)]);
+
         entry.Mark = mark;
         return new TurnResult(TurnPassed: false, [new ItemMarked(entry.Item, mark)]);
     }

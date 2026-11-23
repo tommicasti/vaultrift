@@ -43,6 +43,10 @@ public sealed partial class Game
                 break;
             case WeaponType.Axe:
                 Sweep(weapon!, new HitOptions(), events);
+
+                if (weapon!.Definition is WeaponDefinition { IsTwin: true })
+                    Strike(weapon, Player.CombatStats, new HitOptions(), events);
+
                 break;
             case WeaponType.Spear:
                 Thrust(weapon!, new HitOptions(), events);

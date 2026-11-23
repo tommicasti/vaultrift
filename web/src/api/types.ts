@@ -1,6 +1,6 @@
 export type Direction = 'Up' | 'Down' | 'Left' | 'Right'
 
-export type Rarity = 'Common' | 'Rare' | 'Epic' | 'Legendary' | 'Exotic'
+export type Rarity = 'Common' | 'Rare' | 'Epic' | 'Legendary' | 'Exotic' | 'Platinum'
 
 export type ExoticPower =
   | 'Riftrender'
@@ -148,6 +148,8 @@ export interface ItemInfo {
   effectChance?: number
   effects: ItemEffectInfo[]
   twoHanded: boolean
+  isTwin?: boolean
+  isBound?: boolean
   classId?: string
   manaRestore?: number
   spell?: SpellInfo

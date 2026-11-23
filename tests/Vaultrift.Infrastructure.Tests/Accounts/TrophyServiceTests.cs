@@ -100,4 +100,28 @@ public class TrophyServiceTests
 
         Assert.Contains(TrophyCatalog.WeaponMaster, last);
     }
+
+    [Fact]
+    public void TheDragonShard_GrowsWithTheHardestCustodeBeaten()
+    {
+        Assert.Equal(0, _trophies.DragonShardTier(_account.Id));
+
+        Play(OwnedGame(Difficulty.Normal), new VaultConquered());
+        Assert.Equal(1, _trophies.DragonShardTier(_account.Id));
+
+        Play(OwnedGame(Difficulty.Hard), new VaultConquered());
+        Assert.Equal(2, _trophies.DragonShardTier(_account.Id));
+    }
+
+    [Fact]
+    public void HeroesThatBeatTheCustodeBeforeTrophiesExisted_CatchUp()
+    {
+        var hero = new HeroSummary(Guid.NewGuid(), "ABCD-EFGH", "Tommy", "rogue", 21, 23, Difficulty.Hard, false, true, 0, DateTimeOffset.UtcNow);
+
+        var granted = _trophies.CatchUp(_account.Id, [hero]).Select(trophy => trophy.Id).ToList();
+
+        Assert.Contains(TrophyCatalog.CustodeHard, granted);
+        Assert.Equal(2, _trophies.DragonShardTier(_account.Id));
+        Assert.Empty(_trophies.CatchUp(_account.Id, [hero]));
+    }
 }

@@ -73,6 +73,17 @@ public sealed class Inventory
 
     internal InventoryEntry CreateEntry(ItemInstance item) => new(_nextId++, item);
 
+    public bool TryAddBound(ItemInstance item)
+    {
+        ArgumentNullException.ThrowIfNull(item);
+
+        if (IsFull)
+            return false;
+
+        _entries.Add(new InventoryEntry(_nextId++, item) { Mark = ItemMark.Favorite });
+        return true;
+    }
+
     public bool CanAdd(ItemInstance item)
     {
         ArgumentNullException.ThrowIfNull(item);

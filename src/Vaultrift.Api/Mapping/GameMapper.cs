@@ -304,7 +304,9 @@ public static class GameMapper
             item is WeaponDefinition { IsTwoHanded: true },
             (item as GearDefinition)?.ClassId,
             potion is { ManaRestore: > 0 } ? potion.ManaRestore : null,
-            SpellOf(item) is { } spell ? ToSpellResponse(spell, spell.ManaCost) : null);
+            SpellOf(item) is { } spell ? ToSpellResponse(spell, spell.ManaCost) : null,
+            item is WeaponDefinition { IsTwin: true },
+            item is WeaponDefinition { IsBound: true });
     }
 
     private static SpellDefinition? SpellOf(ItemDefinition item) => item switch

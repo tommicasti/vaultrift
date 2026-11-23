@@ -183,7 +183,7 @@ export function weaponModel(item: ItemInfo | undefined): string | undefined {
   const models = weaponModels[item.category]
   if (!models) return undefined
 
-  return item.twoHanded && models[1] ? models[1] : models[0]
+  return item.twoHanded && !item.isTwin && models[1] ? models[1] : models[0]
 }
 
 export function offHandModel(item: ItemInfo | undefined): string | undefined {
@@ -236,7 +236,7 @@ export function heroAttackClip(mainHand: ItemInfo | undefined, offHand: ItemInfo
       return offHand?.category === 'Dagger' ? 'Dualwield_Melee_Attack_Stab' : '1H_Melee_Attack_Stab'
     case 'Sword':
     case 'Axe':
-      return mainHand.twoHanded ? '2H_Melee_Attack_Slice' : '1H_Melee_Attack_Chop'
+      return mainHand.twoHanded && !mainHand.isTwin ? '2H_Melee_Attack_Slice' : '1H_Melee_Attack_Chop'
     default:
       return 'Unarmed_Melee_Attack_Punch_A'
   }
@@ -244,7 +244,7 @@ export function heroAttackClip(mainHand: ItemInfo | undefined, offHand: ItemInfo
 
 export function heroIdleClip(mainHand: ItemInfo | undefined): Clip {
   if (!mainHand) return 'Unarmed_Idle'
-  return mainHand.twoHanded && mainHand.category !== 'Bow' ? '2H_Melee_Idle' : 'Idle'
+  return mainHand.twoHanded && !mainHand.isTwin && mainHand.category !== 'Bow' ? '2H_Melee_Idle' : 'Idle'
 }
 
 export const rarityColors: Record<string, string> = {
@@ -253,6 +253,7 @@ export const rarityColors: Record<string, string> = {
   Epic: '#b45aff',
   Legendary: '#ff9a2a',
   Exotic: '#ff3a5a',
+  Platinum: '#d8f0ff',
 }
 
 export interface BiomeLook {

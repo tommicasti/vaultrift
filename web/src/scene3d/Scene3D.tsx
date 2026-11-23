@@ -393,7 +393,7 @@ function World({ game, effects, turn, zoom, firstPerson, lookOffset }: WorldProp
         <FirstPersonHands
           mainHand={gear.mainHandModel}
           offHand={gear.offHandModel}
-          twoHanded={mainHand?.twoHanded ?? false}
+          twoHanded={(mainHand?.twoHanded ?? false) && !mainHand?.isTwin}
           cue={cues.hero}
           alive={player.health > 0}
           sleeve={gear.outfit.body ? '#7d828c' : '#6b4f3a'}
@@ -810,7 +810,7 @@ function Glow({ x, y, color, height }: { x: number; y: number; color: string; he
   )
 }
 
-const beamRarities = new Set(['Epic', 'Legendary', 'Exotic'])
+const beamRarities = new Set(['Epic', 'Legendary', 'Exotic', 'Platinum'])
 
 function LootBeam({ color, pulse }: { color: string; pulse: boolean }) {
   const ref = useRef<Mesh>(null)
@@ -879,7 +879,7 @@ function FloorItem({ x, y, item }: { x: number; y: number; item: ItemInfo }) {
         <circleGeometry args={[0.9, 24]} />
         <meshBasicMaterial color={color} transparent opacity={item.rarity === 'Common' ? 0.18 : 0.4} />
       </mesh>
-      {beamRarities.has(item.rarity) && <LootBeam color={color} pulse={item.rarity === 'Exotic'} />}
+      {beamRarities.has(item.rarity) && <LootBeam color={color} pulse={item.rarity === 'Exotic' || item.rarity === 'Platinum'} />}
     </group>
   )
 }

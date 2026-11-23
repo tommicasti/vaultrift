@@ -75,6 +75,11 @@ public sealed class TrophyService
         if (coins > 0 && Wants(TrophyCatalog.Rich) && _accounts.AddToCounter(accountId, TrophyCatalog.CoinsCounter, coins) >= TrophyCatalog.RichGoal)
             earned.Add(TrophyCatalog.Rich);
 
+        return Grant(accountId, unlocked, earned);
+    }
+
+    private List<TrophyDefinition> Grant(Guid accountId, ConcurrentDictionary<string, byte> unlocked, IEnumerable<string> earned)
+    {
         var now = _clock();
         var fresh = new List<TrophyDefinition>();
 
@@ -98,6 +103,50 @@ public sealed class TrophyService
         return fresh;
     }
 
+    public int DragonShardTier(Guid accountId)
+    {
+        var unlocked = Unlocked(accountId);
+        return unlocked.ContainsKey(TrophyCatalog.CustodeHardcore) ? 3
+            : unlocked.ContainsKey(TrophyCatalog.CustodeHard) ? 2
+            : unlocked.ContainsKey(TrophyCatalog.CustodeNormal) ? 1
+            : 0;
+    }
+
+    public IReadOnlyList<TrophyDefinition> CatchUp(Guid accountId, IEnumerable<HeroSummary> heroes)
+    {
+        var unlocked = Unlocked(accountId);
+        var earned = new List<string>();
+        var counted = false;
+
+        foreach (var hero in heroes.Where(hero => hero.IsConquered))
+        {
+            var trophies = CustodeTrophies(hero.Difficulty).ToList();
+            if (trophies.All(unlocked.ContainsKey))
+                continue;
+
+            _accounts.AddToCounter(accountId, TrophyCatalog.ConqueredPrefix + hero.ClassId, 1);
+            earned.AddRange(trophies);
+            counted = true;
+        }
+
+        if (counted && ClassCatalog.All.All(definition => _accounts.CountersOf(accountId).GetValueOrDefault(TrophyCatalog.ConqueredPrefix + definition.Class.Id) > 0))
+            earned.Add(TrophyCatalog.WeaponMaster);
+
+        return Grant(accountId, unlocked, earned);
+    }
+
+    private static IEnumerable<string> CustodeTrophies(Difficulty difficulty)
+    {
+        yield return TrophyCatalog.KingSlayer;
+        yield return TrophyCatalog.CustodeNormal;
+
+        if (difficulty is Difficulty.Hard or Difficulty.Hardcore)
+            yield return TrophyCatalog.CustodeHard;
+
+        if (difficulty == Difficulty.Hardcore)
+            yield return TrophyCatalog.CustodeHardcore;
+    }
+
     public IReadOnlyList<TrophyStatus> StatusOf(Guid accountId)
     {
         var trophies = _accounts.TrophiesOf(accountId);
@@ -113,14 +162,8 @@ public sealed class TrophyService
 
     private IEnumerable<string> Conquered(Guid accountId, Game game)
     {
-        yield return TrophyCatalog.KingSlayer;
-        yield return TrophyCatalog.CustodeNormal;
-
-        if (game.Difficulty is Difficulty.Hard or Difficulty.Hardcore)
-            yield return TrophyCatalog.CustodeHard;
-
-        if (game.Difficulty == Difficulty.Hardcore)
-            yield return TrophyCatalog.CustodeHardcore;
+        foreach (var trophy in CustodeTrophies(game.Difficulty))
+            yield return trophy;
 
         if (game.Player.Class?.Id is { } classId)
             _accounts.AddToCounter(accountId, TrophyCatalog.ConqueredPrefix + classId, 1);

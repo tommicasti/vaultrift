@@ -9,7 +9,7 @@ public static class ItemRoller
         Rarity.Common => 0.20,
         Rarity.Rare => 0.35,
         Rarity.Epic => 0.50,
-        Rarity.Legendary or Rarity.Exotic => 0,
+        Rarity.Legendary or Rarity.Exotic or Rarity.Platinum => 0,
         _ => throw new ArgumentOutOfRangeException(nameof(rarity), rarity, "Unknown rarity.")
     };
 
@@ -22,7 +22,7 @@ public static class ItemRoller
         {
             EquipmentDefinition { FixedElement: not null } => new ItemInstance(definition),
             GearDefinition { Kind: EquipmentKind.Cloak } => new ItemInstance(definition, RandomElement(random)),
-            WeaponDefinition { Rarity: not (Rarity.Legendary or Rarity.Exotic) } when random.NextDouble() < WeaponElementChance(definition.Rarity)
+            WeaponDefinition { Rarity: not (Rarity.Legendary or Rarity.Exotic or Rarity.Platinum) } when random.NextDouble() < WeaponElementChance(definition.Rarity)
                 => new ItemInstance(definition, RandomElement(random)),
             _ => new ItemInstance(definition)
         };

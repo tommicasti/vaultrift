@@ -99,6 +99,7 @@ export const helmetSprites: Record<Rarity, number> = {
   Epic: 10,
   Legendary: 11,
   Exotic: 11,
+  Platinum: 11,
 }
 
 export interface LegendaryOutfit {
@@ -155,6 +156,7 @@ export const rarityStars: Record<Rarity, number> = {
   Epic: 2,
   Legendary: 3,
   Exotic: 3,
+  Platinum: 3,
 }
 
 export const starSprites: Record<Rarity, number> = {
@@ -163,6 +165,7 @@ export const starSprites: Record<Rarity, number> = {
   Epic: 27,
   Legendary: 28,
   Exotic: 28,
+  Platinum: 28,
 }
 
 export const elementSprites: Record<Element, number> = {

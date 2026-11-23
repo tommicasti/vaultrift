@@ -455,8 +455,8 @@ function ItemDetails({
       <div className="item-details-text">
         <div className="item-title">
           <span className="item-name">{item.name}</span>
-          <MarkToggle entry={entry} mark="Favorite" label="Favorite" disabled={disabled} onMark={onMark} />
-          <MarkToggle entry={entry} mark="Junk" label="Junk" disabled={disabled} onMark={onMark} />
+          <MarkToggle entry={entry} mark="Favorite" label="Favorite" disabled={disabled || item.isBound === true} onMark={onMark} />
+          <MarkToggle entry={entry} mark="Junk" label="Junk" disabled={disabled || item.isBound === true} onMark={onMark} />
           <span className="item-value" title={entry.quantity > 1 ? `${entry.sellPrice * entry.quantity} for all ${entry.quantity}` : undefined}>
             <span className="label">Sells for</span>
             <span className="coins">
