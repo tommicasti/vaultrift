@@ -98,4 +98,21 @@ public class AccountServiceTests
         Assert.Empty(service.HeroesOf(second.Id));
         Assert.Equal(LinkResult.AlreadyYours, service.Link(first.Id, game.Id));
     }
+
+    [Fact]
+    public void AForgottenHero_LeavesTheAccount_AndOnlyItsOwnerCanForgetIt()
+    {
+        var service = Service();
+        var owner = service.Register("Owner", "password123", null).Account!;
+        var stranger = service.Register("Stranger", "password123", null).Account!;
+        var game = SavedGame();
+        service.Claim(owner.Id, [game.Code]);
+
+        Assert.False(service.Unlink(stranger.Id, game.Id));
+        Assert.True(service.Owns(owner.Id, game.Id));
+
+        Assert.True(service.Unlink(owner.Id, game.Id));
+        Assert.False(service.Owns(owner.Id, game.Id));
+        Assert.Empty(service.HeroesOf(owner.Id));
+    }
 }

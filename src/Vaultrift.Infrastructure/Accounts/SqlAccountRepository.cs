@@ -153,6 +153,16 @@ public sealed class SqlAccountRepository : IAccountRepository
             return reader.Read() && reader.GetGuid(0) == accountId ? LinkResult.AlreadyYours : LinkResult.OwnedByOther;
         });
 
+    public bool Unlink(Guid accountId, Guid gameId) =>
+        Run(connection =>
+        {
+            using var command = connection.CreateCommand();
+            command.CommandText = "DELETE FROM dbo.AccountGames WHERE GameId = @GameId AND AccountId = @AccountId";
+            command.Parameters.AddWithValue("@GameId", gameId);
+            command.Parameters.AddWithValue("@AccountId", accountId);
+            return command.ExecuteNonQuery() == 1;
+        });
+
     public IReadOnlyList<Guid> GamesOf(Guid accountId) =>
         Run(connection =>
         {

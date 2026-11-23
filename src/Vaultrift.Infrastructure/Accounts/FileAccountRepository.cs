@@ -53,6 +53,19 @@ public sealed class FileAccountRepository : IAccountRepository
         }
     }
 
+    public bool Unlink(Guid accountId, Guid gameId)
+    {
+        lock (_gate)
+        {
+            if (!_memory.Unlink(accountId, gameId))
+                return false;
+
+            _links.RemoveAll(link => link.AccountId == accountId && link.GameId == gameId);
+            Write();
+            return true;
+        }
+    }
+
     public IReadOnlyList<Guid> GamesOf(Guid accountId) => _memory.GamesOf(accountId);
 
     public Guid? OwnerOf(Guid gameId) => _memory.OwnerOf(gameId);

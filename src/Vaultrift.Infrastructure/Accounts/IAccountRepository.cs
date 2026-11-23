@@ -10,6 +10,8 @@ public interface IAccountRepository
 
     LinkResult Link(Guid accountId, Guid gameId);
 
+    bool Unlink(Guid accountId, Guid gameId);
+
     IReadOnlyList<Guid> GamesOf(Guid accountId);
 
     Guid? OwnerOf(Guid gameId);

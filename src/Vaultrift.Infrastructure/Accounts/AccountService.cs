@@ -97,6 +97,15 @@ public sealed class AccountService
 
     public Guid? OwnerOf(Guid gameId) => _owners.GetOrAdd(gameId, _accounts.OwnerOf);
 
+    public bool Owns(Guid accountId, Guid gameId) => OwnerOf(gameId) == accountId;
+
+    public bool Unlink(Guid accountId, Guid gameId)
+    {
+        var removed = _accounts.Unlink(accountId, gameId);
+        _owners.TryRemove(gameId, out _);
+        return removed;
+    }
+
     public int Claim(Guid accountId, IEnumerable<string> codes)
     {
         var linked = 0;

@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Vaultrift.Api.Contracts;
 using Vaultrift.Api.Hosting;
@@ -11,6 +12,7 @@ using Vaultrift.Infrastructure.Persistence;
 namespace Vaultrift.Api.Controllers;
 
 [ApiController]
+[Authorize]
 [Route("api/games")]
 public sealed class GamesController : ControllerBase
 {
@@ -38,29 +40,27 @@ public sealed class GamesController : ControllerBase
             return ValidationProblem(ModelState);
         }
 
+        if (User.AccountId() is null)
+            return Unauthorized();
+
         var session = _store.Create(playerClass, request.Name, request.Difficulty);
 
         _trophies.StartFloor(session.Id, session.Game.FloorNumber);
 
-        if (User.AccountId() is { } accountId)
-        {
-            _accounts.Link(accountId, session.Id);
-            GrantDragonShard(accountId, session);
-        }
+        var accountId = User.AccountId()!.Value;
+        _accounts.Link(accountId, session.Id);
+        GrantDragonShard(accountId, session);
 
         return CreatedAtAction(nameof(Get), new { id = session.Id }, GameMapper.ToResponse(session));
     }
 
     [HttpGet("{id:guid}")]
-    public ActionResult<GameStateResponse> Get(Guid id) => Show(_store.Find(id));
-
-    [HttpGet("code/{code}")]
-    public ActionResult<GameStateResponse> GetByCode(string code) => Show(_store.FindByCode(code));
+    public ActionResult<GameStateResponse> Get(Guid id) => Show(Owned(id));
 
     [HttpGet("{id:guid}/preview/{entryId:int}")]
     public ActionResult<StatsPreviewResponse> Preview(Guid id, int entryId, [FromQuery] EquipmentSlot? hand)
     {
-        var session = _store.Find(id);
+        var session = Owned(id);
 
         if (session is null)
             return NotFound();
@@ -179,7 +179,7 @@ public sealed class GamesController : ControllerBase
 
     private ActionResult<TurnResponse> Play(Guid id, Func<Game, TurnResult> action)
     {
-        var session = _store.Find(id);
+        var session = Owned(id);
 
         if (session is null)
             return NotFound();
@@ -191,6 +191,9 @@ public sealed class GamesController : ControllerBase
             return GameMapper.ToResponse(session, result, Trophies(session, result));
         }
     }
+
+    private GameSession? Owned(Guid id) =>
+        User.AccountId() is { } accountId && _accounts.Owns(accountId, id) ? _store.Find(id) : null;
 
     private void GrantDragonShard(Guid accountId, GameSession session)
     {

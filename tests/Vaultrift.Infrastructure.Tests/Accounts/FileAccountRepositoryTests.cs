@@ -27,5 +27,8 @@ public sealed class FileAccountRepositoryTests : IDisposable
         Assert.Equal("me@example.com", reopened.FindById(account.Id)?.Email);
         Assert.Equal([game], reopened.GamesOf(account.Id));
         Assert.False(reopened.TryCreate(account with { Id = Guid.NewGuid() }));
+
+        reopened.Unlink(account.Id, game);
+        Assert.Empty(new FileAccountRepository(_folder).GamesOf(account.Id));
     }
 }

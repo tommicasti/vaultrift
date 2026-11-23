@@ -66,7 +66,7 @@ export function AccountPanel({ account, codes, onSignedIn, onSignOut }: AccountP
   if (mode === 'closed') {
     return (
       <section className="account-panel">
-        <span className="label">Sign in to keep your heroes on every device.</span>
+        <span className="label">Sign in or create an account to play. Your heroes follow you on every device.</span>
         <div className="account-actions">
           <button type="button" onClick={() => open('login')}>
             Sign in
