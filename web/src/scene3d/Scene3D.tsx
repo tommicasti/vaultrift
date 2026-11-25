@@ -32,7 +32,7 @@ import {
   weaponModel,
 } from './models'
 import { Shroud } from './Shroud'
-import { turned } from './firstPerson'
+import { facingAngles, steeredFacing, turned, wrapAngle } from './firstPerson'
 import { cuesForTurn, type Popup, type Turn } from './turnCues'
 import { layoutKey, remember, visibleTiles, type Visibility } from './vision'
 import { loadZoom, saveZoom } from './viewMode'
@@ -46,6 +46,7 @@ interface Scene3DProps {
   turn: Turn | null
   bossTarget?: EnemyState
   firstPerson: boolean
+  paused: boolean
   onFirstPersonChange: (firstPerson: boolean) => void
   onTurn: (direction: Direction) => void
   onAttack: () => void
@@ -53,7 +54,7 @@ interface Scene3DProps {
 
 const heroScale = 1.3
 const voidColor = '#000000'
-const corpseMs = 1150
+const corpseMs = 760
 
 interface Aura {
   burst: Burst3D
@@ -63,13 +64,6 @@ interface Aura {
 interface Corpse {
   enemy: EnemyState
   until: number
-}
-
-const facingAngles: Record<Direction, number> = {
-  Down: 0,
-  Up: Math.PI,
-  Left: -Math.PI / 2,
-  Right: Math.PI / 2,
 }
 
 const minZoom = 0.6
@@ -92,6 +86,7 @@ function clampZoom(zoom: number): number {
 export interface LookOffset {
   yaw: number
   pitch: number
+  heading: number | null
 }
 
 interface Drag {
@@ -106,26 +101,115 @@ const dragThreshold = 6
 const yawPerPixel = 0.006
 const pitchPerPixel = 0.004
 const maxPitch = 0.55
+const mouseYawPerPixel = 0.0032
+const mousePitchPerPixel = 0.0024
+const steerRetryMs = 350
 
-export default function Scene3D({ game, viewColumns, viewRows, effects, turn, bossTarget, firstPerson, onFirstPersonChange, onTurn, onAttack }: Scene3DProps) {
+interface Steering {
+  asked: Direction | null
+  at: number
+}
+
+export default function Scene3D({ game, viewColumns, viewRows, effects, turn, bossTarget, firstPerson, paused, onFirstPersonChange, onTurn, onAttack }: Scene3DProps) {
   const [zoom, setZoomState] = useState(() => clampZoom(loadZoom(1)))
   const container = useRef<HTMLDivElement>(null)
   const touches = useRef(new Map<number, { x: number; y: number }>())
   const pinch = useRef<{ distance: number; zoom: number } | null>(null)
   const drag = useRef<Drag | null>(null)
-  const look = useRef<LookOffset>({ yaw: 0, pitch: 0 })
+  const look = useRef<LookOffset>({ yaw: 0, pitch: 0, heading: null })
   const settle = useRef<number | null>(null)
   const facing = game.player.facing
   const modes = useRef({ firstPerson, zoom, onFirstPersonChange })
+  const [locked, setLocked] = useState(false)
+  const steering = useRef<Steering>({ asked: null, at: 0 })
+  const live = useRef({ facing, onTurn })
+  const canLock = useMemo(() => typeof document !== 'undefined' && 'pointerLockElement' in document && (window.matchMedia?.('(pointer: fine)').matches ?? false), [])
 
   useEffect(() => {
     modes.current = { firstPerson, zoom, onFirstPersonChange }
   }, [firstPerson, zoom, onFirstPersonChange])
 
   useEffect(() => {
+    live.current = { facing, onTurn }
+  }, [facing, onTurn])
+
+  useEffect(() => {
+    if (look.current.heading !== null) {
+      if (steering.current.asked === facing) steering.current = { asked: null, at: 0 }
+      else look.current = { ...look.current, heading: facingAngles[facing] }
+      return
+    }
     if (drag.current?.moved) return
-    look.current = { yaw: 0, pitch: 0 }
+    look.current = { yaw: 0, pitch: 0, heading: null }
   }, [facing])
+
+  useEffect(() => {
+    const element = container.current
+    const handleChange = () => {
+      const active = element !== null && document.pointerLockElement === element
+      setLocked(active)
+      steering.current = { asked: null, at: 0 }
+      look.current = active
+        ? { yaw: 0, pitch: 0, heading: facingAngles[live.current.facing] }
+        : { yaw: 0, pitch: 0, heading: null }
+    }
+
+    document.addEventListener('pointerlockchange', handleChange)
+    return () => {
+      document.removeEventListener('pointerlockchange', handleChange)
+      if (element !== null && document.pointerLockElement === element) document.exitPointerLock()
+    }
+  }, [])
+
+  useEffect(() => {
+    if ((!firstPerson || paused) && document.pointerLockElement === container.current && container.current !== null)
+      document.exitPointerLock()
+  }, [firstPerson, paused])
+
+  useEffect(() => {
+    if (!locked) return
+
+    const steer = () => {
+      const heading = look.current.heading
+      if (heading === null) return
+      const { facing: current, onTurn: turn } = live.current
+      const wanted = steeredFacing(heading, current)
+      if (wanted === current) return
+      const now = performance.now()
+      if (steering.current.asked === wanted && now - steering.current.at < steerRetryMs) return
+      steering.current = { asked: wanted, at: now }
+      turn(wanted)
+    }
+
+    const handleMouseMove = (event: MouseEvent) => {
+      const heading = look.current.heading
+      if (heading === null) return
+      look.current = {
+        yaw: 0,
+        pitch: Math.max(-maxPitch, Math.min(maxPitch, look.current.pitch - event.movementY * mousePitchPerPixel)),
+        heading: wrapAngle(heading - event.movementX * mouseYawPerPixel),
+      }
+      steer()
+    }
+
+    document.addEventListener('mousemove', handleMouseMove)
+    const retry = window.setInterval(steer, steerRetryMs)
+    return () => {
+      document.removeEventListener('mousemove', handleMouseMove)
+      window.clearInterval(retry)
+    }
+  }, [locked])
+
+  function requestLook() {
+    const element = container.current
+    if (!element) return
+    try {
+      const request = element.requestPointerLock() as unknown
+      if (request instanceof Promise) request.catch(() => undefined)
+    } catch {
+      return
+    }
+  }
 
   useEffect(
     () => () => {
@@ -150,15 +234,15 @@ export default function Scene3D({ game, viewColumns, viewRows, effects, turn, bo
     if (settle.current !== null) window.clearTimeout(settle.current)
 
     if (quarters === 0) {
-      look.current = { yaw: 0, pitch: 0 }
+      look.current = { yaw: 0, pitch: 0, heading: null }
       return
     }
 
-    look.current = { yaw: look.current.yaw, pitch: 0 }
+    look.current = { yaw: look.current.yaw, pitch: 0, heading: null }
     onTurn(turned(facing, quarters))
     settle.current = window.setTimeout(() => {
       settle.current = null
-      look.current = { yaw: 0, pitch: 0 }
+      look.current = { yaw: 0, pitch: 0, heading: null }
     }, 900)
   }
 
@@ -166,12 +250,22 @@ export default function Scene3D({ game, viewColumns, viewRows, effects, turn, bo
     const mouse = event.pointerType === 'mouse'
     if (mouse && event.button !== 0) return
 
+    if (mouse && locked) {
+      onAttack()
+      return
+    }
+
+    if (mouse && firstPerson && canLock) {
+      requestLook()
+      return
+    }
+
     if (!mouse) {
       touches.current.set(event.pointerId, { x: event.clientX, y: event.clientY })
       if (touches.current.size === 2) {
         pinch.current = { distance: spread(), zoom }
         drag.current = null
-        look.current = { yaw: 0, pitch: 0 }
+        look.current = { yaw: 0, pitch: 0, heading: null }
         return
       }
     }
@@ -188,7 +282,7 @@ export default function Scene3D({ game, viewColumns, viewRows, effects, turn, bo
       const dx = event.clientX - current.x
       const dy = event.clientY - current.y
       if (!current.moved && Math.hypot(dx, dy) > dragThreshold) current.moved = true
-      if (current.moved) look.current = { yaw: -dx * yawPerPixel, pitch: Math.max(-maxPitch, Math.min(maxPitch, -dy * pitchPerPixel)) }
+      if (current.moved) look.current = { yaw: -dx * yawPerPixel, pitch: Math.max(-maxPitch, Math.min(maxPitch, -dy * pitchPerPixel)), heading: null }
     }
 
     if (!touches.current.has(event.pointerId)) return
@@ -300,6 +394,7 @@ export default function Scene3D({ game, viewColumns, viewRows, effects, turn, bo
         />
       )}
       {firstPerson && <div className="scene3d-crosshair" aria-hidden="true" />}
+      {firstPerson && canLock && !locked && !paused && <div className="scene3d-look-hint">Click to look around with the mouse</div>}
       <div className="scene3d-zoom" hidden={firstPerson} onPointerDown={event => event.stopPropagation()}>
         <button type="button" aria-label="Zoom in" disabled={zoom <= minZoom} onClick={() => setZoom(zoom / zoomStep)}>
           +
@@ -534,6 +629,7 @@ function CameraRig({ x, y, zoom, light, facing, firstPerson, alive, look }: Came
   const shown = useRef({ yaw: 0, pitch: 0 })
   const lastGoal = useRef(facingAngles[facing])
   const eye = useRef(eyeHeight)
+  const body = useRef(facingAngles[facing])
 
 
   useFrame(state => {
@@ -561,14 +657,22 @@ function CameraRig({ x, y, zoom, light, facing, firstPerson, alive, look }: Came
         lastGoal.current = goal
       }
       const ease = Math.min(1, delta * 9)
-      view.yaw += (look.current.yaw - view.yaw) * ease
-      view.pitch += (look.current.pitch - view.pitch) * ease
+      const aim = look.current.heading
+      if (aim === null) {
+        view.yaw += (look.current.yaw - view.yaw) * ease
+        view.pitch += (look.current.pitch - view.pitch) * ease
+      } else {
+        const follow = Math.min(1, delta * 24)
+        view.yaw += wrapAngle(aim - goal - view.yaw) * follow
+        view.pitch += (look.current.pitch - view.pitch) * follow
+      }
       eye.current += ((alive ? eyeHeight : fallenEye) - eye.current) * Math.min(1, delta * 3)
-      const bodyYaw = goal + view.yaw - look.current.yaw
-      const body = new Vector3(Math.sin(bodyYaw), 0, Math.cos(bodyYaw))
+      body.current += wrapAngle(goal - body.current) * ease
+      const bodyYaw = aim === null ? goal + view.yaw - look.current.yaw : body.current
+      const back = new Vector3(Math.sin(bodyYaw), 0, Math.cos(bodyYaw))
       const heading = goal + view.yaw
       const tilt = (alive ? -0.11 : 0.2) + view.pitch
-      camera.position.copy(focus.current).addScaledVector(body, -eyeBack).setY(eye.current)
+      camera.position.copy(focus.current).addScaledVector(back, -eyeBack).setY(eye.current)
       camera.lookAt(
         camera.position.clone().add(new Vector3(Math.sin(heading) * Math.cos(tilt), Math.sin(tilt), Math.cos(heading) * Math.cos(tilt))),
       )
