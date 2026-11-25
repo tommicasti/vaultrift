@@ -101,7 +101,7 @@ export function cuesForTurn(turn: Turn | null, enemiesAfter: EnemyState[], playe
       cues.bursts.push({ key: `${turn.id}-smash${cues.bursts.length}`, x: event.x, y: event.y, kind: 'debris', delayMs: contactDelayMs })
     if (event.type === 'EnemyDefeated') {
       const fallen = spot(event.enemyId)
-      if (fallen) cues.bursts.push({ key: `${turn.id}-death${event.enemyId}`, x: fallen.x, y: fallen.y, kind: 'soul', delayMs: hitDelayMs + 120 })
+      if (fallen) cues.bursts.push({ key: `${turn.id}-death${event.enemyId}`, x: fallen.x, y: fallen.y, kind: 'soul', delayMs: hitDelayMs + 40 })
     }
 
     if (event.type === 'PlayerDrifted' || event.type === 'PlayerBlownAway')

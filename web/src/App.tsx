@@ -680,6 +680,7 @@ function App() {
             turn={lastTurn}
             bossTarget={bossTarget}
             firstPerson={firstPerson}
+            paused={inventoryOpen || mapOpen || shopOpen || travelOpen || game.isLost || (game.isConquered && !victoryDismissed)}
             onFirstPersonChange={changeFirstPerson}
             onTurn={handleFace}
             onAttack={handleAttack}
@@ -689,7 +690,7 @@ function App() {
         <Board game={game} viewColumns={view.columns} viewRows={view.rows} effects={effects} bossTarget={bossTarget} levelUp={levelUpAt} onAttack={handleAttack} />
       )}
       <p className="keyboard-hint">
-        {firstPerson ? 'W forward · A D turn · S turn around · drag the mouse to look' : 'WASD to move · Shift+WASD to turn'} · Space or click to attack · E ability · Q R potions · F scroll · 1–4 spells · Tab backpack · M map
+        {firstPerson ? 'W forward · A D turn · S turn around · click the view to look with the mouse, Esc to release it' : 'WASD to move · Shift+WASD to turn'} · Space or click to attack · E ability · Q R potions · F scroll · 1–4 spells · Tab backpack · M map
         {viewMode === '3d' && ' · V camera'}
       </p>
       <Controls

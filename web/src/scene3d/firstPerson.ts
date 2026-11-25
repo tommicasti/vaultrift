@@ -2,6 +2,27 @@ import type { Direction, TilePosition } from '../api/types'
 
 const clockwise: Direction[] = ['Up', 'Right', 'Down', 'Left']
 
+export const facingAngles: Record<Direction, number> = {
+  Down: 0,
+  Up: Math.PI,
+  Left: -Math.PI / 2,
+  Right: Math.PI / 2,
+}
+
+export const turnThreshold = (Math.PI / 180) * 50
+
+export function wrapAngle(angle: number): number {
+  return Math.atan2(Math.sin(angle), Math.cos(angle))
+}
+
+export function steeredFacing(heading: number, facing: Direction): Direction {
+  if (Math.abs(wrapAngle(heading - facingAngles[facing])) <= turnThreshold) return facing
+
+  return clockwise.reduce((best, direction) =>
+    Math.abs(wrapAngle(heading - facingAngles[direction])) < Math.abs(wrapAngle(heading - facingAngles[best])) ? direction : best,
+  )
+}
+
 export interface Intent {
   kind: 'move' | 'face'
   direction: Direction

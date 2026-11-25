@@ -68,7 +68,7 @@ interface ActorBodyProps extends ActorBaseProps {
 const proceduralSeconds: Record<string, number> = {
   Attack: 0.45,
   Hit: 0.35,
-  Death: 0.9,
+  Death: 0.6,
   Wake: 0.5,
   Spawn: 0.5,
 }
@@ -198,13 +198,13 @@ function applyMotion(pose: Group, parts: Parts, motion: Motion, moving: boolean,
 
 const builtWeapons: Record<string, () => Object3D> = { bow: buildBow, spear: buildSpear }
 
-const sinkDelayMs = 350
-const sinkSpeed = 3.6
+const sinkDelayMs = 180
+const sinkSpeed = 5.4
 
 function clipSpeed(name: string): number {
   if (/Attack|Shoot|Spellcast|Punch/.test(name)) return 1.7
   if (/Hit/.test(name)) return 1.4
-  if (/Death/.test(name)) return 2.6
+  if (/Death/.test(name)) return 3.6
   return 1
 }
 
