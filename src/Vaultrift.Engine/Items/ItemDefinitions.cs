@@ -13,6 +13,10 @@ public abstract record EquipmentDefinition(
     : ItemDefinition(Id, Name, Rarity, Description)
 {
     public IReadOnlyList<ItemEffect> Effects { get; init; } = [];
+
+    public bool IsBound { get; init; }
+
+    public bool ScalesWithLevel { get; init; }
 }
 
 public sealed record WeaponDefinition(
@@ -25,7 +29,7 @@ public sealed record WeaponDefinition(
     Element? FixedElement = null)
     : EquipmentDefinition(Id, Name, Rarity, EquipmentKind.Weapon, Modifiers, Description, FixedElement)
 {
-    public bool IsTwoHanded => WeaponType.IsTwoHanded();
+    public bool IsTwoHanded => WeaponType.IsTwoHanded() || IsTwin;
 
     public SpellDefinition? Spell { get; init; }
 
@@ -35,9 +39,7 @@ public sealed record WeaponDefinition(
 
     public bool IsTwin { get; init; }
 
-    public bool IsBound { get; init; }
-
-    public bool ScalesWithLevel { get; init; }
+    public bool Pierces { get; init; }
 }
 
 public sealed record GearDefinition(

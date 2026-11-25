@@ -233,7 +233,7 @@ export function heroAttackClip(mainHand: ItemInfo | undefined, offHand: ItemInfo
     case 'Spear':
       return '2H_Melee_Attack_Stab'
     case 'Dagger':
-      return offHand?.category === 'Dagger' ? 'Dualwield_Melee_Attack_Stab' : '1H_Melee_Attack_Stab'
+      return offHand?.category === 'Dagger' || mainHand.isTwin ? 'Dualwield_Melee_Attack_Stab' : '1H_Melee_Attack_Stab'
     case 'Sword':
     case 'Axe':
       return mainHand.twoHanded && !mainHand.isTwin ? '2H_Melee_Attack_Slice' : '1H_Melee_Attack_Chop'

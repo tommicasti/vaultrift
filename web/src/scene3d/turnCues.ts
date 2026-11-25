@@ -101,7 +101,7 @@ export function cuesForTurn(turn: Turn | null, enemiesAfter: EnemyState[], playe
       cues.bursts.push({ key: `${turn.id}-smash${cues.bursts.length}`, x: event.x, y: event.y, kind: 'debris', delayMs: contactDelayMs })
     if (event.type === 'EnemyDefeated') {
       const fallen = spot(event.enemyId)
-      if (fallen) cues.bursts.push({ key: `${turn.id}-death${event.enemyId}`, x: fallen.x, y: fallen.y, kind: 'soul', delayMs: hitDelayMs + 250 })
+      if (fallen) cues.bursts.push({ key: `${turn.id}-death${event.enemyId}`, x: fallen.x, y: fallen.y, kind: 'soul', delayMs: hitDelayMs + 120 })
     }
 
     if (event.type === 'PlayerDrifted' || event.type === 'PlayerBlownAway')
@@ -143,6 +143,9 @@ export function cuesForTurn(turn: Turn | null, enemiesAfter: EnemyState[], playe
         heroCue('Spellcast_Raise')
         break
       case 'MerchantGreeted':
+      case 'TotemPrimed':
+      case 'TotemTooExpensive':
+      case 'WaystoneTouched':
       case 'TotemAwakened':
         heroCue('Interact')
         break

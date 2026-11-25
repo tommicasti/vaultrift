@@ -150,6 +150,7 @@ export interface ItemInfo {
   twoHanded: boolean
   isTwin?: boolean
   isBound?: boolean
+  scalesWithLevel?: boolean
   classId?: string
   manaRestore?: number
   spell?: SpellInfo
@@ -304,12 +305,14 @@ export interface GameState {
   waystone?: WaystoneState
   totem?: TotemState
   deepestFloor: number
+  graveFloor?: number
 }
 
 export interface DestinationInfo {
   floor: number
   biome?: string
   isCleared: boolean
+  hasGrave?: boolean
 }
 
 export interface WaystoneState {
@@ -443,6 +446,11 @@ export type GameEventType =
   | 'GraveDug'
   | 'GraveRecovered'
   | 'GraveLost'
+  | 'GraveLeftBehind'
+  | 'GraveAwaits'
+  | 'TotemPrimed'
+  | 'TotemTooExpensive'
+  | 'WaystoneTouched'
   | 'HeroLost'
   | 'SpareWeaponTaken'
   | 'WeaponImbued'

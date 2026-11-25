@@ -34,7 +34,7 @@ import {
 import { Shroud } from './Shroud'
 import { turned } from './firstPerson'
 import { cuesForTurn, type Popup, type Turn } from './turnCues'
-import { remember, visibleTiles, type Visibility } from './vision'
+import { layoutKey, remember, visibleTiles, type Visibility } from './vision'
 import { loadZoom, saveZoom } from './viewMode'
 import './scene3d.css'
 
@@ -53,7 +53,7 @@ interface Scene3DProps {
 
 const heroScale = 1.3
 const voidColor = '#000000'
-const corpseMs = 1900
+const corpseMs = 1150
 
 interface Aura {
   burst: Burst3D
@@ -282,6 +282,7 @@ export default function Scene3D({ game, viewColumns, viewRows, effects, turn, bo
           label="Your grave"
           variant="grave"
           facing={firstPerson ? game.player.facing : undefined}
+          always
         />
       )}
       {bossTarget && (
@@ -295,6 +296,7 @@ export default function Scene3D({ game, viewColumns, viewRows, effects, turn, bo
           label={bossTarget.name}
           variant="boss"
           facing={firstPerson ? game.player.facing : undefined}
+          always
         />
       )}
       {firstPerson && <div className="scene3d-crosshair" aria-hidden="true" />}
@@ -403,7 +405,7 @@ function World({ game, effects, turn, zoom, firstPerson, lookOffset }: WorldProp
     [game.stairs, game.merchant, game.waystone, game.totem, game.grave, game.chests, game.floorItems],
   )
   const visible = useMemo(() => visibleTiles(game.map, player.x, player.y), [game.map, player.x, player.y])
-  const explored = useMemo(() => remember(`${game.id}:${game.floor}`, game.map, visible), [game.id, game.floor, game.map, visible])
+  const explored = useMemo(() => remember(layoutKey(game.id, game.floor, game.map), game.map, visible), [game.id, game.floor, game.map, visible])
   const columns = useMemo(() => Math.max(...game.map.map(row => row.length)), [game.map])
   const lit = useMemo(() => {
     const rows = game.map.length
@@ -784,7 +786,19 @@ function Props({ game, kit, visible }: PropsProps) {
       {game.chests.map(chest => (
         <Piece key={`chest-${chest.x}-${chest.y}`} piece={kit.chest} x={chest.x} y={chest.y} scale={1.25} />
       ))}
-      {game.grave && <Piece piece={kit.grave} x={game.grave.x} y={game.grave.y} scale={0.9} />}
+      {game.grave && (
+        <>
+          <Piece piece={kit.grave} x={game.grave.x} y={game.grave.y} scale={0.9} />
+          <group position={[game.grave.x * cell, 0, game.grave.y * cell]}>
+            <RarityRing color="#ff2a2a" size={1.35} />
+            <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.07, 0]}>
+              <circleGeometry args={[1.4, 24]} />
+              <meshBasicMaterial color="#ff2a2a" transparent opacity={0.22} depthWrite={false} />
+            </mesh>
+            <LootBeam color="#ff3a3a" pulse />
+          </group>
+        </>
+      )}
       {game.waystone && (
         <group>
           <Piece piece={kit.waystone} x={game.waystone.x} y={game.waystone.y} scale={0.7} />

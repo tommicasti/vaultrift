@@ -310,6 +310,10 @@ export function describeEvent(event: GameEvent, enemyNames: ReadonlyMap<number, 
       return event.level
         ? `You take back ${event.amount} ${event.amount === 1 ? 'item' : 'items'}. Your backpack is full: ${event.level} still ${event.level === 1 ? 'waits' : 'wait'} in the grave.`
         : `You take back your gear from the grave (${event.amount} ${event.amount === 1 ? 'item' : 'items'}).`
+    case 'GraveLeftBehind':
+      return `Your grave stays on floor ${event.floor} with ${event.amount} ${event.amount === 1 ? 'item' : 'items'}. Come back through a waystone to take ${event.amount === 1 ? 'it' : 'them'} back.`
+    case 'GraveAwaits':
+      return 'Your grave waits near the entrance of this floor. Walk over it to take your gear back.'
     case 'GraveLost':
       return `Your old grave crumbles to dust, and ${event.amount} ${event.amount === 1 ? 'item is' : 'items are'} lost forever.`
     case 'WeaponImbued':
@@ -326,6 +330,12 @@ export function describeEvent(event: GameEvent, enemyNames: ReadonlyMap<number, 
       return event.reason === 'NoWaystoneNearby' ? 'Stand next to the waystone to travel.' : 'The waystone cannot take you there.'
     case 'TotemAwakened':
       return `You pay ${event.price} coins. The totem cracks open and ${enemyLower} rises again!`
+    case 'TotemPrimed':
+      return `The totem hums: it asks ${event.amount} coins. Strike it again to wake the boss.`
+    case 'TotemTooExpensive':
+      return `The totem asks ${event.amount} coins to wake the boss. You do not have enough.`
+    case 'WaystoneTouched':
+      return event.amount ? 'The waystone glows. Choose where to go.' : 'The waystone is silent: you have not reached another floor yet.'
     case 'TotemRejected':
       return event.reason === 'NotEnoughCoins' ? 'You do not have enough coins to wake the totem.' : 'Stand next to the totem to wake it.'
     case 'HeroLost':

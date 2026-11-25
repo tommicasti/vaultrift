@@ -27,9 +27,9 @@ public static class TrophyCatalog
         new(Collector, "Collector", "Find an exotic item."),
         new(Untouchable, "Untouchable", "Clear a floor without taking any damage."),
         new(Unbroken, "Unbroken", $"Reach floor {UnbrokenFloor} without dying."),
-        new(CustodeNormal, "Custode Slain", "Defeat the Custode. Reward: the Scheggia del Drago in every new game."),
-        new(CustodeHard, "Custode Slain: Hard", "Defeat the Custode on Hard or Hardcore. Reward: the Scheggia del Drago II."),
-        new(CustodeHardcore, "Custode Slain: Hardcore", "Defeat the Custode on Hardcore. Reward: the Scheggia del Drago III."),
+        new(CustodeNormal, "Custode Slain", "Defeat the Custode. Reward: a dragon weapon for your class in every new game."),
+        new(CustodeHard, "Custode Slain: Hard", "Defeat the Custode on Hard or Hardcore. Reward: your dragon weapon grows to its second form."),
+        new(CustodeHardcore, "Custode Slain: Hardcore", "Defeat the Custode on Hardcore. Reward: your dragon weapon reaches its third form."),
         new(WeaponMaster, "Weapon Master", "Defeat the Custode with every class."),
         new(Rich, "Filthy Rich", "Collect 100,000 coins across all your heroes.", CoinsCounter, RichGoal),
     ];

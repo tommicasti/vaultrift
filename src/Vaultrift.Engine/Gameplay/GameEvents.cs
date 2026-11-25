@@ -178,6 +178,14 @@ public sealed record GraveRecovered(int Count, int Left) : GameEvent;
 
 public sealed record GraveLost(Position At, int Count) : GameEvent;
 
+public sealed record GraveLeftBehind(int Floor, int Count) : GameEvent;
+
+public sealed record TotemPrimed(int Price, bool CanAfford) : GameEvent;
+
+public sealed record WaystoneTouched(int Destinations) : GameEvent;
+
+public sealed record GraveAwaits(Position At, int Count) : GameEvent;
+
 public sealed record SpareWeaponTaken(ItemInstance Item) : GameEvent;
 
 public sealed record HeroLost : GameEvent;

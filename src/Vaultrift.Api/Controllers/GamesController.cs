@@ -203,9 +203,20 @@ public sealed class GamesController : ControllerBase
             if (tier == 0)
                 return;
 
+            var element = Random.Shared.GetItems(Enum.GetValues<Element>(), 1)[0];
+
             lock (session.Game)
             {
-                if (session.Game.Player.Inventory.TryAddBound(new ItemInstance(ItemCatalog.DragonShardFor(tier))))
+                var player = session.Game.Player;
+                var added = false;
+
+                foreach (var shard in ItemCatalog.DragonShardSet(player.Class?.Id, tier, element))
+                {
+                    var rolled = ItemInstance.CanHaveElement(shard) && shard.FixedElement is null ? element : (Element?)null;
+                    added |= player.Inventory.TryAddBound(new ItemInstance(shard, rolled));
+                }
+
+                if (added)
                     Save(session);
             }
         }

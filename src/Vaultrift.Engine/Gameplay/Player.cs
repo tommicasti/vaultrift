@@ -207,11 +207,15 @@ public sealed partial class Player : Creature
 
     private static bool IsSpare(InventoryEntry entry) => entry.Item.Definition is WeaponDefinition { IsSpare: true };
 
-    public static bool IsBound(InventoryEntry entry) => entry.Item.Definition is WeaponDefinition { IsBound: true };
+    public static bool IsBound(InventoryEntry entry) => entry.Item.Definition is EquipmentDefinition { IsBound: true };
 
     public static int LevelAttackBonus(int level) => level / 2;
 
     public static int LevelCriticalBonus(int level) => level / 5;
+
+    public static int LevelDefenseBonus(int level) => level / 3;
+
+    public static int LevelBlockBonus(int level) => level / 4;
 
     private bool BlockedByTwoHands(EquipmentSlot slot, InventoryEntry entry) =>
         (slot == EquipmentSlot.OffHand && HoldsTwoHanded) ||
@@ -603,12 +607,21 @@ public sealed partial class Player : Creature
             .Where(pair => !IsOtherHandWeapon(pair.Key, pair.Value, hand))
             .Select(pair => pair.Value.Item.Definition)
             .OfType<EquipmentDefinition>()
-            .SelectMany(item => item is WeaponDefinition { ScalesWithLevel: true } ? item.Modifiers.Concat(LevelModifiers()) : item.Modifiers);
+            .SelectMany(item => item.ScalesWithLevel ? item.Modifiers.Concat(LevelModifiers(item)) : item.Modifiers);
 
-    private IEnumerable<StatModifier> LevelModifiers()
+    private IEnumerable<StatModifier> LevelModifiers(EquipmentDefinition item)
     {
-        yield return new StatModifier(StatType.Attack, LevelAttackBonus(Level));
-        yield return new StatModifier(StatType.Critical, LevelCriticalBonus(Level));
+        if (item.Kind == EquipmentKind.Weapon)
+        {
+            yield return new StatModifier(StatType.Attack, LevelAttackBonus(Level));
+            yield return new StatModifier(StatType.Critical, LevelCriticalBonus(Level));
+            yield break;
+        }
+
+        yield return new StatModifier(StatType.Defense, LevelDefenseBonus(Level));
+
+        if (item.Kind == EquipmentKind.Shield)
+            yield return new StatModifier(StatType.Block, LevelBlockBonus(Level));
     }
 
     private static bool IsOtherHandWeapon(EquipmentSlot slot, InventoryEntry entry, EquipmentSlot hand) =>

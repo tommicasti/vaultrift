@@ -8,6 +8,7 @@ import {
   describeElement,
   describeItem,
   describeKind,
+  describeLevelBonus,
   describeSpell,
   elementNames,
   learnedSpellKeys,
@@ -373,6 +374,7 @@ export function InventoryScreen({
           entry={selected}
           equippedSlot={selectedSlot}
           playerClassId={player.classId}
+          playerLevel={player.level}
           quickSlotsHolding={player.quickSlots.flatMap((quickSlot, slot) =>
             selected !== undefined && quickSlot.item?.id === selected.item.id ? [slot] : [],
           )}
@@ -399,6 +401,7 @@ interface ItemDetailsProps {
   entry?: InventoryEntryState
   equippedSlot?: EquipmentSlot
   playerClassId?: string
+  playerLevel: number
   quickSlotsHolding: number[]
   holdsStaff: boolean
   learnedSpells: (SpellInfo | null)[]
@@ -417,6 +420,7 @@ function ItemDetails({
   entry,
   equippedSlot,
   playerClassId,
+  playerLevel,
   quickSlotsHolding,
   holdsStaff,
   learnedSpells,
@@ -474,6 +478,7 @@ function ItemDetails({
           </div>
         )}
         <div className="label">{kind.hint}</div>
+        {item.scalesWithLevel && <div className="item-effect level-bonus">{describeLevelBonus(item, playerLevel)}</div>}
         {item.spell && <div className={`item-element element-${item.spell.element.toLowerCase()}`}>{describeSpell(item.spell)}</div>}
         {element && !item.spell && <div className={`item-element element-${item.element?.toLowerCase()}`}>{element}</div>}
         {item.effects.map(effect => (

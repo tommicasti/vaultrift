@@ -46,15 +46,16 @@ public static class GameMapper
             ToMerchantResponse(game),
             game.Difficulty,
             game.IsLost,
-            game.Grave is { } grave ? new GraveResponse(grave.Position.X, grave.Position.Y, grave.Count) : null,
+            game.GraveHere is { } grave ? new GraveResponse(grave.Position.X, grave.Position.Y, grave.Count) : null,
             game.Waystone is { } waystone
                 ? new WaystoneResponse(waystone.X, waystone.Y, game.IsNextToWaystone,
-                    game.TravelDestinations.Select(floor => new DestinationResponse(floor, biomeOf(floor), game.ClearedFloors.Contains(floor))).ToList())
+                    game.TravelDestinations.Select(floor => new DestinationResponse(floor, biomeOf(floor), game.ClearedFloors.Contains(floor), game.Grave?.Floor == floor)).ToList())
                 : null,
             game.Totem is { } totem
                 ? new TotemResponse(totem.Position.X, totem.Position.Y, game.IsNextToTotem, game.TotemPrice, totem.Boss.Kind.Name, totem.Boss.Kind.Id)
                 : null,
-            game.DeepestFloor);
+            game.DeepestFloor,
+            game.Grave?.Floor);
 
     private static PlayerResponse ToPlayerResponse(Game game, Player player, int freeSteps)
     {
@@ -256,6 +257,10 @@ public static class GameMapper
         GraveDug e => new("GraveDug", X: e.At.X, Y: e.At.Y, Amount: e.Count),
         GraveRecovered e => new("GraveRecovered", Amount: e.Count, Level: e.Left),
         GraveLost e => new("GraveLost", X: e.At.X, Y: e.At.Y, Amount: e.Count),
+        GraveLeftBehind e => new("GraveLeftBehind", Floor: e.Floor, Amount: e.Count),
+        TotemPrimed e => new(e.CanAfford ? "TotemPrimed" : "TotemTooExpensive", Amount: e.Price),
+        WaystoneTouched e => new("WaystoneTouched", Amount: e.Destinations),
+        GraveAwaits e => new("GraveAwaits", X: e.At.X, Y: e.At.Y, Amount: e.Count),
         HeroLost => new("HeroLost"),
         Traveled e => new("Traveled", X: e.Start.X, Y: e.Start.Y, Floor: e.Floor),
         TravelRejected e => new("TravelRejected", Reason: e.Reason.ToString()),
@@ -306,7 +311,8 @@ public static class GameMapper
             potion is { ManaRestore: > 0 } ? potion.ManaRestore : null,
             SpellOf(item) is { } spell ? ToSpellResponse(spell, spell.ManaCost) : null,
             item is WeaponDefinition { IsTwin: true },
-            item is WeaponDefinition { IsBound: true });
+            item is EquipmentDefinition { IsBound: true },
+            item is EquipmentDefinition { ScalesWithLevel: true });
     }
 
     private static SpellDefinition? SpellOf(ItemDefinition item) => item switch

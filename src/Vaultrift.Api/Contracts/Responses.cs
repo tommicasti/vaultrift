@@ -27,13 +27,14 @@ public sealed record GameStateResponse(
     GraveResponse? Grave,
     WaystoneResponse? Waystone,
     TotemResponse? Totem,
-    int DeepestFloor);
+    int DeepestFloor,
+    int? GraveFloor = null);
 
 public sealed record GraveResponse(int X, int Y, int Count);
 
 public sealed record WaystoneResponse(int X, int Y, bool IsNearby, IReadOnlyList<DestinationResponse> Destinations);
 
-public sealed record DestinationResponse(int Floor, string? Biome, bool IsCleared);
+public sealed record DestinationResponse(int Floor, string? Biome, bool IsCleared, bool HasGrave = false);
 
 public sealed record TotemResponse(int X, int Y, bool IsNearby, int Price, string BossName, string BossKind);
 
@@ -143,7 +144,8 @@ public sealed record ItemResponse(
     int? ManaRestore,
     SpellResponse? Spell,
     bool IsTwin = false,
-    bool IsBound = false);
+    bool IsBound = false,
+    bool ScalesWithLevel = false);
 
 public sealed record FloorItemResponse(int X, int Y, ItemResponse Item);
 

@@ -27,7 +27,10 @@ export function TravelScreen({ waystone, currentFloor, disabled, onTravel, onClo
                   Floor {destination.floor}
                   {destination.biome && <span className="label"> · {biomeNames[destination.biome] ?? destination.biome}</span>}
                 </span>
-                <span className="label">{destination.isCleared ? 'Totem' : 'Boss still there'}</span>
+                <span className="label">
+                  {destination.hasGrave && <span className="travel-grave">Your grave · </span>}
+                  {destination.isCleared ? 'Totem' : 'Boss still there'}
+                </span>
               </button>
             </li>
           ))}

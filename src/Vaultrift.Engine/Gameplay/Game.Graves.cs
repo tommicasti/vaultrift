@@ -13,6 +13,8 @@ public sealed partial class Game
 
     public bool LeavesGraves => Difficulty != Difficulty.Normal;
 
+    public Grave? GraveHere => Grave is { } grave && grave.Floor == FloorNumber ? grave : null;
+
     private bool HandleDeath(List<GameEvent> events)
     {
         if (Difficulty == Difficulty.Hardcore)
@@ -33,7 +35,7 @@ public sealed partial class Game
             events.Add(new GraveLost(lost.Position, lost.Count));
 
         var items = Player.StripEquipment();
-        Grave = items.Count == 0 ? null : new Grave(Player.Position, items);
+        Grave = items.Count == 0 ? null : new Grave(Player.Position, items, FloorNumber);
 
         if (Grave is { } grave)
             events.Add(new GraveDug(grave.Position, grave.Count));
@@ -47,7 +49,7 @@ public sealed partial class Game
 
     private void RecoverGraveAt(Position position, List<GameEvent> events)
     {
-        if (Grave is not { } grave || grave.Position != position)
+        if (GraveHere is not { } grave || grave.Position != position)
             return;
 
         var left = Player.Reclaim(grave.Items);
@@ -58,13 +60,44 @@ public sealed partial class Game
             events.Add(new GraveRecovered(recovered, left.Count));
     }
 
-    private void AbandonGrave(List<GameEvent> events)
+    private void LeaveGraveBehind(List<GameEvent>? events)
     {
-        if (Grave is not { } grave)
+        if (events is not null && GraveHere is { } grave)
+            events.Add(new GraveLeftBehind(grave.Floor, grave.Count));
+    }
+
+    private void ReturnToGrave(List<GameEvent>? events)
+    {
+        if (Grave is not { } grave || grave.Floor != FloorNumber)
             return;
 
-        Grave = null;
-        events.Add(new GraveLost(grave.Position, grave.Count));
+        var spot = FreeTileNear(_playerStart, minimumDistance: 2) ?? _playerStart;
+        Grave = grave with { Position = spot };
+        events?.Add(new GraveAwaits(spot, grave.Count));
+    }
+
+    private Position? FreeTileNear(Position origin, int minimumDistance)
+    {
+        var seen = new HashSet<Position> { origin };
+        var queue = new Queue<(Position Tile, int Steps)>();
+        queue.Enqueue((origin, 0));
+
+        while (queue.Count > 0)
+        {
+            var (tile, steps) = queue.Dequeue();
+
+            if (steps >= minimumDistance && CanHoldDrop(tile) && !IsFixture(tile) && FindLivingEnemyAt(tile) is null)
+                return tile;
+
+            foreach (var direction in new[] { Direction.Up, Direction.Right, Direction.Down, Direction.Left })
+            {
+                var next = tile.Move(direction);
+                if (Map.IsWalkable(next) && seen.Add(next))
+                    queue.Enqueue((next, steps + 1));
+            }
+        }
+
+        return null;
     }
 
     private TurnResult Defeated() => new(TurnPassed: false, [new HeroLost()]);
