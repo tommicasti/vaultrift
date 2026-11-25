@@ -139,4 +139,29 @@ public class SnapshotTests
         Assert.Equal(map.ToRows(), DungeonMap.Parse(map.ToRows()).ToRows());
         Assert.Equal("#L~C#", map.ToRows()[2]);
     }
+
+    [Fact]
+    public void AGraveOnHard_SurvivesSavingAndReloading()
+    {
+        var brute = new EnemyKind("test-brute", "Brute", new Stats(maxHealth: 500, attack: 99, defense: 5));
+        var fragile = new CharacterClass("test-fragile", "Fragile", new Stats(maxHealth: 2, attack: 5, defense: 0), new WeaponMastery(WeaponType.Sword, new StatModifier(StatType.Attack, 1)));
+        var content = new FakeContent().With(TestItems.Sword).With(brute).With(fragile);
+        var player = new Player(new Position(1, 1), fragile) { Facing = Direction.Right };
+        player.Inventory.TryAdd(new ItemInstance(TestItems.Sword));
+        var floor = new Floor(Hall, player.Position, [new Enemy(1, new Position(2, 1), brute)], []);
+        var game = new Game(player, new SingleFloor(floor), SeededRandom.FromSeed(7)) { Difficulty = Difficulty.Hard };
+        game.Equip(player.Inventory.Entries[0].Id);
+
+        for (var turn = 0; turn < 20 && game.Deaths == 0; turn++)
+            game.Attack();
+
+        Assert.Equal(1, game.Deaths);
+        Assert.NotNull(game.Grave);
+
+        var saved = JsonSerializer.Deserialize<GameSnapshot>(JsonSerializer.Serialize(game.Capture(), Json), Json)!;
+        var restored = Game.Restore(saved, content, new SingleFloor(floor), SeededRandom.FromSeed(7));
+
+        Assert.Equal(game.Grave!.Position, restored.Grave?.Position);
+        Assert.Contains(restored.Grave!.Items, item => item.Entry.Item.Definition == TestItems.Sword);
+    }
 }

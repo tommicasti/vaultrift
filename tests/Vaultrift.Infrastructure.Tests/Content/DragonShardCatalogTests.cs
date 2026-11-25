@@ -5,15 +5,38 @@ namespace Vaultrift.Infrastructure.Tests.Content;
 
 public class DragonShardCatalogTests
 {
+    private static int Sum(EquipmentDefinition item, StatType stat) =>
+        item.Modifiers.Where(modifier => modifier.Stat == stat).Sum(modifier => modifier.Amount);
+
     [Fact]
-    public void EveryTier_IsABoundTwinPlatinumAxe()
+    public void EveryShard_IsABoundPlatinumPieceThatGrowsWithTheHero()
     {
         foreach (var shard in ItemCatalog.DragonShards)
         {
             Assert.Equal(Rarity.Platinum, shard.Rarity);
-            Assert.Equal(WeaponType.Axe, shard.WeaponType);
-            Assert.True(shard.IsTwin && shard.IsBound && shard.ScalesWithLevel);
+            Assert.True(shard.IsBound && shard.ScalesWithLevel);
             Assert.Same(shard, ItemCatalog.Get(shard.Id));
+        }
+    }
+
+    [Theory]
+    [InlineData("knight", new[] { "dragon-blade-2", "dragon-aegis-2" })]
+    [InlineData("berserker", new[] { "dragon-shard-2" })]
+    [InlineData("ranger", new[] { "dragon-bow-2" })]
+    [InlineData("rogue", new[] { "dragon-fangs-2" })]
+    [InlineData("mage", new[] { "dragon-staff-2-ice" })]
+    public void EachClass_GetsItsOwnForm(string classId, string[] expected)
+    {
+        Assert.Equal(expected, ItemCatalog.DragonShardSet(classId, 2, Element.Ice).Select(item => item.Id));
+    }
+
+    [Fact]
+    public void TheMagesStaff_CastsASpellOfTheRolledElement()
+    {
+        foreach (var element in Enum.GetValues<Element>())
+        {
+            var staff = Assert.IsType<WeaponDefinition>(Assert.Single(ItemCatalog.DragonShardSet("mage", 3, element)));
+            Assert.Equal(element, staff.Spell?.Element);
         }
     }
 
@@ -25,12 +48,29 @@ public class DragonShardCatalogTests
     }
 
     [Fact]
-    public void EvenTheWeakestShard_HitsHarderThanAnyExotic()
+    public void EvenTheWeakestShardWeapon_HitsHarderThanAnyExoticOfItsKind()
     {
-        static int AttackOf(WeaponDefinition weapon) =>
-            weapon.Modifiers.Where(modifier => modifier.Stat == StatType.Attack).Sum(modifier => modifier.Amount);
+        foreach (var shard in ItemCatalog.DragonShards.OfType<WeaponDefinition>().Where(shard => shard.Id.EndsWith("-1") || shard.Id.Contains("-1-")))
+        {
+            var exotics = ItemCatalog.Exotics.OfType<WeaponDefinition>().Where(exotic => exotic.WeaponType == shard.WeaponType).ToList();
+            if (exotics.Count > 0)
+                Assert.True(Sum(shard, StatType.Attack) > exotics.Max(exotic => Sum(exotic, StatType.Attack)), shard.Id);
+        }
+    }
 
-        Assert.True(AttackOf(ItemCatalog.DragonShardFor(1)) > ItemCatalog.Exotics.Max(AttackOf));
-        Assert.True(AttackOf(ItemCatalog.DragonShardFor(3)) > AttackOf(ItemCatalog.DragonShardFor(2)));
+    [Fact]
+    public void TheAegis_BlocksMoreThanAnyOtherShield()
+    {
+        var aegis = ItemCatalog.DragonShards.Single(item => item.Id == "dragon-aegis-1");
+        var best = ItemCatalog.Equipment.OfType<EquipmentDefinition>().Where(item => item.Kind == EquipmentKind.Shield).Max(item => Sum(item, StatType.Block));
+
+        Assert.True(Sum(aegis, StatType.Block) > best);
+    }
+
+    [Fact]
+    public void HigherTiers_AreStronger()
+    {
+        foreach (var form in new[] { "dragon-shard", "dragon-blade", "dragon-bow", "dragon-fangs" })
+            Assert.True(Sum(ItemCatalog.DragonShards.Single(item => item.Id == $"{form}-3"), StatType.Attack) > Sum(ItemCatalog.DragonShards.Single(item => item.Id == $"{form}-2"), StatType.Attack));
     }
 }

@@ -378,10 +378,34 @@ public static class ItemCatalog
 
     public const int DragonShardTiers = 3;
 
-    public static IReadOnlyList<WeaponDefinition> DragonShards { get; } =
-        Enumerable.Range(1, DragonShardTiers).Select(DragonShard).ToList();
+    private static readonly Element[] Elements = Enum.GetValues<Element>();
 
-    public static WeaponDefinition DragonShardFor(int tier) => DragonShards[Math.Clamp(tier, 1, DragonShardTiers) - 1];
+    public static IReadOnlyList<EquipmentDefinition> DragonShards { get; } =
+        Enumerable.Range(1, DragonShardTiers)
+            .SelectMany(tier => new EquipmentDefinition[]
+            {
+                DragonAxes(tier),
+                DragonBlade(tier),
+                DragonAegis(tier),
+                DragonBow(tier),
+                DragonFangs(tier)
+            }.Concat(Elements.Select(element => DragonStaff(tier, element))))
+            .ToList();
+
+    public static IReadOnlyList<EquipmentDefinition> DragonShardSet(string? classId, int tier, Element element)
+    {
+        var level = Math.Clamp(tier, 1, DragonShardTiers);
+        EquipmentDefinition Find(string id) => DragonShards.First(item => item.Id == id);
+
+        return classId switch
+        {
+            "knight" => [Find($"dragon-blade-{level}"), Find($"dragon-aegis-{level}")],
+            "ranger" => [Find($"dragon-bow-{level}")],
+            "rogue" => [Find($"dragon-fangs-{level}")],
+            "mage" => [Find($"dragon-staff-{level}-{element.ToString().ToLowerInvariant()}")],
+            _ => [Find($"dragon-shard-{level}")]
+        };
+    }
 
     public static ItemDefinition Get(string id) =>
         All.FirstOrDefault(item => item.Id == id)
@@ -391,21 +415,84 @@ public static class ItemCatalog
 
     private const string SparePrefix = "spare-";
 
-    private static WeaponDefinition DragonShard(int tier) =>
-        new(
-            $"dragon-shard-{tier}",
-            $"Scheggia del Drago{tier switch { 2 => " II", 3 => " III", _ => "" }}",
-            Rarity.Platinum,
-            WeaponType.Axe,
+    private const string DragonBound = "Forged from a shard of the Custode's heart. It grows with you and is bound to your account: it cannot be sold, thrown away or left in a grave.";
+
+    private static string Tiered(string name, int tier) => tier switch { 2 => $"{name} II", 3 => $"{name} III", _ => name };
+
+    private static string Earned(int tier) => $"Earned by defeating the Custode on {(Difficulty)(tier - 1)}.";
+
+    private static WeaponDefinition DragonAxes(int tier) =>
+        new($"dragon-shard-{tier}", Tiered("Asce del Drago", tier), Rarity.Platinum, WeaponType.Axe,
             [Attack(18 + 3 * tier), Defense(2 + tier), Critical(4 + tier)],
-            $"Twin axes cut from the Custode's heart, earned on {(Difficulty)(tier - 1)}. Every attack sweeps and then strikes a second time. "
-            + "They grow with you: +1 attack every 2 levels and +1% critical every 5. Bound to your account: they cannot be sold, thrown away or left in a grave.",
-            Element.Fire)
+            $"Twin axes: every attack sweeps, then strikes the target again. {DragonBound} {Earned(tier)}")
         {
             IsTwin = true,
             IsBound = true,
             ScalesWithLevel = true
         };
+
+    private static WeaponDefinition DragonBlade(int tier) =>
+        new($"dragon-blade-{tier}", Tiered("Lama del Drago", tier), Rarity.Platinum, WeaponType.Sword,
+            [Attack(16 + 3 * tier), Defense(1 + tier), Critical(4 + tier)],
+            $"The knight's half of the pair, made to fight beside the Egida del Drago. {DragonBound} {Earned(tier)}")
+        {
+            IsBound = true,
+            ScalesWithLevel = true
+        };
+
+    private static GearDefinition DragonAegis(int tier) =>
+        new($"dragon-aegis-{tier}", Tiered("Egida del Drago", tier), Rarity.Platinum, EquipmentKind.Shield,
+            [Defense(5 + 2 * tier), Block(24 + 3 * tier)],
+            $"A shield of dragon scale that blocks far more often than any other. {DragonBound} {Earned(tier)}")
+        {
+            IsBound = true,
+            ScalesWithLevel = true
+        };
+
+    private static WeaponDefinition DragonBow(int tier) =>
+        new($"dragon-bow-{tier}", Tiered("Arco del Drago", tier), Rarity.Platinum, WeaponType.Bow,
+            [Attack(17 + 3 * tier), Evasion(3 + tier), Critical(5 + tier)],
+            $"Its arrows pierce every monster in line; each one after the first takes 75% damage. {DragonBound} {Earned(tier)}")
+        {
+            Pierces = true,
+            IsBound = true,
+            ScalesWithLevel = true
+        };
+
+    private static WeaponDefinition DragonFangs(int tier) =>
+        new($"dragon-fangs-{tier}", Tiered("Zanne del Drago", tier), Rarity.Platinum, WeaponType.Dagger,
+            [Attack(13 + 2 * tier), Critical(10 + 2 * tier), Evasion(3 + tier)],
+            $"Twin daggers: every attack stabs twice at full strength. {DragonBound} {Earned(tier)}")
+        {
+            IsTwin = true,
+            IsBound = true,
+            ScalesWithLevel = true
+        };
+
+    private static WeaponDefinition DragonStaff(int tier, Element element)
+    {
+        var spell = SpellCatalog.Get((element, tier >= 3) switch
+        {
+            (Element.Fire, false) => "fireball",
+            (Element.Fire, true) => "fire-rain",
+            (Element.Ice, false) => "frost-nova",
+            (Element.Ice, true) => "blizzard",
+            (Element.Lightning, false) => "chain-lightning",
+            (Element.Lightning, true) => "tempest",
+            (Element.Wind, false) => "squall",
+            _ => "tornado"
+        });
+
+        return new($"dragon-staff-{tier}-{element.ToString().ToLowerInvariant()}", Tiered("Bastone del Drago", tier), Rarity.Platinum, WeaponType.Staff,
+            [Attack(12 + 3 * tier), Mana(10 + 5 * tier)],
+            $"Casts {spell.Name} and holds a deep well of mana. {DragonBound} {Earned(tier)}",
+            spell.Element)
+        {
+            Spell = spell,
+            IsBound = true,
+            ScalesWithLevel = true
+        };
+    }
 
     private static StatModifier Attack(int amount) => new(StatType.Attack, amount);
 

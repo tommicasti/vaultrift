@@ -86,4 +86,45 @@ public class DragonShardTests
         Assert.Equal(4, Player.LevelCriticalBonus(20));
         Assert.Equal(15, PlayerWithShard().CombatStats.Attack);
     }
+
+    [Fact]
+    public void LevellingUp_RaisesTheAttackTheHeroActuallyHits()
+    {
+        var player = PlayerWithShard();
+        var before = player.CombatStats.Attack;
+
+        while (player.Level < 21)
+            player.GainExperience(player.ExperienceToNextLevel);
+
+        Assert.Equal(before + Player.LevelAttackBonus(21), player.CombatStats.Attack - (player.Stats.Attack - 5));
+    }
+
+    [Fact]
+    public void TwinDaggers_StabTwice()
+    {
+        var fangs = new WeaponDefinition("test-fangs", "Test Fangs", Rarity.Platinum, WeaponType.Dagger, [new StatModifier(StatType.Attack, 5)]) { IsTwin = true };
+        var player = new Player(new Position(1, 1), new Stats(maxHealth: 40, attack: 5, defense: 0)) { Facing = Direction.Right };
+        player.Inventory.TryAdd(new ItemInstance(fangs));
+        player.Equip(player.Inventory.Entries[^1].Id);
+        var game = NewGame(player, new Enemy(1, new Position(2, 1), new Stats(maxHealth: 200, attack: 1, defense: 0)));
+
+        Assert.Equal(2, game.Attack().Events.OfType<PlayerAttackedEnemy>().Count());
+        Assert.True(fangs.IsTwoHanded);
+    }
+
+    [Fact]
+    public void ADragonShield_GrowsDefenseAndBlockWithTheLevel()
+    {
+        var aegis = new GearDefinition("test-aegis", "Test Aegis", Rarity.Platinum, EquipmentKind.Shield, [new StatModifier(StatType.Defense, 5)]) { IsBound = true, ScalesWithLevel = true };
+        var player = new Player(new Position(1, 1), new Stats(maxHealth: 40, attack: 5, defense: 0));
+        player.Inventory.TryAddBound(new ItemInstance(aegis));
+        player.Equip(player.Inventory.Entries[^1].Id);
+        var start = player.CombatStats.Defense;
+
+        while (player.Level < 12)
+            player.GainExperience(player.ExperienceToNextLevel);
+
+        Assert.True(Player.IsBound(player.Equipment[EquipmentSlot.OffHand]));
+        Assert.True(player.CombatStats.Defense - start >= Player.LevelDefenseBonus(12));
+    }
 }

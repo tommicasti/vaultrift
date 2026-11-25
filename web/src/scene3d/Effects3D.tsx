@@ -1,3 +1,4 @@
+import { Html } from '@react-three/drei'
 import { useFrame } from '@react-three/fiber'
 import { useMemo, useRef, useState } from 'react'
 import { AdditiveBlending, DoubleSide, Group, Mesh, MeshBasicMaterial, MeshStandardMaterial, Vector3 } from 'three'
@@ -162,12 +163,13 @@ function BurstView({ burst }: { burst: Burst3D }) {
   )
 }
 
-export const levelUpSeconds = 2.8
+export const levelUpSeconds = 4
 const levelUpSparks = 16
 
 function fade(progress: number): number {
-  if (progress < 0.15) return progress / 0.15
-  return Math.max(0, 1 - (progress - 0.15) / 0.85)
+  if (progress < 0.08) return progress / 0.08
+  if (progress < 0.75) return 1
+  return Math.max(0, 1 - (progress - 0.75) / 0.25)
 }
 
 export function LevelUpAura({ burst, x, y }: { burst: Burst3D; x: number; y: number }) {
@@ -196,23 +198,24 @@ export function LevelUpAura({ burst, x, y }: { burst: Burst3D; x: number; y: num
     if (!root.visible) return
 
     const glow = fade(progress)
-    const [column, lower, upper, ...rest] = root.children as Mesh[]
-    ;(column.material as MeshBasicMaterial).opacity = glow * (0.38 + Math.sin(clock.elapsedTime * 14) * 0.08)
-    column.scale.set(1 + progress * 0.25, 0.4 + Math.min(1, progress * 3) * 0.6, 1 + progress * 0.25)
+    const [column, lower, upper] = root.children as Mesh[]
+    const rest = root.children.slice(3, 3 + levelUpSparks) as Mesh[]
+    ;(column.material as MeshBasicMaterial).opacity = glow * (0.45 + Math.sin(clock.elapsedTime * 10) * 0.1)
+    column.scale.set(1 + Math.sin(clock.elapsedTime * 4) * 0.06, 0.4 + Math.min(1, progress * 6) * 0.6, 1 + Math.sin(clock.elapsedTime * 4) * 0.06)
     ;(lower.material as MeshBasicMaterial).opacity = glow
     for (const [ring, offset] of [[lower, 0], [upper, 0.35]] as const) {
-      const climb = (progress * 1.6 + offset) % 1
+      const climb = (progress * 2.6 + offset) % 1
       ring.position.y = 0.2 + climb * 4.6
       ring.scale.setScalar(1.5 - climb * 0.5)
     }
     if (rest[0]) (rest[0].material as MeshBasicMaterial).opacity = glow
     rest.forEach((spark, index) => {
       const data = sparks[index]
-      const local = Math.max(0, progress - data.lag) * data.speed
+      const local = ((Math.max(0, progress - data.lag * 0.2) * data.speed * 2.2) % 1)
       const angle = data.angle + local * 7
       const radius = 1.25 - local * 0.4
       spark.position.set(Math.cos(angle) * radius, 0.3 + local * 5.2, Math.sin(angle) * radius)
-      spark.scale.setScalar(0.12 * (1 - progress * 0.5))
+      spark.scale.setScalar(0.13 * (1 - local * 0.6))
     })
   })
 
@@ -232,6 +235,11 @@ export function LevelUpAura({ burst, x, y }: { burst: Burst3D; x: number; y: num
           <octahedronGeometry args={[1, 0]} />
         </mesh>
       ))}
+      <Html position={[0, 5.4, 0]} center zIndexRange={[20, 0]}>
+        <span className="scene3d-levelup" style={{ animationDelay: `${burst.delayMs}ms`, animationDuration: `${levelUpSeconds * 1000}ms` }}>
+          Level up!
+        </span>
+      </Html>
     </group>
   )
 }

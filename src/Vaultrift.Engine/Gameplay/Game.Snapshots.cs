@@ -44,7 +44,7 @@ public sealed partial class Game
         Difficulty = snapshot.Difficulty;
         IsLost = snapshot.IsLost;
         Grave = snapshot.Grave is { } grave
-            ? new Grave(grave.Position, grave.Items.Select(item => (item.Slot, Player.RestoreEntry(item.Entry, content))).ToList())
+            ? new Grave(grave.Position, grave.Items.Select(item => (item.Slot, Player.RestoreEntry(item.Entry, content))).ToList(), grave.Floor > 0 ? grave.Floor : snapshot.FloorNumber)
             : null;
         DeepestFloor = snapshot.DeepestFloor ?? FloorNumber;
         TotemUses = snapshot.TotemUses;
@@ -98,7 +98,7 @@ public sealed partial class Game
         Difficulty,
         IsLost,
         Grave is { } grave
-            ? new GraveSnapshot(grave.Position, grave.Items.Select(item => new GraveItemSnapshot(item.Slot, Player.CaptureEntry(item.Entry))).ToList())
+            ? new GraveSnapshot(grave.Position, grave.Items.Select(item => new GraveItemSnapshot(item.Slot, Player.CaptureEntry(item.Entry))).ToList(), grave.Floor)
             : null,
         DeepestFloor,
         _clearedFloors.ToList(),

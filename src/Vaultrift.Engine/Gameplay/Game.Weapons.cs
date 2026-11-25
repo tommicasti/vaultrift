@@ -43,10 +43,6 @@ public sealed partial class Game
                 break;
             case WeaponType.Axe:
                 Sweep(weapon!, new HitOptions(), events);
-
-                if (weapon!.Definition is WeaponDefinition { IsTwin: true })
-                    Strike(weapon, Player.CombatStats, new HitOptions(), events);
-
                 break;
             case WeaponType.Spear:
                 Thrust(weapon!, new HitOptions(), events);
@@ -55,6 +51,9 @@ public sealed partial class Game
                 Strike(weapon, Player.CombatStats, new HitOptions(), events);
                 break;
         }
+
+        if (weapon?.Definition is WeaponDefinition { IsTwin: true } && FindLivingEnemyAt(Player.Position.Move(Player.Facing)) is not null)
+            Strike(weapon, Player.CombatStats, new HitOptions(), events);
 
         if (Player.OffHandWeapon is { } offHand)
             Strike(offHand, Player.OffHandStats, new HitOptions(Glancing: true), events);
@@ -172,7 +171,7 @@ public sealed partial class Game
 
             targets.Add((target, step));
 
-            if (!powered && !Wields(Items.ExoticPower.RiftNeedle))
+            if (!powered && !Wields(Items.ExoticPower.RiftNeedle) && weapon.Definition is not WeaponDefinition { Pierces: true })
                 break;
         }
 

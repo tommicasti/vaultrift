@@ -3,7 +3,6 @@ import {
   ApiError,
   activateAbility,
   attack,
-  awakenTotem,
   buyBackpackUpgrade,
   travel,
   buyOffer,
@@ -40,6 +39,8 @@ import { StatusBar } from './components/StatusBar'
 import { VictoryScreen } from './components/VictoryScreen'
 import { HeroLostScreen } from './components/HeroLostScreen'
 import { DeathBanner } from './components/DeathBanner'
+import { MapScreen } from './components/MapScreen'
+import { useExplored } from './game/useExplored'
 import { AccountPanel } from './components/AccountPanel'
 import { TrophyToast } from './components/TrophyToast'
 import { claimCodes, forgetHero, getAccount, logout, type AccountInfo } from './api/accountApi'
@@ -84,6 +85,7 @@ function App() {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [inventoryOpen, setInventoryOpen] = useState(false)
+  const [mapOpen, setMapOpen] = useState(false)
   const [shopOpen, setShopOpen] = useState(false)
   const [travelOpen, setTravelOpen] = useState(false)
   const [effects, setEffects] = useState<Effect[]>([])
@@ -158,10 +160,11 @@ function App() {
   const fullscreen = useFullscreen()
   const [fallenAt, setFallenAt] = useState<number | null>(null)
   const [levelUpAt, setLevelUpAt] = useState<number | null>(null)
+  const explored = useExplored(game)
 
   useEffect(() => {
     if (levelUpAt === null) return
-    const timer = window.setTimeout(() => setLevelUpAt(null), 3000)
+    const timer = window.setTimeout(() => setLevelUpAt(null), 4200)
     return () => window.clearTimeout(timer)
   }, [levelUpAt])
   const view = compact ? compactView : standardView
@@ -270,6 +273,7 @@ function App() {
     setError(null)
     setInventoryOpen(false)
     setShopOpen(false)
+    setMapOpen(false)
   }
 
   async function handleForget(hero: SavedHero) {
@@ -326,6 +330,7 @@ function App() {
         setGame(turn.state)
 
         if (turn.events.some(gameEvent => gameEvent.type === 'MerchantGreeted')) setShopOpen(true)
+        if (turn.events.some(gameEvent => gameEvent.type === 'WaystoneTouched' && (gameEvent.amount ?? 0) > 0)) setTravelOpen(true)
         else if (!turn.state.merchant?.isNearby) setShopOpen(false)
 
         setLog(previous => [...messages.reverse(), ...previous].slice(0, maxLogEntries))
@@ -460,7 +465,6 @@ function App() {
   const handleBuy = useCallback((offerId: number) => void play(gameId => buyOffer(gameId, offerId)), [play])
 
   const handleBuyUpgrade = useCallback(() => void play(buyBackpackUpgrade), [play])
-  const handleAwakenTotem = useCallback(() => void play(awakenTotem), [play])
 
   function handleTravel(floor: number) {
     setTravelOpen(false)
@@ -512,6 +516,12 @@ function App() {
       if (event.code === 'Tab') {
         event.preventDefault()
         setInventoryOpen(open => !open)
+        return
+      }
+
+      if (event.code === 'KeyM' && !inventoryOpen && !document.querySelector('[role="dialog"]')) {
+        event.preventDefault()
+        setMapOpen(true)
         return
       }
 
@@ -633,12 +643,9 @@ function App() {
             </button>
           )}
           {game.merchant?.isNearby && <button onClick={() => setShopOpen(true)}>Trade</button>}
-          {game.waystone?.isNearby && game.waystone.destinations.length > 0 && <button onClick={() => setTravelOpen(true)}>Waystone</button>}
-          {game.totem?.isNearby && (
-            <button disabled={busy || game.player.coins < game.totem.price} onClick={handleAwakenTotem} title={`Fight the ${game.totem.bossName} again`}>
-              Totem · {game.totem.price}
-            </button>
-          )}
+          <button onClick={() => setMapOpen(true)} title="Dungeon map (M)">
+            Map
+          </button>
           <button onClick={() => setInventoryOpen(true)}>Backpack</button>
           <button onClick={returnToClassSelect} disabled={busy}>
             Menu
@@ -648,6 +655,7 @@ function App() {
       <StatusBar
         player={game.player}
         deaths={game.deaths}
+        graveFloor={game.graveFloor}
         floor={game.floor}
         floorCount={game.floorCount}
         biome={game.biome}
@@ -681,7 +689,7 @@ function App() {
         <Board game={game} viewColumns={view.columns} viewRows={view.rows} effects={effects} bossTarget={bossTarget} levelUp={levelUpAt} onAttack={handleAttack} />
       )}
       <p className="keyboard-hint">
-        {firstPerson ? 'W forward · A D turn · S turn around · drag the mouse to look' : 'WASD to move · Shift+WASD to turn'} · Space or click to attack · E ability · Q R potions · F scroll · 1–4 spells · Tab backpack
+        {firstPerson ? 'W forward · A D turn · S turn around · drag the mouse to look' : 'WASD to move · Shift+WASD to turn'} · Space or click to attack · E ability · Q R potions · F scroll · 1–4 spells · Tab backpack · M map
         {viewMode === '3d' && ' · V camera'}
       </p>
       <Controls
@@ -710,6 +718,7 @@ function App() {
           onClose={() => setShopOpen(false)}
         />
       )}
+      {mapOpen && <MapScreen game={game} explored={explored} boss={bossTarget} onClose={() => setMapOpen(false)} />}
       {travelOpen && game.waystone && (
         <TravelScreen
           waystone={game.waystone}

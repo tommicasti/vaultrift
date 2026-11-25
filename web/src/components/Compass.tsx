@@ -13,18 +13,20 @@ interface CompassProps {
   label: string
   variant: 'grave' | 'boss'
   facing?: Direction
+  always?: boolean
 }
 
 const compassInset = 9
 
-export function Compass({ from, to, viewColumns, viewRows, sheet, icon, label, variant, facing }: CompassProps) {
+export function Compass({ from, to, viewColumns, viewRows, sheet, icon, label, variant, facing, always = false }: CompassProps) {
   const offset = { x: to.x - from.x, y: to.y - from.y }
   const { x: dx, y: dy } = facing ? towardFacing(offset, facing) : offset
   const halfColumns = Math.floor(viewColumns / 2)
   const halfRows = Math.floor(viewRows / 2)
   const distance = Math.abs(dx) + Math.abs(dy)
 
-  if (facing ? distance <= 1 : Math.abs(dx) <= halfColumns && Math.abs(dy) <= halfRows) return null
+  const nearby = facing || always ? distance <= 2 : Math.abs(dx) <= halfColumns && Math.abs(dy) <= halfRows
+  if (nearby) return null
 
   const reach = Math.max(Math.abs(dx) / (halfColumns + 0.5), Math.abs(dy) / (halfRows + 0.5))
   const along = (offset: number) => Math.min(100 - compassInset, Math.max(compassInset, 50 + (offset / reach) * 50))

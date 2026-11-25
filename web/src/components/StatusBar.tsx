@@ -9,6 +9,7 @@ import { Sprite } from './Sprite'
 interface StatusBarProps {
   player: PlayerState
   deaths: number
+  graveFloor?: number
   floor: number
   floorCount: number
   biome?: string
@@ -16,7 +17,7 @@ interface StatusBarProps {
   onOpenInventory: () => void
 }
 
-export function StatusBar({ player, deaths, floor, floorCount, biome, difficulty, onOpenInventory }: StatusBarProps) {
+export function StatusBar({ player, deaths, graveFloor, floor, floorCount, biome, difficulty, onOpenInventory }: StatusBarProps) {
   const healthPercent = (player.health / player.maxHealth) * 100
   const experiencePercent = (player.experience / player.experienceToNextLevel) * 100
   const manaPercent = player.maxMana > 0 ? (player.mana / player.maxMana) * 100 : 0
@@ -73,6 +74,7 @@ export function StatusBar({ player, deaths, floor, floorCount, biome, difficulty
         · Floor {floor} / {floorCount}
         {biome && ` · ${biomeNames[biome] ?? biome}`}
         {difficulty === 'Hardcore' ? '' : ` · Deaths: ${deaths}`}
+        {graveFloor !== undefined && graveFloor !== floor && <span className="grave-elsewhere"> · Your grave: floor {graveFloor}</span>}
         {difficulty !== 'Normal' && <span className={`difficulty-badge difficulty-${difficulty.toLowerCase()}`}>{difficulty}</span>}
       </div>
       {hasExtras && (

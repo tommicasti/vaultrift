@@ -32,7 +32,7 @@ public sealed record GameSnapshot(
 
 public sealed record TotemSnapshot(Position Position, EnemySnapshot Boss);
 
-public sealed record GraveSnapshot(Position Position, IReadOnlyList<GraveItemSnapshot> Items);
+public sealed record GraveSnapshot(Position Position, IReadOnlyList<GraveItemSnapshot> Items, int Floor = 0);
 
 public sealed record GraveItemSnapshot(EquipmentSlot Slot, EntrySnapshot Entry);
 

@@ -58,6 +58,28 @@ public sealed partial class Game
         return new TurnResult(TurnPassed: true, events);
     }
 
+    private int? _totemPrimedTurn;
+
+    private TurnResult StrikeTotem()
+    {
+        var price = TotemPrice;
+
+        if (Player.Coins < price)
+        {
+            _totemPrimedTurn = null;
+            return new TurnResult(TurnPassed: false, [new TotemPrimed(price, CanAfford: false)]);
+        }
+
+        if (_totemPrimedTurn != TurnNumber)
+        {
+            _totemPrimedTurn = TurnNumber;
+            return new TurnResult(TurnPassed: false, [new TotemPrimed(price, CanAfford: true)]);
+        }
+
+        _totemPrimedTurn = null;
+        return AwakenTotem();
+    }
+
     public TurnResult AwakenTotem()
     {
         if (IsLost)

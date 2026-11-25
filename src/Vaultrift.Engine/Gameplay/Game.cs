@@ -138,8 +138,16 @@ public sealed partial class Game
         if (IsLost)
             return Defeated();
 
-        if (IsMerchant(Player.Position.Move(Player.Facing)))
+        var front = Player.Position.Move(Player.Facing);
+
+        if (IsMerchant(front))
             return new TurnResult(TurnPassed: false, [new MerchantGreeted()]);
+
+        if (Waystone == front)
+            return new TurnResult(TurnPassed: false, [new WaystoneTouched(TravelDestinations.Count)]);
+
+        if (Totem?.Position == front)
+            return StrikeTotem();
 
         var events = new List<GameEvent>();
         PerformAttack(events);
@@ -360,8 +368,7 @@ public sealed partial class Game
     [MemberNotNull(nameof(Map))]
     private void LoadFloor(int number, List<GameEvent>? events = null)
     {
-        if (events is not null)
-            AbandonGrave(events);
+        LeaveGraveBehind(events);
 
         var floor = _floors.Create(number) ?? throw new InvalidOperationException($"Floor {number} could not be created.");
         Validate(floor);
@@ -383,6 +390,7 @@ public sealed partial class Game
         FloorNumber = number;
         _bossDefeatAnnounced = false;
         PrepareFloor(floor.Waystone);
+        ReturnToGrave(events);
     }
 
     private static void Validate(Floor floor)

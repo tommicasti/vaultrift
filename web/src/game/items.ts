@@ -347,3 +347,9 @@ export const learnedSpellKeys = [2, 3, 4]
 export function capitalize(text: string): string {
   return text.charAt(0).toUpperCase() + text.slice(1)
 }
+
+export function describeLevelBonus(item: ItemInfo, level: number): string {
+  if (item.category === 'Shield')
+    return `Level ${level}: +${Math.floor(level / 3)} defense, +${Math.floor(level / 4)}% block (grows as you level up)`
+  return `Level ${level}: +${Math.floor(level / 2)} attack, +${Math.floor(level / 5)}% critical (grows as you level up)`
+}

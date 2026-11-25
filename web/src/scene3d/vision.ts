@@ -79,11 +79,53 @@ export function visibleTiles(map: string[], originX: number, originY: number, ra
 const memories = new Map<string, Set<string>>()
 const maxMemories = 4
 
+const storagePrefix = 'vaultrift.explored.'
+const maxStoredFloors = 40
+
+export function layoutKey(gameId: string, floor: number, map: string[]): string {
+  let hash = 2166136261
+  map.forEach((row, y) => {
+    for (let x = 0; x < row.length; x++) {
+      if (row[x] !== '#') continue
+      hash ^= x * 73856093 ^ y * 19349663
+      hash = Math.imul(hash, 16777619)
+    }
+  })
+  return `${gameId}:${floor}:${(hash >>> 0).toString(36)}`
+}
+
+function load(key: string, map: string[]): Set<string> {
+  const seen = new Set<string>()
+  try {
+    const stored = localStorage.getItem(storagePrefix + key)
+    if (!stored) return seen
+    const width = Math.max(...map.map(row => row.length))
+    for (let index = 0; index < stored.length; index++) if (stored[index] === '1') seen.add(`${index % width},${Math.floor(index / width)}`)
+  } catch {
+    return seen
+  }
+  return seen
+}
+
+function save(key: string, map: string[], seen: ReadonlySet<string>) {
+  try {
+    const width = Math.max(...map.map(row => row.length))
+    let encoded = ''
+    for (let y = 0; y < map.length; y++) for (let x = 0; x < width; x++) encoded += seen.has(`${x},${y}`) ? '1' : '0'
+    localStorage.setItem(storagePrefix + key, encoded.replace(/0+$/, ''))
+
+    const keys = Object.keys(localStorage).filter(stored => stored.startsWith(storagePrefix))
+    if (keys.length > maxStoredFloors) keys.slice(0, keys.length - maxStoredFloors).forEach(stale => localStorage.removeItem(stale))
+  } catch {
+    return
+  }
+}
+
 export function remember(key: string, map: string[], visible: Visibility): ReadonlySet<string> {
   let seen = memories.get(key)
   if (!seen) {
     if (memories.size >= maxMemories) memories.delete(memories.keys().next().value as string)
-    seen = new Set()
+    seen = load(key, map)
     memories.set(key, seen)
   }
 
@@ -91,6 +133,12 @@ export function remember(key: string, map: string[], visible: Visibility): Reado
   map.forEach((row, y) => {
     for (let x = 0; x < row.length; x++) if (visible(x, y)) next.add(`${x},${y}`)
   })
-  memories.set(key, next)
-  return next
+
+  if (next.size !== seen.size) {
+    memories.set(key, next)
+    save(key, map, next)
+    return next
+  }
+
+  return seen
 }

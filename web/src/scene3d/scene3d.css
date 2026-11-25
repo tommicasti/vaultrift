@@ -228,3 +228,40 @@
   box-shadow: 0 0 3px #000;
   pointer-events: none;
 }
+
+.scene3d-levelup {
+  display: inline-block;
+  font-size: 1.15rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  color: #ffe27a;
+  text-shadow: 0 0 6px rgb(255 190 40 / 90%), 0 2px 3px #000;
+  pointer-events: none;
+  opacity: 0;
+  animation-name: scene3d-levelup;
+  animation-timing-function: ease-out;
+  animation-fill-mode: both;
+}
+
+@keyframes scene3d-levelup {
+  0% {
+    opacity: 0;
+    transform: translateY(10px) scale(0.6);
+  }
+  10% {
+    opacity: 1;
+    transform: translateY(0) scale(1.15);
+  }
+  18% {
+    transform: scale(1);
+  }
+  80% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-16px);
+  }
+}

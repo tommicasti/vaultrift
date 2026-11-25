@@ -198,13 +198,13 @@ function applyMotion(pose: Group, parts: Parts, motion: Motion, moving: boolean,
 
 const builtWeapons: Record<string, () => Object3D> = { bow: buildBow, spear: buildSpear }
 
-const sinkDelayMs = 650
-const sinkSpeed = 2.4
+const sinkDelayMs = 350
+const sinkSpeed = 3.6
 
 function clipSpeed(name: string): number {
   if (/Attack|Shoot|Spellcast|Punch/.test(name)) return 1.7
   if (/Hit/.test(name)) return 1.4
-  if (/Death/.test(name)) return 1.8
+  if (/Death/.test(name)) return 2.6
   return 1
 }
 

@@ -199,4 +199,106 @@ public class RiftTests
         Assert.Equal(2, restored.DeepestFloor);
         Assert.Equal([1], restored.ClearedFloors);
     }
+
+    private static Game WithGraveOnFloor(Game game, int floor)
+    {
+        var item = new EntrySnapshot(99, new ItemSnapshot(TestItems.Armor.Id, null), 1, ItemMark.None);
+        var snapshot = game.Capture() with { Grave = new GraveSnapshot(new Position(4, 2), [new GraveItemSnapshot(EquipmentSlot.Body, item)], floor) };
+        return Game.Restore(snapshot, new FakeContent().With(TestItems.Armor).With(BossKind), new TestFloors(() => NewFloor(1), () => NewFloor(2), () => NewFloor(3)), new FixedRandom(Dice.AlwaysFail(500)));
+    }
+
+    [Fact]
+    public void Descending_LeavesTheGraveBehindInsteadOfDestroyingIt()
+    {
+        var game = WithGraveOnFloor(NewGame(), floor: 1);
+
+        ClearAndDescend(game);
+
+        Assert.Null(game.GraveHere);
+        Assert.Equal(1, game.Grave?.Floor);
+        Assert.Equal(1, game.Grave?.Count);
+    }
+
+    [Fact]
+    public void TravellingBackToTheGravesFloor_PutsItNearTheEntrance_ReadyToBeRecovered()
+    {
+        var first = NewGame();
+        ClearAndDescend(first);
+        var game = WithGraveOnFloor(first, floor: 1);
+        ReturnToStone(game);
+
+        var awaits = game.Travel(1).Events.OfType<GraveAwaits>().Single();
+
+        Assert.Equal(awaits.At, game.GraveHere?.Position);
+        Assert.NotEqual(Start, awaits.At);
+        Assert.NotEqual(Stone, awaits.At);
+    }
+
+    private static Game AtTheTotem(int coins)
+    {
+        var player = NewPlayer();
+        player.GainCoins(coins);
+        var game = NewGame(player);
+        ClearAndDescend(game);
+        ReturnToStone(game);
+        game.Travel(1);
+        game.Player.Position = new Position(2, 1);
+        game.Face(Direction.Right);
+        return game;
+    }
+
+    [Fact]
+    public void StrikingTheTotem_AsksFirst_AndTheSecondBlowAwakensTheBoss()
+    {
+        var game = AtTheTotem(coins: 1000);
+
+        var first = game.Attack();
+
+        Assert.False(first.TurnPassed);
+        Assert.Contains(first.Events, gameEvent => gameEvent is TotemPrimed { CanAfford: true });
+        Assert.NotNull(game.Totem);
+
+        var second = game.Attack();
+
+        Assert.Contains(second.Events, gameEvent => gameEvent is TotemAwakened);
+        Assert.Null(game.Totem);
+    }
+
+    [Fact]
+    public void DoingSomethingElse_CancelsTheTotemsQuestion()
+    {
+        var game = AtTheTotem(coins: 1000);
+        game.Attack();
+        game.MovePlayer(Direction.Down);
+        game.MovePlayer(Direction.Up);
+        game.Face(Direction.Right);
+
+        Assert.Contains(game.Attack().Events, gameEvent => gameEvent is TotemPrimed);
+        Assert.NotNull(game.Totem);
+    }
+
+    [Fact]
+    public void APoorHero_LearnsThePriceButTheTotemSleeps()
+    {
+        var game = AtTheTotem(coins: 0);
+
+        game.Attack();
+        var result = game.Attack();
+
+        Assert.Contains(result.Events, gameEvent => gameEvent is TotemPrimed { CanAfford: false });
+        Assert.NotNull(game.Totem);
+    }
+
+    [Fact]
+    public void StrikingTheWaystone_OpensTheWayWithoutSpendingATurn()
+    {
+        var game = NewGame();
+        ClearAndDescend(game);
+        ReturnToStone(game);
+
+        var result = game.Attack();
+
+        Assert.False(result.TurnPassed);
+        Assert.Equal([new WaystoneTouched(1)], result.Events);
+    }
 }
