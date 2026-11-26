@@ -12,6 +12,7 @@ export interface Cue {
   clip: string
   delayMs: number
   hold?: boolean
+  durationMs?: number
 }
 
 interface ActorBaseProps {
@@ -31,7 +32,14 @@ interface ActorBaseProps {
   sinking?: boolean
   hidden?: boolean
   procedural?: boolean
+  track?: () => Tracked
   children?: ReactNode
+}
+
+export interface Tracked {
+  x: number
+  y: number
+  moving: boolean
 }
 
 export interface Outfit {
@@ -67,6 +75,7 @@ interface ActorBodyProps extends ActorBaseProps {
 
 const proceduralSeconds: Record<string, number> = {
   Attack: 0.45,
+  Charge: 0.5,
   Hit: 0.35,
   Death: 0.6,
   Wake: 0.5,
@@ -81,6 +90,8 @@ function jawOpening(name: string, t: number, progress: number): number {
       return 0.35 * Math.abs(Math.sin(t * 14))
     case 'Attack':
       return 1.1 * Math.sin(progress * Math.PI)
+    case 'Charge':
+      return progress < chargeStrike ? 0.2 + 1.2 * (progress / chargeStrike) : 1.4 * (1 - (progress - chargeStrike) / (1 - chargeStrike))
     case 'Hit':
       return 0.45 * (1 - progress)
     case 'Death':
@@ -121,6 +132,7 @@ function animateParts(parts: Parts, name: string, t: number, progress: number) {
       swing = Math.sin(t * 16 + phase) * 0.3
       raise = Math.max(0, Math.sin(t * 16 + phase)) * 0.35
     } else if (name === 'Attack' && index < 2) raise = Math.sin(progress * Math.PI) * 0.6
+    else if (name === 'Charge' && index < 2) raise = chargeLunge(progress) * 0.9 - chargeCoil(progress) * 0.3
     else if (name === 'Death') raise = -progress * 0.9
     else if (name === 'Sleep') raise = -0.25
 
@@ -131,6 +143,7 @@ function animateParts(parts: Parts, name: string, t: number, progress: number) {
   parts.claws.forEach(claw => {
     let open = 0.15 + Math.abs(Math.sin(t * 3)) * 0.1
     if (name === 'Attack') open = progress < 0.5 ? 0.7 : 0.05
+    else if (name === 'Charge') open = progress < chargeStrike ? 0.9 : 0.05
     else if (name === 'Hit') open = 0.5
     else if (name === 'Death' || name === 'Sleep') open = 0
     claw.rotation.set(0, (claw.userData.claw as number) * open, 0)
@@ -139,22 +152,36 @@ function animateParts(parts: Parts, name: string, t: number, progress: number) {
   if (parts.tail) {
     let strike = Math.sin(t * 2) * 0.05
     if (name === 'Attack') strike = Math.sin(progress * Math.PI) * 0.9
+    else if (name === 'Charge') strike = chargeLunge(progress) * 1.2 - chargeCoil(progress) * 0.5
     else if (name === 'Death') strike = -progress * 0.8
     if (parts.tail.userData.sway) parts.tail.rotation.set(0.35 + strike * 0.4, Math.sin(t * (name === 'Walk' ? 9 : 2.4)) * 0.45, 0)
     else parts.tail.rotation.set(strike, 0, 0)
   }
 }
 
+const chargeStrike = 0.7
+
+function chargeCoil(progress: number): number {
+  return progress < chargeStrike ? Math.sin((progress / chargeStrike) * (Math.PI / 2)) : Math.max(0, 1 - (progress - chargeStrike) / 0.08)
+}
+
+function chargeLunge(progress: number): number {
+  if (progress < chargeStrike) return 0
+  const after = (progress - chargeStrike) / (1 - chargeStrike)
+  return after < 0.3 ? Math.sin((after / 0.3) * (Math.PI / 2)) : Math.cos(((after - 0.3) / 0.7) * (Math.PI / 2))
+}
+
 interface Motion {
   name: string
   start: number
+  seconds?: number
 }
 
 function applyMotion(pose: Group, parts: Parts, motion: Motion, moving: boolean, size: number, now: number) {
   const lid = parts.lid
   const t = (now - motion.start) / 1000
   const name = moving && !(motion.name in proceduralSeconds) ? 'Walk' : motion.name
-  const progress = Math.min(1, (t * clipSpeed(name)) / (proceduralSeconds[name] ?? 1))
+  const progress = Math.min(1, name === motion.name && motion.seconds ? t / motion.seconds : (t * clipSpeed(name)) / (proceduralSeconds[name] ?? 1))
   pose.position.set(0, 0, 0)
   pose.rotation.set(0, 0, 0)
   pose.scale.set(1, 1, 1)
@@ -174,6 +201,16 @@ function applyMotion(pose: Group, parts: Parts, motion: Motion, moving: boolean,
       pose.position.z = lunge * 0.3 * size
       pose.rotation.x = lunge * 0.3
       pose.scale.set(1 + lunge * 0.06, 1 - lunge * 0.08, 1 + lunge * 0.1)
+      break
+    }
+    case 'Charge': {
+      const coil = chargeCoil(progress)
+      const lunge = chargeLunge(progress)
+      const shake = progress < chargeStrike ? Math.sin(t * 70) * 0.03 * coil : 0
+      pose.position.z = (lunge * 0.75 - coil * 0.3) * size
+      pose.position.x = shake * size
+      pose.rotation.x = lunge * 0.45 - coil * 0.35
+      pose.scale.set(1 + coil * 0.12 + lunge * 0.05, 1 - coil * 0.16 + lunge * 0.06, 1 + lunge * 0.18)
       break
     }
     case 'Hit':
@@ -231,7 +268,7 @@ function BuiltActor({ build, ...rest }: ActorBaseProps & { build: () => Object3D
   return <ActorBody source={source} clips={[]} {...rest} procedural />
 }
 
-function ActorBody({ source, clips: animations, x, y, rotation, idle, walk = 'Walking_A', cue, tint, scale = 1, mainHand, offHand, ghostly, hidden, procedural, outfit, alive = true, sinking = false, children }: ActorBodyProps) {
+function ActorBody({ source, clips: animations, x, y, rotation, idle, walk = 'Walking_A', cue, tint, scale = 1, mainHand, offHand, ghostly, hidden, procedural, outfit, alive = true, sinking = false, track, children }: ActorBodyProps) {
   const weapons = useKitObjects(modelUrls.weapons)
   const root = useRef<Group>(null)
   const pose = useRef<Group>(null)
@@ -335,15 +372,17 @@ function ActorBody({ source, clips: animations, x, y, rotation, idle, walk = 'Wa
     const timer = window.setTimeout(() => {
       if (procedural) {
         const now = performance.now()
-        motion.current = { name: cue.clip, start: now }
+        const seconds = cue.durationMs ? cue.durationMs / 1000 : undefined
+        motion.current = { name: cue.clip, start: now, seconds }
         state.current.held = cue.hold === true
-        state.current.busyUntil = now + ((proceduralSeconds[cue.clip] ?? 0.5) * 1000) / clipSpeed(cue.clip)
+        state.current.busyUntil = now + (seconds ? seconds * 1000 : ((proceduralSeconds[cue.clip] ?? 0.5) * 1000) / clipSpeed(cue.clip))
         return
       }
 
       const action = play(cue.clip, true)
       if (!action) return
 
+      if (cue.durationMs) action.timeScale = (action.getClip().duration * 1000) / cue.durationMs
       state.current.held = cue.hold === true
       state.current.busyUntil = performance.now() + (action.getClip().duration * 1000) / Math.max(action.timeScale, 0.01)
     }, cue.delayMs)
@@ -356,16 +395,25 @@ function ActorBody({ source, clips: animations, x, y, rotation, idle, walk = 'Wa
     const group = root.current
     if (!group) return
 
-    if (!placed.current) {
-      group.position.copy(target)
+    let moving: boolean
+
+    if (track) {
+      const tracked = track()
+      group.position.set(tracked.x * cell, 0, tracked.y * cell)
       placed.current = true
+      moving = tracked.moving
+    } else {
+      if (!placed.current) {
+        group.position.copy(target)
+        placed.current = true
+      }
+
+      const distance = group.position.distanceTo(target)
+      moving = distance > 0.05
+
+      if (distance > teleportDistance) group.position.copy(target)
+      else if (moving) group.position.add(target.clone().sub(group.position).clampLength(0, stepSpeed * Math.max(1, distance / cell) * delta))
     }
-
-    const distance = group.position.distanceTo(target)
-    const moving = distance > 0.05
-
-    if (distance > teleportDistance) group.position.copy(target)
-    else if (moving) group.position.add(target.clone().sub(group.position).clampLength(0, stepSpeed * Math.max(1, distance / cell) * delta))
 
     let turn = rotation - group.rotation.y
     turn = Math.atan2(Math.sin(turn), Math.cos(turn))

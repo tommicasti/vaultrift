@@ -26,6 +26,7 @@ builder.Services.Configure<GzipCompressionProviderOptions>(options => options.Le
 
 builder.Services.AddGameStorage(builder.Configuration, builder.Environment);
 builder.Services.AddAccounts(builder.Configuration, builder.Environment);
+builder.Services.AddRealtime(builder.Configuration);
 builder.Services.AddProblemDetails();
 builder.Services.AddExceptionHandler<IncompatibleSaveHandler>();
 
@@ -44,6 +45,7 @@ app.UseGameClient();
 app.UseAccounts();
 app.UseAuthorization();
 app.MapControllers();
+app.MapRealtime();
 app.MapGameClientFallback();
 
 app.Run();

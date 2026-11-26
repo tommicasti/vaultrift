@@ -45,6 +45,8 @@ import { AccountPanel } from './components/AccountPanel'
 import { TrophyToast } from './components/TrophyToast'
 import { claimCodes, forgetHero, getAccount, logout, type AccountInfo } from './api/accountApi'
 import { TravelScreen } from './components/TravelScreen'
+import { LiveGame, type LiveMode } from './realtime/LiveGame'
+import { LiveLauncher } from './realtime/LiveLauncher'
 import { describeEvent } from './game/describeEvent'
 import { effectsDuration, effectsForTurn, type Effect } from './game/effects'
 import { clearLocalHeroes, heroFromSummary, localSaveCodes, type SavedHero } from './game/savedHeroes'
@@ -88,6 +90,7 @@ function App() {
   const [mapOpen, setMapOpen] = useState(false)
   const [shopOpen, setShopOpen] = useState(false)
   const [travelOpen, setTravelOpen] = useState(false)
+  const [live, setLive] = useState<{ mode: LiveMode; classId: string } | null>(null)
   const [effects, setEffects] = useState<Effect[]>([])
   const [lastTurn, setLastTurn] = useState<Turn | null>(null)
   const [viewMode, setViewMode] = useState<ViewMode>(loadViewMode)
@@ -586,6 +589,10 @@ function App() {
     return () => window.removeEventListener('keydown', handleKeyDown)
   }, [hasGame, inventoryOpen, shopOpen, spellCount, firstPerson, facing, viewMode, toggleCameraMode, handleMove, handleFace, handleAttack, handleUseQuickSlot, handleUseAbility, handleSelectSpell])
 
+  if (!game && live && account) {
+    return <LiveGame mode={live.mode} classId={live.classId} heroName={account.userName} onExit={() => setLive(null)} />
+  }
+
   if (!game) {
     return (
       <main className="app start">
@@ -608,6 +615,7 @@ function App() {
             />
             <p className="label">{heroes.length > 0 ? 'Or start a new adventure' : 'Choose your hero'}</p>
             <ClassSelect disabled={busy} onChoose={(classId, name, difficulty) => void startGame(classId, name, difficulty)} />
+            <LiveLauncher disabled={busy} onLaunch={(mode, classId) => setLive({ mode, classId })} />
           </>
         )}
       </main>

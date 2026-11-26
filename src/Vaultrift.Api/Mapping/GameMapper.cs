@@ -288,7 +288,7 @@ public static class GameMapper
     private static IReadOnlyList<PositionResponse> ToPositions(IEnumerable<Position> positions) =>
         positions.Select(position => new PositionResponse(position.X, position.Y)).ToList();
 
-    private static ItemResponse ToItemResponse(ItemInstance instance)
+    public static ItemResponse ToItemResponse(ItemInstance instance)
     {
         var item = instance.Definition;
         var potion = item as PotionDefinition;

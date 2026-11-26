@@ -996,7 +996,7 @@ function RarityRing({ color, size }: { color: string; size: number }) {
   )
 }
 
-function FloorItem({ x, y, item }: { x: number; y: number; item: ItemInfo }) {
+export function FloorItem({ x, y, item }: { x: number; y: number; item: ItemInfo }) {
   const ref = useRef<Group>(null)
   const weapons = useKitObjects(modelUrls.weapons)
   const color = rarityColors[item.rarity] ?? '#ffffff'
