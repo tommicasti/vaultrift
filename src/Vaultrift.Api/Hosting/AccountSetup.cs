@@ -2,6 +2,7 @@ using System.Security.Claims;
 using System.Threading.RateLimiting;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Vaultrift.Infrastructure.Accounts;
+using Vaultrift.Infrastructure.Cosmos;
 using Vaultrift.Infrastructure.Persistence;
 
 namespace Vaultrift.Api.Hosting;
@@ -14,16 +15,15 @@ public static class AccountSetup
     {
         var provider = configuration["Storage:Provider"] ?? "File";
 
-        IAccountRepository repository = provider switch
+        services.AddSingleton<IAccountRepository>(serviceProvider => provider switch
         {
+            "Cosmos" => new CosmosAccountRepository(serviceProvider.GetRequiredService<CosmosStore>().Accounts),
             "SqlServer" => new SqlAccountRepository(
                 configuration.GetConnectionString(StorageSetup.ConnectionName)
                 ?? throw new InvalidOperationException($"Storage:Provider is SqlServer but ConnectionStrings:{StorageSetup.ConnectionName} is missing.")),
             "File" => new FileAccountRepository(Path.Combine(environment.ContentRootPath, configuration["Storage:Folder"] ?? "saves")),
             _ => new MemoryAccountRepository()
-        };
-
-        services.AddSingleton(repository);
+        });
         services.AddSingleton(provider => new AccountService(provider.GetRequiredService<IAccountRepository>(), provider.GetRequiredService<ISaveRepository>()));
         services.AddSingleton(provider => new TrophyService(provider.GetRequiredService<IAccountRepository>(), provider.GetRequiredService<AccountService>()));
 
