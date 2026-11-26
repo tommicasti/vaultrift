@@ -1,3 +1,4 @@
+using Vaultrift.Infrastructure.Cosmos;
 using Vaultrift.Infrastructure.Persistence;
 
 namespace Vaultrift.Api.Hosting;
@@ -5,29 +6,47 @@ namespace Vaultrift.Api.Hosting;
 public static class StorageSetup
 {
     public const string ConnectionName = "Vaultrift";
+    public const string CosmosConnectionName = "Cosmos";
 
     public static IServiceCollection AddGameStorage(this IServiceCollection services, IConfiguration configuration, IHostEnvironment environment)
     {
         var provider = configuration["Storage:Provider"] ?? "File";
 
-        ISaveRepository repository = provider switch
-        {
-            "SqlServer" => new SqlSaveRepository(
-                configuration.GetConnectionString(ConnectionName)
-                ?? throw new InvalidOperationException($"Storage:Provider is SqlServer but ConnectionStrings:{ConnectionName} is missing.")),
-            "File" => new FileSaveRepository(Path.Combine(environment.ContentRootPath, configuration["Storage:Folder"] ?? "saves")),
-            "Memory" => new MemorySaveRepository(),
-            _ => throw new InvalidOperationException($"Unknown Storage:Provider '{provider}'. Use SqlServer, File or Memory.")
-        };
+        if (provider is not ("Cosmos" or "SqlServer" or "File" or "Memory"))
+            throw new InvalidOperationException($"Unknown Storage:Provider '{provider}'. Use Cosmos, SqlServer, File or Memory.");
 
-        services.AddSingleton<ISaveRepository>(provider =>
+        if (provider == "Cosmos")
+            services.AddSingleton(serviceProvider => OpenCosmos(configuration, serviceProvider));
+
+        services.AddSingleton<ISaveRepository>(serviceProvider =>
         {
-            var logger = provider.GetRequiredService<ILoggerFactory>().CreateLogger("Vaultrift.Saves");
+            ISaveRepository repository = provider switch
+            {
+                "Cosmos" => new CosmosSaveRepository(serviceProvider.GetRequiredService<CosmosStore>().Games),
+                "SqlServer" => new SqlSaveRepository(
+                    configuration.GetConnectionString(ConnectionName)
+                    ?? throw new InvalidOperationException($"Storage:Provider is SqlServer but ConnectionStrings:{ConnectionName} is missing.")),
+                "File" => new FileSaveRepository(Path.Combine(environment.ContentRootPath, configuration["Storage:Folder"] ?? "saves")),
+                _ => new MemorySaveRepository()
+            };
+
+            var logger = serviceProvider.GetRequiredService<ILoggerFactory>().CreateLogger("Vaultrift.Saves");
             return new WriteBehindSaveRepository(
                 repository,
                 (error, record) => logger.LogError(error, "Could not save game {GameId} ({Code}); retrying.", record.Id, record.Code));
         });
         services.AddSingleton<IGameStore, CachedGameStore>();
         return services;
+    }
+
+    private static CosmosStore OpenCosmos(IConfiguration configuration, IServiceProvider serviceProvider)
+    {
+        var logger = serviceProvider.GetRequiredService<ILoggerFactory>().CreateLogger("Vaultrift.Cosmos");
+
+        return CosmosStore.Open(
+            configuration.GetConnectionString(CosmosConnectionName)
+            ?? throw new InvalidOperationException($"Storage:Provider is Cosmos but ConnectionStrings:{CosmosConnectionName} is missing."),
+            configuration["Storage:Database"],
+            logger.IsEnabled(LogLevel.Debug) ? (operation, units) => logger.LogDebug("{Operation} cost {RequestUnits} RU", operation, units) : null);
     }
 }
