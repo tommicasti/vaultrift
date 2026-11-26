@@ -4,6 +4,9 @@
     <Project Path="src/Vaultrift.Engine/Vaultrift.Engine.csproj" />
     <Project Path="src/Vaultrift.Infrastructure/Vaultrift.Infrastructure.csproj" />
   </Folder>
+  <Folder Name="/tools/">
+    <Project Path="tools/Vaultrift.Migrate/Vaultrift.Migrate.csproj" />
+  </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/Vaultrift.Engine.Tests/Vaultrift.Engine.Tests.csproj" />
     <Project Path="tests/Vaultrift.Infrastructure.Tests/Vaultrift.Infrastructure.Tests.csproj" />
