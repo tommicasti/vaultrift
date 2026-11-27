@@ -609,7 +609,7 @@ Il protocollo passa a 3: una pagina vecchia con un server nuovo, o il contrario,
 
 **Come è fatto.**
 - **Immagine.** Il `Dockerfile` nella radice compila il client React (Node 22), pubblica l'API (.NET 10) e mette il client in `wwwroot`. Gira come utente non root sulla porta 8080. `.dockerignore` tiene fuori test, documenti, salvataggi locali e file con credenziali.
-- **Workflow** (`.github/workflows/container.yml`). Parte a ogni push su `dev` o a mano. Fa tre cose:
+- **Workflow** (`.github/workflows/container.yml`). Parte a ogni push su `main` o a mano. `dev` resta il ramo di lavoro, controllato da `ci.yml`; il vecchio `deploy.yml` per App Service è stato tolto. Fa tre cose:
   1. lint e test del client e del server;
   2. immagine su GitHub Container Registry (`ghcr.io/tommicasti/vaultrift`, tag con lo SHA e `latest`);
   3. `az containerapp update` con l'immagine nuova. Questo passo usa OIDC: niente password salvate, Azure si fida dei token di GitHub per l'ambiente `container`, e gira solo se la variabile `CONTAINER_APP_NAME` è impostata.
