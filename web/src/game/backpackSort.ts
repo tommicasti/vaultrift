@@ -4,7 +4,7 @@ export type BackpackSort = 'Recent' | 'Rarity' | 'Type'
 
 export const backpackSorts: BackpackSort[] = ['Recent', 'Rarity', 'Type']
 
-const rarityRank: Record<Rarity, number> = {
+export const rarityRank: Record<Rarity, number> = {
   Platinum: -2,
   Exotic: -1,
   Legendary: 0,
@@ -50,6 +50,10 @@ const comparers: Record<BackpackSort, (a: InventoryEntryState, b: InventoryEntry
   Recent: byNewest,
   Rarity: (a, b) => byRarity(a, b) || byCategory(a, b) || byNewest(a, b),
   Type: (a, b) => byCategory(a, b) || byRarity(a, b) || byNewest(a, b),
+}
+
+export function byRarityThenName<T extends { item: { rarity: Rarity; name: string } }>(items: readonly T[]): T[] {
+  return [...items].sort((a, b) => rarityRank[a.item.rarity] - rarityRank[b.item.rarity] || a.item.name.localeCompare(b.item.name))
 }
 
 export function sortBackpack(entries: readonly InventoryEntryState[], sort: BackpackSort): InventoryEntryState[] {

@@ -4,6 +4,26 @@
   z-index: 10;
   background: #000;
   user-select: none;
+  touch-action: manipulation;
+  -webkit-touch-callout: none;
+}
+
+.live-spells {
+  position: absolute;
+  bottom: 4.2rem;
+  left: 50%;
+  transform: translateX(-50%);
+  max-width: calc(100vw - 1.5rem);
+}
+
+.live-game .spell-bar {
+  position: static;
+  flex-direction: row;
+  justify-content: center;
+}
+
+.live-game .spell {
+  background: rgb(20 22 30 / 70%);
 }
 
 .live-game .live-scene {
@@ -364,16 +384,115 @@
   display: contents;
 }
 
-@media (max-width: 760px) {
+@media (max-width: 760px), (pointer: coarse) and (max-height: 520px) {
   .live-top {
     position: absolute;
-    top: 0.5rem;
-    left: 0.5rem;
-    right: 0.5rem;
-    display: flex;
-    flex-direction: column;
+    top: max(0.4rem, env(safe-area-inset-top));
+    left: max(0.4rem, env(safe-area-inset-left));
+    right: max(0.4rem, env(safe-area-inset-right));
+    display: grid;
+    grid-template-columns: auto 1fr;
+    align-items: start;
     gap: 0.35rem;
     pointer-events: none;
+  }
+
+  .live-top > .live-status {
+    grid-column: 1;
+    width: min(12.5rem, 44vw);
+    padding: 0.25rem 0.45rem 0.3rem;
+    border-radius: 10px;
+    background: rgb(12 14 20 / 32%);
+    font-size: 0.68rem;
+    text-shadow: 0 1px 2px rgb(0 0 0 / 80%);
+  }
+
+  .live-status .status-bar {
+    position: static;
+    transform: none;
+    width: auto;
+    padding: 0;
+    gap: 0.15rem 0.5rem;
+    border-radius: 0;
+    background: none;
+  }
+
+  .live-status .status-bar .health {
+    flex: 1 1 100%;
+    min-width: 0;
+  }
+
+  .live-status .status-bar .label {
+    font-size: 0.64rem;
+    line-height: 1.25;
+  }
+
+  .live-status .health-track {
+    height: 6px;
+    margin-top: 2px;
+    opacity: 0.85;
+  }
+
+  .live-status .mana-track,
+  .live-status .experience-track {
+    height: 3px;
+    margin-top: 2px;
+    opacity: 0.85;
+  }
+
+  .live-status .boost-tag {
+    padding: 0 0.35rem;
+    font-size: 0.6rem;
+  }
+
+  .live-tools {
+    flex-wrap: wrap;
+    max-width: 46vw;
+    margin-left: auto;
+  }
+
+  .live-tools button {
+    min-width: 2.1rem;
+    padding: 0.2rem 0.4rem;
+    font-size: 0.7rem;
+  }
+
+  .live-tools .header-toggles {
+    position: static;
+    gap: 0.35rem;
+  }
+
+  .live-party {
+    font-size: 0.7rem;
+  }
+
+  .live-status .stats,
+  .live-status .status-extras .quick-slot-info,
+  .live-status .status-extras .resistance-info {
+    display: none;
+  }
+
+  .live-top > .live-party {
+    grid-column: 2;
+    grid-row: 1;
+    justify-self: end;
+    background: rgb(20 22 30 / 42%);
+  }
+
+  .live-top > .live-spells {
+    grid-column: 1 / -1;
+    justify-self: start;
+    max-width: none;
+  }
+
+  .live-game .spell-bar {
+    justify-content: flex-start;
+  }
+
+  .live-game .spell {
+    padding: 0.1rem 0.35rem;
+    font-size: 0.7rem;
+    background: rgb(20 22 30 / 50%);
   }
 
   .live-top > * {

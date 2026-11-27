@@ -173,11 +173,11 @@ public static class LiveMapper
     private static LiveEventView ToView(LiveEvent liveEvent) => liveEvent switch
     {
         HeroSwung swung => new LiveEventView("HeroSwung", HeroId: swung.HeroId),
-        MonsterHit hit => new LiveEventView("MonsterHit", hit.HeroId, hit.MonsterId, hit.Result.Damage, hit.Result.IsCritical, hit.Result.Missed, Element: hit.Result.Effectiveness == Effectiveness.Neutral ? null : hit.Result.Element, ItemName: hit.Result.Effectiveness == Effectiveness.Neutral ? null : hit.Result.Effectiveness.ToString()),
+        MonsterHit hit => new LiveEventView("MonsterHit", hit.HeroId, hit.MonsterId, hit.Result.Damage, hit.Result.IsCritical, hit.Result.Missed, Element: hit.Result.Element, ItemName: hit.Result.Effectiveness == Effectiveness.Neutral ? null : hit.Result.Effectiveness.ToString()),
         MonsterSlain slain => new LiveEventView("MonsterSlain", slain.HeroId, slain.MonsterId),
         MonsterWoke woke => new LiveEventView("MonsterWoke", MonsterId: woke.MonsterId),
         MonsterWindup windup => new LiveEventView("MonsterWindup", windup.HeroId, windup.MonsterId),
-        HeroHit hit => new LiveEventView("HeroHit", hit.HeroId, hit.MonsterId, hit.Result.Damage, hit.Result.IsCritical, hit.Result.Missed, Element: hit.Result.Effectiveness == Effectiveness.Neutral ? null : hit.Result.Element, ItemName: hit.Result.Effectiveness == Effectiveness.Neutral ? null : hit.Result.Effectiveness.ToString()),
+        HeroHit hit => new LiveEventView("HeroHit", hit.HeroId, hit.MonsterId, hit.Result.Damage, hit.Result.IsCritical, hit.Result.Missed, Element: hit.Result.Element, ItemName: hit.Result.Effectiveness == Effectiveness.Neutral ? null : hit.Result.Effectiveness.ToString()),
         HeroFell fell => new LiveEventView("HeroFell", HeroId: fell.HeroId, Amount: fell.CoinsLost == 0 ? null : fell.CoinsLost),
         HeroRespawned respawned => new LiveEventView("HeroRespawned", HeroId: respawned.HeroId),
         HeroRewarded reward => new LiveEventView("HeroRewarded", reward.HeroId, reward.MonsterId, reward.Coins, Experience: reward.Experience, Levels: reward.LevelsGained),

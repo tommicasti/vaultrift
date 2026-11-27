@@ -8,6 +8,8 @@ namespace Vaultrift.Engine.Realtime;
 
 public sealed partial class LiveFloor
 {
+    private const double SightStep = 0.25;
+
     private readonly List<LiveHero> _heroes = [];
     private readonly List<LiveMonster> _monsters = [];
     private readonly Dictionary<int, FlowField> _fields = [];
@@ -369,6 +371,7 @@ public sealed partial class LiveFloor
         hero.Facing = new Vector(0, 1);
         hero.Input = HeroInput.Idle;
         hero.AttackReadyAt = Time;
+        hero.ShieldedUntil = Time + LiveRules.RespawnShieldSeconds;
         ArriveQuietly(hero);
         events.Add(new HeroRespawned(hero.Id));
     }
@@ -397,14 +400,14 @@ public sealed partial class LiveFloor
             return;
         }
 
-        var target = _heroes
-            .Where(hero => hero.IsTargetable)
-            .OrderBy(hero => hero.Position.DistanceTo(monster.Position))
-            .FirstOrDefault();
-
         if (!monster.IsAwake)
         {
-            if (target is not null && Notices(monster, target))
+            var nearest = _heroes
+                .Where(Hunted)
+                .OrderBy(hero => hero.Position.DistanceTo(monster.Position))
+                .FirstOrDefault();
+
+            if (nearest is not null && Notices(monster, nearest))
             {
                 monster.IsAwake = true;
                 monster.AttackReadyAt = Time + LiveRules.MonsterWindupSeconds;
@@ -414,8 +417,20 @@ public sealed partial class LiveFloor
             return;
         }
 
-        if (target is null)
+        if (monster.IsReturning)
         {
+            ReturnHome(monster);
+            return;
+        }
+
+        var target = _heroes
+            .Where(hero => Hunted(hero) && WithinChase(monster, hero))
+            .OrderBy(hero => hero.Position.DistanceTo(monster.Position))
+            .FirstOrDefault();
+
+        if (target is null || Strayed(monster) || LostSight(monster, target))
+        {
+            GiveUp(monster);
             ReturnHome(monster);
             return;
         }
@@ -458,9 +473,52 @@ public sealed partial class LiveFloor
         MoveMonster(monster, heading * travel);
     }
 
+    private bool WithinChase(LiveMonster monster, LiveHero hero)
+    {
+        var limit = monster.Kind.IsBoss ? LiveRules.BossChaseDistance : LiveRules.ChaseDistance;
+
+        if (monster.Kind.PassesThroughWalls)
+            return monster.Position.DistanceTo(hero.Position) <= limit;
+
+        return _fields.TryGetValue(hero.Id, out var field) && field.DistanceFrom(Collision.TileOf(monster.Position)) <= limit;
+    }
+
+    private bool Hunted(LiveHero hero) => hero.IsTargetable && Time >= hero.ShieldedUntil;
+
+    private static bool Strayed(LiveMonster monster) => !monster.Kind.IsBoss && monster.Position.DistanceTo(monster.Home) > LiveRules.LeashDistance;
+
+    private bool LostSight(LiveMonster monster, LiveHero target)
+    {
+        if (monster.TargetId != target.Id || monster.Kind.PassesThroughWalls || Sees(monster.Position, target.Position))
+            monster.LastSawTarget = Time;
+
+        return Time - monster.LastSawTarget > LiveRules.LoseSightSeconds;
+    }
+
+    private bool Sees(Vector from, Vector to)
+    {
+        var offset = to - from;
+        var steps = (int)Math.Ceiling(offset.Length / SightStep);
+
+        for (var step = 1; step < steps; step++)
+        {
+            if (Map.GetTile(Collision.TileOf(from + offset * ((double)step / steps))) == TileType.Wall)
+                return false;
+        }
+
+        return true;
+    }
+
+    private static void GiveUp(LiveMonster monster)
+    {
+        monster.IsReturning = true;
+        monster.TargetId = null;
+        monster.WindupEndsAt = null;
+    }
+
     private bool Notices(LiveMonster monster, LiveHero hero)
     {
-        if (!hero.IsTargetable)
+        if (!Hunted(hero))
             return false;
 
         var wake = Math.Max(1, LiveRules.WakeDistance - hero.Player.EffectAmount(EffectKind.Stealth)) + (hero.IsSprinting ? LiveRules.SprintNoise : 0);
@@ -576,6 +634,9 @@ public sealed partial class LiveFloor
 
         events.Add(new HeroFell(hero.Id, lost));
 
+        foreach (var hunter in _monsters.Where(monster => !monster.IsDead && monster.TargetId == hero.Id))
+            GiveUp(hunter);
+
         if (Falls == FallRule.DigGrave)
             DigGrave(hero, events);
     }
@@ -595,8 +656,9 @@ public sealed partial class LiveFloor
         monster.WindupEndsAt = null;
         monster.TargetId = null;
         var offset = monster.Home - monster.Position;
+        monster.ReturningSince ??= Time;
 
-        if (offset.Length < 0.1)
+        if (offset.Length < 0.1 || Time - monster.ReturningSince >= LiveRules.ReturnHomeSeconds)
         {
             monster.Reset();
             return;

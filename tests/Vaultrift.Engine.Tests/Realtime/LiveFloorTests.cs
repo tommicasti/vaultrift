@@ -177,13 +177,57 @@ public sealed class LiveFloorTests
     {
         var floor = Floor(Corridor, startX: 1, startY: 3);
         var hero = floor.AddHero(1, "Casti", "knight", HeroStats);
-        var rat = floor.AddMonster(new Enemy(10, new Position(4, 1), Rat));
+        var rat = floor.AddMonster(new Enemy(10, new Position(7, 1), Rat));
         rat.IsAwake = true;
 
         Run(floor, 8);
 
         Assert.True(rat.Position.DistanceTo(hero.Position) < rat.Radius + LiveRules.HeroRadius + LiveRules.MonsterReach + 0.05);
         Assert.False(Collision.HitsWall(floor.Map, rat.Position, rat.Radius));
+    }
+
+    [Fact]
+    public void MonstersGiveUpOnAHeroTooFarAlongThePath()
+    {
+        var floor = Floor(Corridor, startX: 1, startY: 3);
+        floor.AddHero(1, "Casti", "knight", HeroStats);
+        var rat = floor.AddMonster(new Enemy(10, new Position(2, 1), Rat));
+        rat.IsAwake = true;
+
+        Run(floor, 2);
+
+        Assert.False(rat.IsAwake);
+        Assert.Equal(rat.Home, rat.Position);
+    }
+
+    [Fact]
+    public void AMonsterHeadingHomeIgnoresHeroesUntilItGetsThere()
+    {
+        var floor = Floor(OpenRoom, startX: 5, startY: 3);
+        var hero = floor.AddHero(1, "Casti", "knight", HeroStats);
+        var rat = floor.AddMonster(new Enemy(10, new Position(9, 3), Rat));
+        rat.IsAwake = true;
+        rat.IsReturning = true;
+        rat.Position = new Vector(6, 3);
+
+        var events = Run(floor, 1);
+
+        Assert.DoesNotContain(events, e => e is MonsterWindup or HeroHit);
+        Assert.True(rat.Position.DistanceTo(rat.Home) < 3 - 0.5);
+        Assert.Equal(hero.Stats.MaxHealth, hero.Health);
+    }
+
+    [Fact]
+    public void ARisenHeroIsLeftAloneForAMoment()
+    {
+        var floor = Floor(OpenRoom, startX: 5, startY: 3);
+        var hero = floor.AddHero(1, "Casti", "knight", HeroStats);
+        var rat = floor.AddMonster(new Enemy(10, new Position(6, 3), Rat));
+        hero.ShieldedUntil = floor.Time + LiveRules.RespawnShieldSeconds;
+
+        Assert.DoesNotContain(Run(floor, LiveRules.RespawnShieldSeconds - 0.5), e => e is MonsterWoke or HeroHit);
+        Assert.Contains(Run(floor, 1), e => e is MonsterWoke);
+        Assert.True(rat.IsAwake);
     }
 
     [Fact]

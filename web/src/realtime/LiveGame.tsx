@@ -1,3 +1,4 @@
+import { burstFor } from './liveEffects'
 import { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react'
 import type { EquipmentSlot, ItemMark, StatPoint } from '../api/types'
 import { InventoryScreen } from '../components/InventoryScreen'
@@ -7,6 +8,8 @@ import { TrophyToast } from '../components/TrophyToast'
 import { VictoryScreen } from '../components/VictoryScreen'
 import type { TrophyInfo } from '../api/types'
 import { supportsWebGL } from '../scene3d/viewMode'
+import { HeaderToggles } from '../components/HeaderToggles'
+import { SpellBar } from '../components/SpellBar'
 import { StatusBar } from '../components/StatusBar'
 import { describeEvent } from '../game/describeEvent'
 import type { Cue } from '../scene3d/Actor'
@@ -93,6 +96,7 @@ const corpseMs = 760
 const popupMs = 900
 const swingMs = 420
 const chestHintReach = 1.6
+const doubleTapMs = 350
 const attackKeys = new Set(['Space'])
 const quickSlotCodes: Record<string, number> = { KeyQ: 0, KeyR: 1, KeyF: 2 }
 const messageMs = 30000
@@ -254,6 +258,9 @@ export function LiveGame({ mode, heroId, onExit }: LiveGameProps) {
         snapshot.monsters.find(monster => monster.id === monsterId) ?? (monsterId !== undefined ? lastMonsters.current.get(monsterId) : undefined)
 
       for (const event of events) {
+        const burst = burstFor(event, spotOf, heroSpot)
+        if (burst) nextSparks.push({ key: ++cueId.current, ...burst, start: now })
+
         switch (event.type) {
           case 'HeroSwung': {
             if (event.heroId === undefined) break
@@ -686,6 +693,22 @@ export function LiveGame({ mode, heroId, onExit }: LiveGameProps) {
   useEffect(() => {
     chestsRef.current = chests
   }, [chests])
+
+  useEffect(() => {
+    let lastTap = -Infinity
+    const guard = (event: TouchEvent) => {
+      if (event.target instanceof Element && event.target.closest('button')) return
+      if (event.timeStamp - lastTap < doubleTapMs) event.preventDefault()
+      lastTap = event.timeStamp
+    }
+    const pinch = (event: Event) => event.preventDefault()
+    document.addEventListener('touchend', guard, { passive: false })
+    document.addEventListener('gesturestart', pinch)
+    return () => {
+      document.removeEventListener('touchend', guard)
+      document.removeEventListener('gesturestart', pinch)
+    }
+  }, [])
 
   useEffect(() => {
     partyRef.current = party
@@ -1204,6 +1227,18 @@ export function LiveGame({ mode, heroId, onExit }: LiveGameProps) {
             />
           </div>
         )}
+        {player && player.spells.length > 0 && (
+          <div className="live-spells" onPointerDown={event => event.stopPropagation()}>
+            <SpellBar
+              spells={player.spells}
+              active={player.activeSpell}
+              mana={player.mana}
+              overloaded={player.isOverloaded}
+              disabled={false}
+              onSelect={index => act(room => room.selectSpell(index))}
+            />
+          </div>
+        )}
         <div className="live-party" onPointerDown={event => event.stopPropagation()}>
           {welcome.isShared ? (
             <span>
@@ -1235,6 +1270,7 @@ export function LiveGame({ mode, heroId, onExit }: LiveGameProps) {
             >
               {flat ? '3D' : '2D'}
             </button>
+            <HeaderToggles />
           </div>
         </div>
       </div>

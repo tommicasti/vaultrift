@@ -10,6 +10,7 @@ import {
   type DepositInfo,
   type VaultHero,
 } from '../api/vaultApi'
+import { byRarityThenName } from '../game/backpackSort'
 import { describeItem, describeKind, slotLabels } from '../game/items'
 import { ItemIcon } from './ItemIcon'
 
@@ -120,7 +121,7 @@ export function DepositScreen({ hero, onClose }: DepositScreenProps) {
                 <p className="label">The backpack is empty.</p>
               ) : (
                 <ul className="shop-list">
-                  {deposit.backpack.map(entry => (
+                  {byRarityThenName(deposit.backpack).map(entry => (
                     <ItemRow
                       key={entry.id}
                       item={entry.item}
@@ -144,7 +145,7 @@ export function DepositScreen({ hero, onClose }: DepositScreenProps) {
                 <p className="label">Nothing stored yet.</p>
               ) : (
                 <ul className="shop-list">
-                  {deposit.items.map(slot => (
+                  {byRarityThenName(deposit.items).map(slot => (
                     <ItemRow
                       key={`${slot.index}-${slot.item.id}`}
                       item={slot.item}

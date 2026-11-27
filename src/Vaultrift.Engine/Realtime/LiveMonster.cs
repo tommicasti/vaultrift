@@ -97,6 +97,12 @@ public sealed class LiveMonster
 
     internal int? TargetId { get; set; }
 
+    internal bool IsReturning { get; set; }
+
+    internal double? ReturningSince { get; set; }
+
+    internal double LastSawTarget { get; set; }
+
     internal Vector Heading { get; set; } = Vector.Zero;
 
     internal void TakeDamage(int amount) => Health = Math.Max(0, Health - amount);
@@ -105,6 +111,8 @@ public sealed class LiveMonster
     {
         Position = Home;
         IsAwake = false;
+        IsReturning = false;
+        ReturningSince = null;
         IsMoving = false;
         WindupEndsAt = null;
         TargetId = null;

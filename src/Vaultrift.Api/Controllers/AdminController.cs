@@ -58,6 +58,8 @@ public sealed class AdminController(AccountService accounts, TrophyService troph
                 deposit.Sum(stored => stored.Quantity),
                 deposit.Where(stored => TreasureRarities.Contains(stored.Item.Rarity))
                     .Select(stored => Item(stored.Item, stored.Quantity))
+                    .OrderByDescending(item => item.Rarity)
+                    .ThenBy(item => item.Name, StringComparer.CurrentCultureIgnoreCase)
                     .ToList()),
             turnHeroes);
     }

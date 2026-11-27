@@ -86,6 +86,7 @@ export function HomeScreen(props: HomeScreenProps) {
   const [choosingWorld, setChoosingWorld] = useState(false)
   const [depositOpen, setDepositOpen] = useState(false)
   const [playersOpen, setPlayersOpen] = useState(false)
+  const [listOpen, setListOpen] = useState(false)
   const [previewClass, setPreviewClass] = useState<string | null>(null)
   const [biome] = useState(() => biomeIds[Math.floor(Math.random() * biomeIds.length)])
 
@@ -147,7 +148,15 @@ export function HomeScreen(props: HomeScreenProps) {
 
           <section className="home-card home-hero">
             {hero ? (
-              <HeroPicker hero={hero} position={index + 1} count={heroes.length} busy={busy} onStep={step} onForget={() => props.onForgetHero(hero)} />
+              <HeroPicker
+                hero={hero}
+                position={index + 1}
+                count={heroes.length}
+                busy={busy}
+                onStep={step}
+                onList={() => setListOpen(true)}
+                onForget={() => props.onForgetHero(hero)}
+              />
             ) : (
               <p className="label">No heroes yet. Create your first one!</p>
             )}
@@ -205,6 +214,17 @@ export function HomeScreen(props: HomeScreenProps) {
 
           {depositOpen && hero && <DepositScreen hero={hero} onClose={() => setDepositOpen(false)} />}
           {playersOpen && <PlayersScreen onClose={() => setPlayersOpen(false)} />}
+          {listOpen && (
+            <HeroList
+              heroes={heroes}
+              chosen={hero}
+              onClose={() => setListOpen(false)}
+              onChoose={chosen => {
+                chooseHeroId(chosen.id)
+                setListOpen(false)
+              }}
+            />
+          )}
 
           {creating && (
             <div className="home-create" role="dialog" aria-label="New hero">
@@ -236,10 +256,11 @@ interface HeroPickerProps {
   count: number
   busy: boolean
   onStep: (by: number) => void
+  onList: () => void
   onForget: () => void
 }
 
-function HeroPicker({ hero, position, count, busy, onStep, onForget }: HeroPickerProps) {
+function HeroPicker({ hero, position, count, busy, onStep, onList, onForget }: HeroPickerProps) {
   return (
     <div className="home-picker">
       <button className="home-arrow" aria-label="Previous hero" disabled={count < 2} onClick={() => onStep(-1)}>
@@ -261,9 +282,9 @@ function HeroPicker({ hero, position, count, busy, onStep, onForget }: HeroPicke
         )}
         <span className="home-hero-meta">
           {count > 1 && (
-            <span className="label">
-              {position} / {count}
-            </span>
+            <button className="home-hero-count" title="All your heroes" onClick={onList}>
+              {position} / {count} · All heroes
+            </button>
           )}
           <button className="forget-button" disabled={busy || hero.inWorld} aria-label={`Forget ${hero.name}`} title="Remove from your account" onClick={onForget}>
             ×
@@ -273,6 +294,48 @@ function HeroPicker({ hero, position, count, busy, onStep, onForget }: HeroPicke
       <button className="home-arrow" aria-label="Next hero" disabled={count < 2} onClick={() => onStep(1)}>
         ›
       </button>
+    </div>
+  )
+}
+
+interface HeroListProps {
+  heroes: VaultHero[]
+  chosen: VaultHero | null
+  onClose: () => void
+  onChoose: (hero: VaultHero) => void
+}
+
+function HeroList({ heroes, chosen, onClose, onChoose }: HeroListProps) {
+  return (
+    <div className="home-worlds" role="dialog" aria-label="Your heroes">
+      <div className="home-card home-worlds-card">
+        <div className="home-create-head">
+          <h2>Your heroes</h2>
+          <button onClick={onClose}>Close</button>
+        </div>
+        <ul className="home-world-list hero-list">
+          {heroes.map(candidate => (
+            <li key={candidate.id}>
+              <button className={`hero-list-row${candidate.id === chosen?.id ? ' chosen' : ''}`} onClick={() => onChoose(candidate)}>
+                <strong>{candidate.name}</strong>
+                <span className="label">
+                  {classLabel(candidate.classId)} · Level {candidate.level} · {playTime(candidate.playSeconds)}
+                  {candidate.inWorld && ' · in a world'}
+                </span>
+                {candidate.played.length > 0 && (
+                  <span className="home-played">
+                    {candidate.played.map(difficulty => (
+                      <span key={difficulty} className={`home-badge difficulty-${difficulty.toLowerCase()}`}>
+                        {difficulty}
+                      </span>
+                    ))}
+                  </span>
+                )}
+              </button>
+            </li>
+          ))}
+        </ul>
+      </div>
     </div>
   )
 }

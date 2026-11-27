@@ -110,7 +110,7 @@ public sealed partial class LiveFloor
         if (AutoAim(hero, profile) is null && (OpenChest(hero, events) || Hail(hero, events)))
             return;
 
-        if (profile.Style != AttackStyle.Shoot && AutoAim(hero, profile) is null && (TryShadowstep(hero, profile, events) || TryBreakTerrain(hero, events)))
+        if (AutoAim(hero, profile) is null && (TryShadowstep(hero, profile, events) || TryBreakTerrain(hero, events)))
             return;
 
         var ambush = player.IsInvisible;
@@ -517,6 +517,9 @@ public sealed partial class LiveFloor
             target.IsAwake = true;
             events.Add(new MonsterWoke(target.Id));
         }
+
+        target.IsReturning = false;
+        target.ReturningSince = null;
 
         events.Add(new MonsterHit(hero.Id, target.Id, result, target.Health));
 

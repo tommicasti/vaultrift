@@ -12,6 +12,15 @@ function readDisplayFullscreen(): boolean {
   return typeof window !== 'undefined' && window.matchMedia?.(displayQuery).matches === true
 }
 
+function readInstalled(): boolean {
+  if (typeof window === 'undefined') return false
+  return (navigator as Navigator & { standalone?: boolean }).standalone === true || window.matchMedia?.('(display-mode: standalone)').matches === true
+}
+
+function readIPhone(): boolean {
+  return typeof navigator !== 'undefined' && /iPhone|iPod/.test(navigator.userAgent)
+}
+
 export function useFullscreen() {
   const supported = typeof document !== 'undefined' && document.fullscreenEnabled === true
   const [active, setActive] = useState(() => supported && readFullscreen())
@@ -56,5 +65,7 @@ export function useFullscreen() {
     }
   }, [supported])
 
-  return { supported, active, immersive: active || displayed, toggle }
+  const installHint = !supported && readIPhone() && !readInstalled() && !displayed
+
+  return { supported, active, immersive: active || displayed, installHint, toggle }
 }

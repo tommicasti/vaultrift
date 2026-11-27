@@ -55,6 +55,12 @@ public static class LiveRules
     public const double MonsterReachGrace = 0.3;
     public const double MonsterWindupSeconds = 0.5;
     public const double WakeDistance = 5.0;
+    public const int ChaseDistance = 10;
+    public const double LeashDistance = 12;
+    public const double LoseSightSeconds = 4;
+    public const double RespawnShieldSeconds = 3;
+    public const int BossChaseDistance = 24;
+    public const double ReturnHomeSeconds = 10;
     public const double SprintFactor = 1.6;
     public const double HeadingInertia = 0.6;
     public const double ShuffleThreshold = 0.01;

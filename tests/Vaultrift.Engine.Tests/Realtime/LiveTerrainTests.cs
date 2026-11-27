@@ -4,6 +4,7 @@ using Vaultrift.Engine.Items;
 using Vaultrift.Engine.Randomness;
 using Vaultrift.Engine.Realtime;
 using Vaultrift.Engine.World;
+using Vaultrift.Engine.Tests.Support;
 
 namespace Vaultrift.Engine.Tests.Realtime;
 
@@ -137,5 +138,20 @@ public sealed class LiveTerrainTests
 
         Assert.Single(events.OfType<ObstacleBroken>());
         Assert.True(floor.Map.IsWalkable(new Position(2, 1)));
+    }
+
+    [Fact]
+    public void ABowSmashesTheObstacleInFrontInsteadOfShooting()
+    {
+        var floor = Floor(["######", "#.o..#", "######"], 1, 1);
+        var player = new Player(new Position(1, 1), Sturdy, "Casti");
+        player.Inventory.TryAdd(new ItemInstance(TestGear.Bow));
+        player.Equip(player.Inventory.Entries[0].Id);
+        floor.AddHero(1, player);
+
+        var events = Run(floor, 0.1, attack: true, aimX: 1);
+
+        Assert.Single(events.OfType<ObstacleBroken>());
+        Assert.Empty(events.OfType<ShotFired>());
     }
 }
