@@ -8,6 +8,8 @@ internal static class DocumentTypes
     public const string Owner = "owner";
     public const string Trophy = "trophy";
     public const string Counter = "counter";
+    public const string Vault = "vault";
+    public const string Key = "key";
 }
 
 internal sealed record GameDocument(
@@ -42,6 +44,17 @@ internal sealed record TrophyDocument(string Id, string Pk, string Type, string 
 
 internal sealed record CounterDocument(string Id, string Pk, string Type, string AccountId, string Name, long Value);
 
+internal sealed record VaultDocument(
+    string Id,
+    string Pk,
+    string Type,
+    string AccountId,
+    string Kind,
+    string EntryId,
+    string Data,
+    DateTimeOffset CreatedAt,
+    DateTimeOffset UpdatedAt);
+
 internal static class DocumentKeys
 {
     public static string Of(Guid id) => id.ToString("D");
@@ -53,4 +66,8 @@ internal static class DocumentKeys
     public static string TrophyKey(string trophyId) => "trophy:" + trophyId;
 
     public static string CounterKey(string name) => "counter:" + name;
+
+    public static string VaultKey(string kind, Guid id) => kind + ":" + Of(id);
 }
+
+internal sealed record KeyDocument(string Id, string Pk, string Type, string Xml);

@@ -262,10 +262,11 @@ export interface BiomeLook {
   fog: string
   ambient: string
   light: string
+  torches?: number
 }
 
 const biomeLooks: Record<string, BiomeLook> = {
-  crypt: { floor: '#b8b0a8', wall: '#a8a0a0', fog: '#0c0a10', ambient: '#5a5068', light: '#ffc890' },
+  crypt: { floor: '#b8b0a8', wall: '#a8a0a0', fog: '#0c0a10', ambient: '#5a5068', light: '#ffc890', torches: 0.32 },
   forest: { floor: '#9ab07a', wall: '#8a9a70', fog: '#0a140c', ambient: '#4a6a4a', light: '#ffe0a0' },
   desert: { floor: '#e8c890', wall: '#d8b47a', fog: '#2a1e10', ambient: '#8a6a4a', light: '#fff0c0' },
   snow: { floor: '#e8f0ff', wall: '#c8d8f0', fog: '#1a2230', ambient: '#6a7a9a', light: '#e0f0ff' },
@@ -278,6 +279,8 @@ const biomeLooks: Record<string, BiomeLook> = {
   sky: { floor: '#f0f0ff', wall: '#e0e0f0', fog: '#3a4a6a', ambient: '#8a9ac0', light: '#ffffff' },
   rift: { floor: '#8a70a8', wall: '#6a5090', fog: '#0a0418', ambient: '#4a2a7a', light: '#d090ff' },
 }
+
+export const biomeIds: readonly string[] = Object.keys(biomeLooks).filter(id => id !== 'rift')
 
 export function biomeLook(biome: string | undefined): BiomeLook {
   return biomeLooks[biome ?? ''] ?? biomeLooks.crypt

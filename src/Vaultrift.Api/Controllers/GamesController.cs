@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using Vaultrift.Api.Contracts;
 using Vaultrift.Api.Hosting;
 using Vaultrift.Api.Mapping;
+using Vaultrift.Api.Realtime;
 using Vaultrift.Engine.Gameplay;
 using Vaultrift.Engine.Items;
 using Vaultrift.Infrastructure.Accounts;
@@ -19,13 +20,15 @@ public sealed class GamesController : ControllerBase
     private readonly IGameStore _store;
     private readonly AccountService _accounts;
     private readonly TrophyService _trophies;
+    private readonly RoomRegistry _rooms;
     private readonly ILogger<GamesController> _logger;
 
-    public GamesController(IGameStore store, AccountService accounts, TrophyService trophies, ILogger<GamesController> logger)
+    public GamesController(IGameStore store, AccountService accounts, TrophyService trophies, RoomRegistry rooms, ILogger<GamesController> logger)
     {
         _store = store;
         _accounts = accounts;
         _trophies = trophies;
+        _rooms = rooms;
         _logger = logger;
     }
 
@@ -192,8 +195,16 @@ public sealed class GamesController : ControllerBase
         }
     }
 
-    private GameSession? Owned(Guid id) =>
-        User.AccountId() is { } accountId && _accounts.Owns(accountId, id) ? _store.Find(id) : null;
+    private GameSession? Owned(Guid id)
+    {
+        if (User.AccountId() is not { } accountId || !_accounts.Owns(accountId, id))
+            return null;
+
+        if (_rooms.IsInWorld(id))
+            throw new HeroInWorldException(id);
+
+        return _store.Find(id);
+    }
 
     private void GrantDragonShard(Guid accountId, GameSession session)
     {

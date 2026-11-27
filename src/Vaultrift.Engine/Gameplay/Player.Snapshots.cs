@@ -43,6 +43,21 @@ public sealed partial class Player
         return StatsPreview.Of(result, copy);
     }
 
+    public StatsPreview PreviewItem(ItemInstance item, EquipmentSlot? hand, IGameContent content)
+    {
+        ArgumentNullException.ThrowIfNull(item);
+        ArgumentNullException.ThrowIfNull(content);
+
+        var snapshot = Capture();
+        var roomy = snapshot with { Inventory = snapshot.Inventory with { Capacity = snapshot.Inventory.Capacity + 1 } };
+        var copy = Restore(roomy, content);
+        var entryId = copy.Inventory.NextEntryId;
+        copy.Inventory.TryAdd(item);
+        var result = copy.Equip(entryId, hand);
+
+        return StatsPreview.Of(result, copy);
+    }
+
     public static Player Restore(PlayerSnapshot snapshot, IGameContent content)
     {
         ArgumentNullException.ThrowIfNull(snapshot);

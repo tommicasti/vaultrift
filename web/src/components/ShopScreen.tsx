@@ -1,6 +1,7 @@
-import type { InventoryEntryState, MerchantState } from '../api/types'
+import { useEffect, useState } from 'react'
+import type { InventoryEntryState, MerchantState, OfferInfo, PlayerState, StatsPreview } from '../api/types'
 import { sortForSale } from '../game/backpackSort'
-import { describeItem, describeKind } from '../game/items'
+import { describeItem, describeKind, elementNames } from '../game/items'
 import { coinSprite } from '../game/sprites'
 import { ItemIcon } from './ItemIcon'
 import { MarkBadge, MarkIcon } from './MarkBadge'
@@ -12,11 +13,84 @@ interface ShopScreenProps {
   entries: InventoryEntryState[]
   capacity: number
   disabled: boolean
+  player?: PlayerState
+  onPreviewOffer?: (offerId: number) => Promise<StatsPreview>
   onBuy: (offerId: number) => void
   onBuyUpgrade: () => void
   onSell: (entryId: number) => void
   onSellJunk: () => void
   onClose: () => void
+}
+
+const notWearable = new Set(['Potion', 'Scroll', 'Rune'])
+
+type StatKey = 'maxHealth' | 'maxMana' | 'attack' | 'defense' | 'evasion' | 'critical' | 'block'
+
+const comparedStats: { key: StatKey; label: string; suffix: string }[] = [
+  { key: 'maxHealth', label: 'Health', suffix: '' },
+  { key: 'maxMana', label: 'Mana', suffix: '' },
+  { key: 'attack', label: 'Attack', suffix: '' },
+  { key: 'defense', label: 'Defense', suffix: '' },
+  { key: 'evasion', label: 'Evasion', suffix: '%' },
+  { key: 'critical', label: 'Critical', suffix: '%' },
+  { key: 'block', label: 'Block', suffix: '%' },
+]
+
+function OfferStats({ player, preview }: { player: PlayerState; preview: StatsPreview | undefined }) {
+  if (!preview) return null
+  if (preview.result === 'WrongClass') return <span className="offer-stats down">Not for your class</span>
+  if (preview.result !== 'Equipped') return null
+
+  const changes = comparedStats.filter(stat => preview[stat.key] !== player[stat.key])
+  const resistanceChanged = (preview.resistance ?? null) !== (player.resistance ?? null)
+  if (changes.length === 0 && !resistanceChanged) return <span className="offer-stats">No change if equipped</span>
+
+  return (
+    <span className="offer-stats" title="Your stats if you equip it">
+      {changes.map(stat => {
+        const up = preview[stat.key] > player[stat.key]
+        return (
+          <span key={stat.key} className={up ? 'stat-change up' : 'stat-change down'}>
+            {stat.label} {player[stat.key]}
+            {stat.suffix} {up ? '▲' : '▼'} {preview[stat.key]}
+            {stat.suffix}
+          </span>
+        )
+      })}
+      {resistanceChanged && (
+        <span className={preview.resistance ? 'stat-change up' : 'stat-change down'}>
+          Resists {player.resistance ? elementNames[player.resistance] : '—'} → {preview.resistance ? elementNames[preview.resistance] : '—'}
+        </span>
+      )}
+    </span>
+  )
+}
+
+function usePreviews(offers: OfferInfo[], player: PlayerState | undefined, onPreviewOffer: ShopScreenProps['onPreviewOffer']) {
+  const wearable = offers.filter(offer => !notWearable.has(offer.item.category))
+  const key = player
+    ? `${wearable.map(offer => offer.id).join(',')}|${player.equipment.map(equipped => equipped.entryId).join(',')}|${player.level}|${player.unspentPoints}`
+    : ''
+  const [loaded, setLoaded] = useState<{ key: string; previews: Map<number, StatsPreview> } | null>(null)
+
+  useEffect(() => {
+    if (!onPreviewOffer || key === '') return
+    let current = true
+    const ids = key.split('|')[0].split(',').filter(Boolean).map(Number)
+    Promise.all(ids.map(id => onPreviewOffer(id).then(preview => [id, preview] as const).catch(() => null)))
+      .then(results => {
+        if (!current) return
+        const previews = new Map<number, StatsPreview>()
+        for (const result of results) if (result) previews.set(result[0], result[1])
+        setLoaded({ key, previews })
+      })
+      .catch(() => undefined)
+    return () => {
+      current = false
+    }
+  }, [key, onPreviewOffer])
+
+  return loaded?.key === key ? loaded.previews : undefined
 }
 
 function Coins({ amount }: { amount: number }) {
@@ -34,6 +108,8 @@ export function ShopScreen({
   entries,
   capacity,
   disabled,
+  player,
+  onPreviewOffer,
   onBuy,
   onBuyUpgrade,
   onSell,
@@ -43,6 +119,7 @@ export function ShopScreen({
   const junk = entries.filter(entry => entry.mark === 'Junk')
   const junkValue = junk.reduce((total, entry) => total + entry.sellPrice * entry.quantity, 0)
   const backpackFull = entries.length >= capacity
+  const previews = usePreviews(merchant.offers, player, onPreviewOffer)
 
   return (
     <div className="overlay" role="dialog" aria-modal="true" aria-label="Merchant">
@@ -72,6 +149,7 @@ export function ShopScreen({
                     {offer.kind === 'Featured' && <span className="offer-tag featured-tag">Picked for your class</span>}
                     {offer.kind === 'Unlimited' && <span className="offer-tag">Always in stock · +25% each time</span>}
                     <span className="label">{[describeKind(offer.item).name, describeItem(offer.item)].filter(Boolean).join(' · ')}</span>
+                    {player && <OfferStats player={player} preview={previews?.get(offer.id)} />}
                   </div>
                   <button
                     disabled={disabled || !merchant.isNearby || coins < offer.price || backpackFull}

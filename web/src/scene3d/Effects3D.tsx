@@ -55,6 +55,9 @@ const styles: Record<string, BurstStyle> = {
   debris: { color: '#8a6a4a', count: 12, shape: 'shard', size: 0.28, spread: 2.6, rise: 1.6, seconds: 0.6 },
   soul: { color: '#d8e8ff', count: 8, shape: 'sphere', size: 0.2, spread: 0.8, rise: 3.4, core: 'ring', coreSize: 1.4, seconds: 0.9 },
   roar: { color: '#ff5a3a', count: 0, shape: 'ring', size: 1, spread: 0, rise: 0, core: 'ring', coreSize: 3.4, seconds: 0.9 },
+  rubble: { color: '#9a8a78', count: 16, shape: 'shard', size: 0.34, spread: 3, rise: 2.2, core: 'sphere', coreSize: 1.3, seconds: 0.7 },
+  crystal: { color: '#8fe6ff', count: 16, shape: 'shard', size: 0.4, spread: 3.2, rise: 2.4, core: 'ring', coreSize: 1.6, seconds: 0.7 },
+  claw: { color: '#ff3a2a', count: 6, shape: 'shard', size: 0.3, spread: 1.6, rise: 0.8, core: 'ring', coreSize: 1.3, seconds: 0.4 },
 }
 
 function seeded(text: string): () => number {

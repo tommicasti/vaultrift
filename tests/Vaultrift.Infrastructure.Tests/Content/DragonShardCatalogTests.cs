@@ -68,6 +68,21 @@ public class DragonShardCatalogTests
     }
 
     [Fact]
+    public void OnlyTheAxes_FillBothHands_AndTheFangsAreASingleDagger()
+    {
+        for (var tier = 1; tier <= 3; tier++)
+        {
+            var fangs = Assert.IsType<WeaponDefinition>(ItemCatalog.Get($"dragon-fangs-{tier}"));
+            Assert.Equal(WeaponType.Dagger, fangs.WeaponType);
+            Assert.False(fangs.IsTwin);
+            Assert.False(fangs.IsTwoHanded);
+
+            var axes = Assert.IsType<WeaponDefinition>(ItemCatalog.Get($"dragon-shard-{tier}"));
+            Assert.True(axes.IsTwin && axes.IsTwoHanded);
+        }
+    }
+
+    [Fact]
     public void HigherTiers_AreStronger()
     {
         foreach (var form in new[] { "dragon-shard", "dragon-blade", "dragon-bow", "dragon-fangs" })

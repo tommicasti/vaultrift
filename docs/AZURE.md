@@ -17,7 +17,7 @@ Risorse create:
 |---|---|---|
 | Resource group | `rg-vaultrift` | West Europe |
 | Account Cosmos DB | `cosmos-vaultrift-tommi` | **Sweden Central** |
-| Database Cosmos | `vaultrift` (container `games` e `accounts`) | Sweden Central |
+| Database Cosmos | `vaultrift` (container `games`, `accounts` e `vault`) | Sweden Central |
 | App Service plan | `plan-vaultrift` (F1, Linux) | Sweden Central |
 | Web App | `vaultrift-tommi` | Sweden Central |
 | Budget | `vaultrift-5eur` | account di fatturazione |
@@ -83,20 +83,21 @@ Il livello gratuito di Cosmos DB funziona in un altro modo: **1000 RU/s e 25 GB 
 
 ### Creazione
 
-1. **Azure Cosmos DB** → **+ Crea** → **Azure Cosmos DB for NoSQL** → **Crea**. Se chiede il tipo di carico di lavoro, scegli **Sviluppo/Test** e poi controlla comunque i campi sotto.
+1. **Azure Cosmos DB** → **+ Crea** → **Azure Cosmos DB for NoSQL** → **Crea**. Se chiede il tipo di carico di lavoro, il portale preimposta i campi di conseguenza: da noi *Sviluppo/Test* aveva scelto **Serverless**. Qualunque tipo scegli, ricontrolla la modalità di capacità.
 2. **Informazioni di base**
    - gruppo `rg-vaultrift`, nome account `cosmos-vaultrift-tommi` (minuscole, unico in tutto Azure);
    - località **Sweden Central**, la stessa della Web App;
-   - **Modalità capacità: Velocità effettiva con provisioning**. **Non Serverless**: il gratuito non vale per serverless;
-   - **Applica sconto per il livello gratuito: Applica**. Si sceglie solo adesso, dopo non si può più aggiungere, e c'è un solo account gratuito per sottoscrizione;
-   - **Limita la velocità effettiva totale dell'account: attivo**. Così nessuno (nemmeno noi per errore) può superare le 1000 RU/s gratuite.
+   - zone di disponibilità **Disabilita**;
+   - **Modalità di capacità: Velocità effettiva con provisioning**. **Non Serverless**: il gratuito non vale per serverless, e l'API non parte perché chiede 1000 RU/s condivise;
+   - **Applica sconto livello gratuito: Applica**. Compare solo con la velocità effettiva con provisioning; si sceglie solo adesso, dopo non si può più aggiungere, e c'è un solo account gratuito per sottoscrizione;
+   - **Limita la velocità effettiva totale dell'account**: casella spuntata. Così nessuno (nemmeno noi per errore) può superare le 1000 RU/s gratuite.
 3. **Distribuzione globale**: ridondanza geografica, scritture in più aree e zone di disponibilità **disattivate** (costano).
 4. **Rete**: **Tutte le reti**. L'app non ha un indirizzo fisso, la protezione è la chiave nella stringa di connessione.
 5. **Backup**: **Periodico**, ridondanza dell'archiviazione di backup **locale**.
-6. **Rivedi e crea** → controlla *livello gratuito* e *modalità capacità* → **Crea** (5-10 minuti).
+6. **Rivedi e crea** → controlla *Modalità di capacità: Velocità effettiva con provisioning* → **Crea** (pochi minuti). Il riepilogo **non mostra** né lo sconto né il limite: controllali nella scheda *Informazioni di base* prima di creare.
 7. Account → **Impostazioni** → **Chiavi** → copia la **STRINGA DI CONNESSIONE PRIMARIA**. È una password: va solo nelle impostazioni della Web App e nella variabile d'ambiente della migrazione, mai nel codice o negli screenshot.
 
-Non serve creare database e container a mano: all'avvio l'API crea il database `vaultrift` con 1000 RU/s condivise e i container `games` e `accounts`, se mancano.
+Non serve creare database e container a mano: all'avvio l'API crea il database `vaultrift` con 1000 RU/s condivise e i container `games`, `accounts` e `vault`, se mancano. Il terzo container condivide le stesse 1000 RU/s: non costa nulla in più.
 
 ### Come sono fatti i dati
 
@@ -108,6 +109,7 @@ Non serve creare database e container a mano: all'avvio l'API crea il database `
 | `accounts` | `owner` | `game:` + Id della partita | uguale a `id` | a quale account appartiene la partita |
 | `accounts` | `trophy` | `trophy:` + trofeo | Id dell'account | data di sblocco |
 | `accounts` | `counter` | `counter:` + nome | Id dell'account | valore (incrementato con una *patch* atomica) |
+| `vault` | `vault` | `hero:` o `world:` + Id | Id dell'account | eroi e mondi del tempo reale: `kind`, `entryId`, `data` (il salvataggio come testo, non indicizzato), `createdAt`, `updatedAt` |
 
 - `data` resta **testo** e non un oggetto JSON: Cosmos salva i numeri come double e lo stato del generatore casuale (`RandomState`, un intero a 64 bit) perderebbe le ultime cifre.
 - `stats` copia fuori dal salvataggio morti, monete, turni, conquista e secondi di gioco, così le interrogazioni possono leggerli. `data` è escluso dall'indice per spendere meno RU a ogni salvataggio.

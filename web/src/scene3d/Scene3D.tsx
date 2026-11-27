@@ -35,7 +35,7 @@ import { Shroud } from './Shroud'
 import { facingAngles, steeredFacing, turned, wrapAngle } from './firstPerson'
 import { cuesForTurn, type Popup, type Turn } from './turnCues'
 import { layoutKey, remember, visibleTiles, type Visibility } from './vision'
-import { loadZoom, saveZoom } from './viewMode'
+import { detectLowPower, loadZoom, saveZoom } from './viewMode'
 import './scene3d.css'
 
 interface Scene3DProps {
@@ -71,13 +71,6 @@ const maxZoom = 2.2
 const zoomStep = 1.15
 
 const lowPower = detectLowPower()
-
-function detectLowPower(): boolean {
-  if (typeof window === 'undefined') return false
-  const coarse = window.matchMedia?.('(pointer: coarse)').matches ?? false
-  const cores = navigator.hardwareConcurrency ?? 8
-  return coarse || cores <= 4
-}
 
 function clampZoom(zoom: number): number {
   return Math.min(maxZoom, Math.max(minZoom, zoom))
@@ -798,7 +791,7 @@ function Monster({ enemy, game, cue, dying, seen, firstPerson }: MonsterProps) {
   )
 }
 
-function BossCrown({ height, size }: { height: number; size: number }) {
+export function BossCrown({ height, size }: { height: number; size: number }) {
   const ref = useRef<Group>(null)
 
   useFrame(({ clock }) => {
@@ -836,7 +829,7 @@ function BossCrown({ height, size }: { height: number; size: number }) {
   )
 }
 
-function BossAura({ scale }: { scale: number }) {
+export function BossAura({ scale }: { scale: number }) {
   const ref = useRef<Mesh>(null)
 
   useFrame(({ clock }) => {
@@ -860,7 +853,7 @@ interface PropsProps {
   visible: Visibility
 }
 
-function Piece({ piece, x, y, rotation = 0, scale = 1, lift = 0 }: { piece: KitPiece | undefined; x: number; y: number; rotation?: number; scale?: number; lift?: number }) {
+export function Piece({ piece, x, y, rotation = 0, scale = 1, lift = 0 }: { piece: KitPiece | undefined; x: number; y: number; rotation?: number; scale?: number; lift?: number }) {
   if (!piece) return null
   return (
     <mesh
@@ -922,12 +915,12 @@ function Props({ game, kit, visible }: PropsProps) {
   )
 }
 
-function Built({ build, x, y }: { build: () => Object3D; x: number; y: number }) {
+export function Built({ build, x, y }: { build: () => Object3D; x: number; y: number }) {
   const object = useMemo(() => build(), [build])
   return <primitive object={object} position={[x * cell, 0, y * cell]} />
 }
 
-function FloatingCrystal({ x, y, color, height }: { x: number; y: number; color: string; height: number }) {
+export function FloatingCrystal({ x, y, color, height }: { x: number; y: number; color: string; height: number }) {
   const ref = useRef<Mesh>(null)
 
   useFrame(({ clock }) => {
@@ -945,7 +938,7 @@ function FloatingCrystal({ x, y, color, height }: { x: number; y: number; color:
   )
 }
 
-function Glow({ x, y, color, height }: { x: number; y: number; color: string; height: number }) {
+export function Glow({ x, y, color, height }: { x: number; y: number; color: string; height: number }) {
   const ref = useRef<Mesh>(null)
 
   useFrame(({ clock }) => {
@@ -962,7 +955,7 @@ function Glow({ x, y, color, height }: { x: number; y: number; color: string; he
 
 const beamRarities = new Set(['Epic', 'Legendary', 'Exotic', 'Platinum'])
 
-function LootBeam({ color, pulse }: { color: string; pulse: boolean }) {
+export function LootBeam({ color, pulse }: { color: string; pulse: boolean }) {
   const ref = useRef<Mesh>(null)
 
   useFrame(({ clock }) => {
@@ -981,7 +974,7 @@ function LootBeam({ color, pulse }: { color: string; pulse: boolean }) {
   )
 }
 
-function RarityRing({ color, size }: { color: string; size: number }) {
+export function RarityRing({ color, size }: { color: string; size: number }) {
   const ref = useRef<Mesh>(null)
 
   useFrame(({ clock }) => {
@@ -996,7 +989,7 @@ function RarityRing({ color, size }: { color: string; size: number }) {
   )
 }
 
-function FloorItem({ x, y, item }: { x: number; y: number; item: ItemInfo }) {
+export function FloorItem({ x, y, item }: { x: number; y: number; item: ItemInfo }) {
   const ref = useRef<Group>(null)
   const weapons = useKitObjects(modelUrls.weapons)
   const color = rarityColors[item.rarity] ?? '#ffffff'

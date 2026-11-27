@@ -2,10 +2,21 @@ import type { ClassInfo, Difficulty, Direction, EquipmentSlot, GameState, ItemMa
 
 export class ApiError extends Error {
   readonly status: number
+  readonly type: string | null
 
-  constructor(status: number) {
+  constructor(status: number, type: string | null = null) {
     super(`Request failed with status ${status}`)
     this.status = status
+    this.type = type
+  }
+}
+
+async function problemType(response: Response): Promise<string | null> {
+  try {
+    const problem = (await response.json()) as { type?: unknown }
+    return typeof problem.type === 'string' ? problem.type : null
+  } catch {
+    return null
   }
 }
 
@@ -17,7 +28,7 @@ async function request<T>(method: 'GET' | 'POST', path: string, body?: unknown):
   })
 
   if (!response.ok) {
-    throw new ApiError(response.status)
+    throw new ApiError(response.status, await problemType(response))
   }
 
   return (await response.json()) as T

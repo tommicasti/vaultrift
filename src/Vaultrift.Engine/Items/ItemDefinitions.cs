@@ -29,7 +29,7 @@ public sealed record WeaponDefinition(
     Element? FixedElement = null)
     : EquipmentDefinition(Id, Name, Rarity, EquipmentKind.Weapon, Modifiers, Description, FixedElement)
 {
-    public bool IsTwoHanded => WeaponType.IsTwoHanded() || IsTwin;
+    public bool IsTwoHanded => WeaponType.IsTwoHanded() || FillsBothHands;
 
     public SpellDefinition? Spell { get; init; }
 
@@ -38,6 +38,8 @@ public sealed record WeaponDefinition(
     public ExoticPower? Exotic { get; init; }
 
     public bool IsTwin { get; init; }
+
+    public bool FillsBothHands { get; init; }
 
     public bool Pierces { get; init; }
 }

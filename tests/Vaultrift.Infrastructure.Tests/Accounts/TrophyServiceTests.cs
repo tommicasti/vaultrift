@@ -124,4 +124,41 @@ public class TrophyServiceTests
         Assert.Equal(2, _trophies.DragonShardTier(_account.Id));
         Assert.Empty(_trophies.CatchUp(_account.Id, [hero]));
     }
+
+    private IReadOnlyList<string> Live(LiveFeats feats) =>
+        _trophies.RecordLive(_account.Id, feats).Select(trophy => trophy.Id).ToList();
+
+    [Fact]
+    public void WorldsAwardTheSameTrophiesAsTheTurnBasedGame()
+    {
+        Assert.Equal([TrophyCatalog.FirstBlood, TrophyCatalog.KingSlayer], Live(new LiveFeats("knight") { Slew = true, SlewBoss = true }));
+        Assert.Empty(Live(new LiveFeats("knight") { Slew = true, SlewBoss = true }));
+        Assert.Equal([TrophyCatalog.Collector], Live(new LiveFeats("knight") { FoundExotic = true }));
+        Assert.Equal([TrophyCatalog.Untouchable], Live(new LiveFeats("knight") { CleanFloor = true, FloorReached = 2 }));
+    }
+
+    [Fact]
+    public void ReachingTheTenthFloorWithoutFallingIsUnbroken()
+    {
+        Assert.Empty(Live(new LiveFeats("knight") { FloorReached = TrophyCatalog.UnbrokenFloor, Falls = 1 }));
+        Assert.Equal([TrophyCatalog.Unbroken], Live(new LiveFeats("knight") { FloorReached = TrophyCatalog.UnbrokenFloor }));
+    }
+
+    [Fact]
+    public void CoinsFromWorldsCountTowardsRich()
+    {
+        Assert.Empty(Live(new LiveFeats("knight") { Coins = TrophyCatalog.RichGoal - 1 }));
+        Assert.Equal([TrophyCatalog.Rich], Live(new LiveFeats("knight") { Coins = 1 }));
+    }
+
+    [Fact]
+    public void ConqueringAHardWorldGrantsTheCustodeTrophiesUpToHard()
+    {
+        var earned = Live(new LiveFeats("ranger") { Conquered = Difficulty.Hard });
+
+        Assert.Contains(TrophyCatalog.CustodeNormal, earned);
+        Assert.Contains(TrophyCatalog.CustodeHard, earned);
+        Assert.DoesNotContain(TrophyCatalog.CustodeHardcore, earned);
+        Assert.Equal(2, _trophies.DragonShardTier(_account.Id));
+    }
 }

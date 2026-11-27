@@ -205,19 +205,19 @@ const effectDescriptions: Record<EffectKind, (amount: number) => string> = {
   DoubleShot: amount => `${amount}% chance to loose a second arrow`,
   Luck: amount => `+${amount}% chance of loot`,
   Wisdom: amount => `+${amount}% experience`,
-  ManaFlow: amount => `+${amount} mana every regeneration`,
+  ManaFlow: amount => `+${amount} mana every 2 seconds`,
   Haste: amount => `Abilities recharge ${amount}% faster (40% at most)`,
-  Regeneration: amount => `Regenerate ${amount} health every turn`,
-  BulwarkExtension: amount => `Bulwark lasts ${amount} more ${amount === 1 ? 'turn' : 'turns'}`,
+  Regeneration: amount => `Regenerate ${amount} health every second`,
+  BulwarkExtension: amount => `Bulwark lasts ${amount} more ${amount === 1 ? 'second' : 'seconds'}`,
   BlockReflect: () => 'Blocked blows hit the attacker',
   FuryLifeSteal: amount => `During Fury, heal ${amount}% of your damage`,
   FuryRegeneration: amount => `+${amount} regeneration during Fury`,
-  FuryExtension: amount => `Every kill during Fury extends it by ${amount}`,
+  FuryExtension: amount => `Every kill during Fury extends it by ${amount} ${amount === 1 ? 'second' : 'seconds'}`,
   FarShotCritical: amount => `+${amount}% critical from 4 or more tiles`,
   PowerShotMastery: () => 'Power Shot recharges 30% faster, element guaranteed',
   Stealth: amount => `Monsters wake up ${amount} ${amount === 1 ? 'tile' : 'tiles'} later`,
   Ambush: () => 'Strikes from invisibility deal triple damage',
-  Phantom: amount => `Invisibility +${amount} turns, kills keep you hidden`,
+  Phantom: amount => `Invisibility +${amount} seconds, kills keep you hidden`,
   ManaSiphon: amount => `Every kill gives back ${amount} mana`,
   SpellMastery: amount => `Spells cost 1 less mana, +${amount}% element chance`,
 }
@@ -301,7 +301,7 @@ export function describeKind(item: ItemInfo): ItemKind {
 export function describeItem(item: ItemInfo): string {
   if (item.healing) return `Restores ${item.healing} health`
   if (item.manaRestore) return `Restores ${item.manaRestore} mana`
-  if (item.boost) return `${describeModifier(item.boost)} for ${item.boostTurns} turns`
+  if (item.boost) return `${describeModifier(item.boost)} for ${item.boostTurns} seconds`
   return item.modifiers.map(describeModifier).join(' · ')
 }
 
@@ -314,10 +314,10 @@ export const abilityNames: Record<ClassAbility, string> = {
 }
 
 export const abilityDescriptions: Record<ClassAbility, string> = {
-  Bulwark: 'For 3 turns every blow is halved, and stopped cold with a shield.',
-  Fury: 'For 5 turns your attack rises by half.',
+  Bulwark: 'For 3 seconds every blow is halved, and stopped cold with a shield.',
+  Fury: 'For 5 seconds your attack rises by half.',
   PowerShot: 'With a bow, a double damage arrow that pierces every enemy in a line. With any other weapon, a double damage blow.',
-  Invisibility: 'For 5 turns monsters cannot see you. Your first strike is always critical.',
+  Invisibility: 'For 5 seconds monsters cannot see you. Your first strike is always critical.',
   Overload: 'Your next spell costs no mana and its area grows by one tile. A bolt becomes an explosion.',
 }
 

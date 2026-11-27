@@ -15,6 +15,7 @@ public class DragonShardTests
         new("test-shard", "Test Shard", Rarity.Platinum, WeaponType.Axe, [new StatModifier(StatType.Attack, 10)])
         {
             IsTwin = true,
+            FillsBothHands = true,
             IsBound = true,
             ScalesWithLevel = true
         };
@@ -109,7 +110,8 @@ public class DragonShardTests
         var game = NewGame(player, new Enemy(1, new Position(2, 1), new Stats(maxHealth: 200, attack: 1, defense: 0)));
 
         Assert.Equal(2, game.Attack().Events.OfType<PlayerAttackedEnemy>().Count());
-        Assert.True(fangs.IsTwoHanded);
+        Assert.False(fangs.IsTwoHanded);
+        Assert.True(Shard.IsTwoHanded);
     }
 
     [Fact]
