@@ -54,6 +54,14 @@ public sealed class CosmosAccountRepository : IAccountRepository
         return name is null ? null : ToAccount(_accounts.Read<AccountDocument>(name.AccountId, name.AccountId));
     }
 
+    public IReadOnlyList<Account> All() =>
+        _accounts
+            .Query<AccountDocument>(new DocumentQuery(DocumentTypes.Account, "type", DocumentTypes.Account))
+            .Select(ToAccount)
+            .OfType<Account>()
+            .OrderBy(account => account.CreatedAt)
+            .ToList();
+
     public LinkResult Link(Guid accountId, Guid gameId)
     {
         var owner = OwnerOf(accountId, gameId, _clock.GetUtcNow());

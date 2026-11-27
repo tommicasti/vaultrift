@@ -26,6 +26,19 @@ public sealed class CosmosAccountRepositoryTests
     }
 
     [Fact]
+    public void All_ListsEveryAccountAndNothingElse()
+    {
+        var first = NewAccount("Tommaso");
+        var second = NewAccount("Elisa");
+        _repository.TryCreate(first);
+        _repository.TryCreate(second);
+        _repository.Link(first.Id, Guid.NewGuid());
+        _repository.Unlock(first.Id, "first-blood", _clock.GetUtcNow());
+
+        Assert.Equal(new[] { first.Id, second.Id }.Order(), _repository.All().Select(account => account.Id).Order());
+    }
+
+    [Fact]
     public void TryCreate_RejectsANameThatIsAlreadyTaken()
     {
         Assert.True(_repository.TryCreate(NewAccount("Tommaso")));

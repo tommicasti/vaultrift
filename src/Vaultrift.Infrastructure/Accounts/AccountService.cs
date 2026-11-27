@@ -90,6 +90,10 @@ public sealed class AccountService
 
     public Account? Find(Guid id) => _accounts.FindById(id);
 
+    public IReadOnlyList<Account> All() => _accounts.All();
+
+    public SaveRecord? SaveOf(Guid gameId) => _saves.FindById(gameId);
+
     public LinkResult Link(Guid accountId, Guid gameId)
     {
         var result = _accounts.Link(accountId, gameId);

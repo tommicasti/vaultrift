@@ -28,11 +28,13 @@ public sealed class AccountController : ControllerBase
 
     private readonly AccountService _accounts;
     private readonly TrophyService _trophies;
+    private readonly Admins _admins;
 
-    public AccountController(AccountService accounts, TrophyService trophies)
+    public AccountController(AccountService accounts, TrophyService trophies, Admins admins)
     {
         _accounts = accounts;
         _trophies = trophies;
+        _admins = admins;
     }
 
     [HttpGet]
@@ -160,7 +162,8 @@ public sealed class AccountController : ControllerBase
                     status.Progress,
                     status.Trophy.Goal))
                 .ToList(),
-            claimed);
+            claimed,
+            _admins.Includes(account));
     }
 
     private Task SignIn(Account account)

@@ -1,5 +1,6 @@
 import { lazy, Suspense, useState } from 'react'
 import { DepositScreen } from './DepositScreen'
+import { PlayersScreen } from './PlayersScreen'
 import type { AccountInfo } from '../api/accountApi'
 import type { Difficulty } from '../api/types'
 import type { VaultHero, VaultWorld } from '../api/vaultApi'
@@ -84,6 +85,7 @@ export function HomeScreen(props: HomeScreenProps) {
   const [creating, setCreating] = useState(false)
   const [choosingWorld, setChoosingWorld] = useState(false)
   const [depositOpen, setDepositOpen] = useState(false)
+  const [playersOpen, setPlayersOpen] = useState(false)
   const [previewClass, setPreviewClass] = useState<string | null>(null)
   const [biome] = useState(() => biomeIds[Math.floor(Math.random() * biomeIds.length)])
 
@@ -172,6 +174,11 @@ export function HomeScreen(props: HomeScreenProps) {
                   Gear &amp; deposit
                 </button>
               )}
+              {account.isAdmin && (
+                <button className="home-new" onClick={() => setPlayersOpen(true)}>
+                  Players
+                </button>
+              )}
             </div>
             {notice && <p className="account-notice">{notice}</p>}
             {error && <p className="error">{error}</p>}
@@ -197,6 +204,7 @@ export function HomeScreen(props: HomeScreenProps) {
           )}
 
           {depositOpen && hero && <DepositScreen hero={hero} onClose={() => setDepositOpen(false)} />}
+          {playersOpen && <PlayersScreen onClose={() => setPlayersOpen(false)} />}
 
           {creating && (
             <div className="home-create" role="dialog" aria-label="New hero">

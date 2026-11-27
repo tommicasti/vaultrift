@@ -37,6 +37,8 @@ public sealed class FileAccountRepository : IAccountRepository
 
     public Account? FindByName(string userName) => _memory.FindByName(userName);
 
+    public IReadOnlyList<Account> All() => _memory.All();
+
     public LinkResult Link(Guid accountId, Guid gameId)
     {
         lock (_gate)
