@@ -8,6 +8,8 @@ public interface IAccountRepository
 
     Account? FindByName(string userName);
 
+    IReadOnlyList<Account> All();
+
     LinkResult Link(Guid accountId, Guid gameId);
 
     bool Unlink(Guid accountId, Guid gameId);

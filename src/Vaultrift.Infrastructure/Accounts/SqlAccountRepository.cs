@@ -126,6 +126,20 @@ public sealed class SqlAccountRepository : IAccountRepository
         return Run(connection => QueryAccount(connection, $"{SelectAccount} WHERE NormalizedName = @Value", AccountRules.NormalizeName(userName)));
     }
 
+    public IReadOnlyList<Account> All() =>
+        Run(connection =>
+        {
+            using var command = connection.CreateCommand();
+            command.CommandText = $"{SelectAccount} ORDER BY CreatedAt";
+            using var reader = command.ExecuteReader();
+            var accounts = new List<Account>();
+
+            while (reader.Read())
+                accounts.Add(new Account(reader.GetGuid(0), reader.GetString(1), reader.GetString(2), reader.IsDBNull(3) ? null : reader.GetString(3), reader.GetDateTimeOffset(4)));
+
+            return accounts;
+        });
+
     public LinkResult Link(Guid accountId, Guid gameId) =>
         Run(connection =>
         {

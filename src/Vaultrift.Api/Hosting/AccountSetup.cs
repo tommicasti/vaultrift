@@ -41,6 +41,7 @@ public static class AccountSetup
                 (gameId, error) => logger.LogWarning(error, "Could not bring turn-based game {GameId} into the vault; it was skipped.", gameId));
         });
 
+        services.AddSingleton(new Admins(configuration["Admin:Accounts"]));
         services.AddDataProtection().SetApplicationName(ApplicationName);
 
         if (provider == "Cosmos")

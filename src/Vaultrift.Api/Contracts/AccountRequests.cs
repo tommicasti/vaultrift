@@ -35,7 +35,7 @@ public sealed class ClaimRequest
     public required IReadOnlyList<string> Codes { get; init; }
 }
 
-public sealed record AccountResponse(string UserName, bool HasEmail, IReadOnlyList<HeroSummaryResponse> Heroes, IReadOnlyList<TrophyResponse> Trophies, int Claimed = 0);
+public sealed record AccountResponse(string UserName, bool HasEmail, IReadOnlyList<HeroSummaryResponse> Heroes, IReadOnlyList<TrophyResponse> Trophies, int Claimed = 0, bool IsAdmin = false);
 
 public sealed record HeroSummaryResponse(
     Guid Id,

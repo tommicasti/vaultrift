@@ -70,7 +70,11 @@ public sealed class VaultService : IVaultSaver
     public VaultContents Contents(Guid accountId)
     {
         Migrate(accountId);
+        return Peek(accountId);
+    }
 
+    public VaultContents Peek(Guid accountId)
+    {
         var entries = _vault.List(accountId);
 
         return new VaultContents(
@@ -103,14 +107,20 @@ public sealed class VaultService : IVaultSaver
     public HeroSession? FindHero(Guid accountId, Guid heroId)
     {
         Migrate(accountId);
-        return _vault.Find(accountId, VaultKind.Hero, heroId) is { } entry ? Load(entry, HeroSession.Restore) : null;
+        return PeekHero(accountId, heroId);
     }
+
+    public HeroSession? PeekHero(Guid accountId, Guid heroId) =>
+        _vault.Find(accountId, VaultKind.Hero, heroId) is { } entry ? Load(entry, HeroSession.Restore) : null;
 
     public WorldSession? FindWorld(Guid accountId, Guid worldId)
     {
         Migrate(accountId);
-        return _vault.Find(accountId, VaultKind.World, worldId) is { } entry ? Load(entry, WorldSession.Restore) : null;
+        return PeekWorld(accountId, worldId);
     }
+
+    public WorldSession? PeekWorld(Guid accountId, Guid worldId) =>
+        _vault.Find(accountId, VaultKind.World, worldId) is { } entry ? Load(entry, WorldSession.Restore) : null;
 
     public bool DeleteHero(Guid accountId, Guid heroId)
     {

@@ -26,6 +26,7 @@ export interface AccountInfo {
   heroes: HeroSummary[]
   trophies: TrophyInfo[]
   claimed: number
+  isAdmin?: boolean
 }
 
 export class AccountError extends Error {
