@@ -74,6 +74,10 @@ export function supportsWebGL(): boolean {
   }
 }
 
+export function canTouchLook(): boolean {
+  return typeof window !== 'undefined' && (window.matchMedia?.('(pointer: coarse)').matches ?? false)
+}
+
 export function canMouseLook(): boolean {
   if (typeof document === 'undefined') return false
   return 'pointerLockElement' in document && (window.matchMedia?.('(pointer: fine)').matches ?? false)

@@ -652,3 +652,13 @@ Il resoconto legge soltanto: usa `VaultService.Peek`, `PeekHero` e `PeekWorld`, 
 - Su iPhone Safari non permette lo schermo intero alle pagine: il pulsante spiega come aggiungere Vaultrift alla schermata Home, da dove si apre a tutto schermo.
 
 **Home e deposito.** "All heroes" apre l'elenco dei propri eroi, con classe, livello, ore e difficoltà giocate. Deposito e zaino nella schermata Gear & deposit sono ordinati per rarità, poi per nome.
+
+**Telefono, seconda passata.**
+- Il registro sta sotto la barra di stato, mostra solo le ultime 3 righe ed è più piccolo. Prima partiva dal basso e, in orizzontale, saliva fino a coprire la vita.
+- In orizzontale i pulsanti dello zoom e della prima persona sono in riga accanto al joystick.
+- **Prima persona anche al tocco.** Il pulsante 1P compare anche sui telefoni:
+  - trascinando un dito sulla scena giri lo sguardo (`touchYawPerPixel`, `touchPitchPerPixel`);
+  - il joystick muove rispetto a dove guardi;
+  - il pulsante d'attacco colpisce davanti.
+  
+  Prima la prima persona richiedeva il blocco del mouse (pointer lock), che sui telefoni non esiste.

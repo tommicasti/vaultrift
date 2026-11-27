@@ -13,7 +13,7 @@ import { BossAura, BossCrown, Built, FloatingCrystal, FloorItem, Glow, LootBeam,
 import { buildStairs, buildTotem } from '../scene3d/creatures'
 import { useKit } from '../scene3d/kit'
 import { biomeLook, cell, heroIdleClip, heroUrl, merchantUrl, modelUrls, monsterLook, rarityColors, selfCrowned } from '../scene3d/models'
-import { canMouseLook, detectLowPower, loadZoom, saveZoom, type CameraMode } from '../scene3d/viewMode'
+import { canMouseLook, canTouchLook, detectLowPower, loadZoom, saveZoom, type CameraMode } from '../scene3d/viewMode'
 import { renderDelaySeconds, type FrameBuffer } from './interpolation'
 import { Bursts, LevelUpAura } from '../scene3d/Effects3D'
 import { GridLines } from '../scene3d/Grid'
@@ -134,6 +134,7 @@ const maxZoom = 2.6
 const zoomStep = 1.15
 const lowPower = detectLowPower()
 const mouseLook = canMouseLook()
+const touchLook = canTouchLook()
 const eyeHeight = 2.7
 const fallenEye = 0.7
 const maxPitch = 1.1
@@ -235,7 +236,7 @@ export function LiveScene(props: LiveSceneProps) {
       <div className="scene3d-vignette" />
       {firstPerson && <div className="live-crosshair" />}
       <div className="scene3d-zoom" onPointerDown={event => event.stopPropagation()}>
-        {mouseLook && (
+        {(mouseLook || touchLook) && (
           <button
             type="button"
             className="live-view"
