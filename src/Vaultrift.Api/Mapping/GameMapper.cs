@@ -5,6 +5,7 @@ using Vaultrift.Engine.Gameplay;
 using Vaultrift.Engine.Items;
 using Vaultrift.Engine.World;
 using Vaultrift.Infrastructure.Persistence;
+using Vaultrift.Infrastructure.Vault;
 
 namespace Vaultrift.Api.Mapping;
 
@@ -18,6 +19,11 @@ public static class GameMapper
             result.Events.Select(ToResponse).ToList(),
             ToResponse(session),
             trophies is null || trophies.Count == 0 ? null : trophies.Select(trophy => new TrophyResponse(trophy.Id, trophy.Name, trophy.Description)).ToList());
+
+    public static GameStateResponse ToResponse(HeroSession hero) => ToResponse(hero.Id, string.Empty, hero.Game, _ => null);
+
+    public static TurnResponse ToResponse(HeroSession hero, TurnResult result) =>
+        new(result.TurnPassed, result.Events.Select(ToResponse).ToList(), ToResponse(hero), null);
 
     private static GameStateResponse ToResponse(Guid id, string saveCode, Game game, Func<int, string?> biomeOf) =>
         new(
@@ -288,7 +294,7 @@ public static class GameMapper
     private static IReadOnlyList<PositionResponse> ToPositions(IEnumerable<Position> positions) =>
         positions.Select(position => new PositionResponse(position.X, position.Y)).ToList();
 
-    private static ItemResponse ToItemResponse(ItemInstance instance)
+    public static ItemResponse ToItemResponse(ItemInstance instance)
     {
         var item = instance.Definition;
         var potion = item as PotionDefinition;

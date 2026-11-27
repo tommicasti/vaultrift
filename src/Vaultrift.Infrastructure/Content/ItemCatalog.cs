@@ -245,10 +245,10 @@ public static class ItemCatalog
             Element.Lightning, Evasion(6), Defense(1), Attack(1)),
 
         ClassMod("mod-knight-sentinel", "Sentinel", "knight", Rarity.Rare,
-            "Block 10% more often. Bulwark lasts one more turn.",
+            "Block 10% more often. Bulwark lasts one more second.",
             [Effect(EffectKind.BulwarkExtension, 1)], Block(10), Defense(1)),
         ClassMod("mod-knight-vigor", "Vigor", "knight", Rarity.Epic,
-            "Regenerate 1 health every turn.",
+            "Regenerate 1 health every second.",
             [Effect(EffectKind.Regeneration, 1)], Defense(2)),
         ClassMod("mod-knight-avenger", "Avenger", "knight", Rarity.Legendary,
             "A blocked blow hits the attacker instead.",
@@ -257,10 +257,10 @@ public static class ItemCatalog
             "During Fury, heal 20% of the damage you deal.",
             [Effect(EffectKind.FuryLifeSteal, 20)], Attack(1)),
         ClassMod("mod-berserker-raging-mend", "Raging Mend", "berserker", Rarity.Epic,
-            "Regenerate 1 health every turn, 2 during Fury.",
+            "Regenerate 1 health every second, 2 during Fury.",
             [Effect(EffectKind.Regeneration, 1), Effect(EffectKind.FuryRegeneration, 1)], Defense(1)),
         ClassMod("mod-berserker-slaughterer", "Slaughterer", "berserker", Rarity.Legendary,
-            "Every kill during Fury makes it last one more turn.",
+            "Every kill during Fury makes it last one more second.",
             [Effect(EffectKind.FuryExtension, 1)], Attack(3)),
         ClassMod("mod-ranger-hawkeye", "Hawkeye", "ranger", Rarity.Rare,
             "One arrow in five flies twice.",
@@ -278,7 +278,7 @@ public static class ItemCatalog
             "Striking from invisibility deals triple damage.",
             [Effect(EffectKind.Ambush, 1)], Critical(5)),
         ClassMod("mod-rogue-phantom", "Phantom", "rogue", Rarity.Legendary,
-            "Invisibility lasts 2 more turns, and a killing blow keeps you hidden.",
+            "Invisibility lasts 2 more seconds, and a killing blow keeps you hidden.",
             [Effect(EffectKind.Phantom, 2)], Evasion(5)),
         ClassMod("mod-mage-archmage", "Archmage", "mage", Rarity.Rare,
             "A deeper well: 20 more mana, and it flows back faster.",
@@ -316,19 +316,19 @@ public static class ItemCatalog
             "The moon does not wait its turn. If your sweep kills, the monsters do not get to act.",
             Attack(16), Defense(3), Critical(3)),
         Exotic("axe-worldsplitter", "Worldsplitter", WeaponType.Axe, ExoticPower.Worldsplitter,
-            "The ground remembers the blow. Every monster hit by your sweep loses its next turn (bosses keep their footing).",
+            "The ground remembers the blow. Every monster hit by your sweep is stunned for a moment (bosses keep their footing).",
             Attack(15), Defense(4), Evasion(1)),
         Exotic("bow-rift-needle", "Rift Needle", WeaponType.Bow, ExoticPower.RiftNeedle,
             "Nothing stops it. Arrows pierce every monster in line; each one after the first takes 75% damage.",
             Attack(15), Evasion(6), Critical(3)),
         Exotic("bow-huntress-promise", "Huntress' Promise", WeaponType.Bow, ExoticPower.HuntressPromise,
-            "Once marked, never lost. A hit marks the target for 3 turns: it takes 50% more from your weapon, and killing it while marked heals you for 10% of your health.",
+            "Once marked, never lost. A hit marks the target for 3 seconds: it takes 50% more from your weapon, and killing it while marked heals you for 10% of your health.",
             Attack(14), Evasion(8), Critical(3)),
         Exotic("dagger-widows-kiss", "Widow's Kiss", WeaponType.Dagger, ExoticPower.WidowsKiss,
-            "Slow, patient, certain. Every hit adds a layer of venom (up to 5); each layer costs the target 2 health every turn, bosses included.",
+            "Slow, patient, certain. Every hit adds a layer of venom (up to 5); each layer costs the target 2 health every second, bosses included.",
             Attack(11), Critical(14), Evasion(4)),
         Exotic("dagger-shadowstep", "Shadowstep", WeaponType.Dagger, ExoticPower.Shadowstep,
-            "Distance is a suggestion. Attack a monster two tiles away with a free tile between you, and you leap next to it for a guaranteed critical hit. Recharges in 3 turns.",
+            "Distance is a suggestion. Attack a monster two tiles away with a free tile between you, and you leap next to it for a guaranteed critical hit. Recharges in 3 seconds.",
             Attack(11), Critical(12), Evasion(6)),
         Exotic("spear-last-wall", "Last Wall", WeaponType.Spear, ExoticPower.LastWall,
             "Hold the line. Any monster that steps onto the tile in front of you takes a free hit.",
@@ -427,6 +427,7 @@ public static class ItemCatalog
             $"Twin axes: every attack sweeps, then strikes the target again. {DragonBound} {Earned(tier)}")
         {
             IsTwin = true,
+            FillsBothHands = true,
             IsBound = true,
             ScalesWithLevel = true
         };
@@ -461,10 +462,9 @@ public static class ItemCatalog
 
     private static WeaponDefinition DragonFangs(int tier) =>
         new($"dragon-fangs-{tier}", Tiered("Zanne del Drago", tier), Rarity.Platinum, WeaponType.Dagger,
-            [Attack(13 + 2 * tier), Critical(10 + 2 * tier), Evasion(3 + tier)],
-            $"Twin daggers: every attack stabs twice at full strength. {DragonBound} {Earned(tier)}")
+            [Attack(16 + 3 * tier), Critical(10 + 2 * tier), Evasion(3 + tier)],
+            $"A single one-handed dagger, light and quick. {DragonBound} {Earned(tier)}")
         {
-            IsTwin = true,
             IsBound = true,
             ScalesWithLevel = true
         };

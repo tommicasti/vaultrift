@@ -18,7 +18,7 @@ public static class ClassCatalog
             {
                 SpareWeapon = ItemCatalog.Spare("sword-common")
             },
-            "A steady defender with sword and shield. Bulwark halves every blow for a few turns, and stops them cold with a shield.",
+            "A steady defender with sword and shield. Bulwark halves every blow for a few seconds, and stops them cold with a shield.",
             ["sword-common", "shield-buckler", "potion-healing", "potion-healing"]),
         new(
             new CharacterClass(
@@ -30,7 +30,7 @@ public static class ClassCatalog
             {
                 SpareWeapon = ItemCatalog.Spare("axe-common")
             },
-            "Hits harder than anyone, especially with an axe. Fury raises attack by half for five turns.",
+            "Hits harder than anyone, especially with an axe. Fury raises attack by half for five seconds.",
             ["axe-common", "potion-healing", "potion-healing"]),
         new(
             new CharacterClass(
@@ -55,7 +55,7 @@ public static class ClassCatalog
             {
                 SpareWeapon = ItemCatalog.Spare("dagger-common")
             },
-            "Two steps ahead of everyone. Invisibility hides you for five turns; the first strike from the shadows is always critical.",
+            "Two steps ahead of everyone. Invisibility hides you for five seconds; the first strike from the shadows is always critical.",
             ["dagger-common", "potion-healing", "potion-healing", "potion-healing"]),
         new(
             new CharacterClass(

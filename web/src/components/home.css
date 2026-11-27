@@ -1,0 +1,453 @@
+.home {
+  --home-ink: #f3ead8;
+  --home-muted: #c9bda6;
+  --home-ember: #ffb45e;
+  --home-card: rgb(18 14 20 / 78%);
+  --home-line: rgb(255 196 120 / 22%);
+  position: fixed;
+  inset: 0;
+  overflow: hidden;
+  background: #0a080c;
+  color: var(--home-ink);
+  color-scheme: dark;
+}
+
+.home-backdrop {
+  position: absolute !important;
+  inset: 0;
+}
+
+.home-shade {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    linear-gradient(to top, rgb(8 6 10 / 88%) 0%, rgb(8 6 10 / 0%) 46%),
+    linear-gradient(to bottom, rgb(8 6 10 / 70%) 0%, rgb(8 6 10 / 0%) 22%),
+    radial-gradient(ellipse at 30% 60%, transparent 40%, rgb(0 0 0 / 45%) 100%);
+}
+
+.home .label {
+  color: var(--home-muted);
+}
+
+.home button {
+  color: var(--home-ink);
+  background: rgb(40 32 40 / 85%);
+  border-color: var(--home-line);
+}
+
+.home button.primary {
+  color: #1c1208;
+  background: linear-gradient(#ffc777, #e8913a);
+  border-color: #ffd59a;
+  font-weight: 700;
+}
+
+.home button:disabled {
+  opacity: 0.5;
+}
+
+.home input {
+  color: var(--home-ink);
+  background: rgb(10 8 12 / 70%);
+  border: 1px solid var(--home-line);
+}
+
+.home-top {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1.25rem 1.75rem;
+}
+
+.home-title {
+  margin: 0;
+  font-family: 'Cinzel', 'Trajan Pro', 'Times New Roman', Georgia, serif;
+  font-size: clamp(2.2rem, 6vw, 4rem);
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: #ffe2b0;
+  text-shadow:
+    0 0 18px rgb(255 140 50 / 55%),
+    0 2px 0 rgb(0 0 0 / 60%);
+}
+
+.home-top .account-panel.signed-in {
+  width: auto;
+  margin: 0 0 0 auto;
+  padding: 0.4rem 0.6rem;
+  background: var(--home-card);
+  border: 1px solid var(--home-line);
+  backdrop-filter: blur(6px);
+}
+
+.home-loading {
+  position: absolute;
+  bottom: 2rem;
+  left: 0;
+  right: 0;
+  text-align: center;
+}
+
+.home-tabs {
+  position: absolute;
+  top: 5.4rem;
+  left: 50%;
+  display: flex;
+  gap: 0.25rem;
+  padding: 0.25rem;
+  transform: translateX(-50%);
+  background: var(--home-card);
+  border: 1px solid var(--home-line);
+  border-radius: 999px;
+  backdrop-filter: blur(6px);
+}
+
+.home .home-tabs button {
+  min-width: 6.5rem;
+  padding: 0.45rem 1.1rem;
+  background: transparent;
+  border: none;
+  border-radius: 999px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+}
+
+.home .home-tabs button.active {
+  color: #1c1208;
+  background: linear-gradient(#ffc777, #e8913a);
+}
+
+.home-card {
+  position: absolute;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding: 1.1rem 1.2rem;
+  background: var(--home-card);
+  border: 1px solid var(--home-line);
+  border-radius: 16px;
+  box-shadow: 0 18px 50px rgb(0 0 0 / 45%);
+  backdrop-filter: blur(8px);
+}
+
+.home-hero {
+  left: 2rem;
+  bottom: 2rem;
+  width: min(24rem, calc(100% - 2rem));
+}
+
+.home-sign-in {
+  left: 50%;
+  bottom: 2.5rem;
+  width: min(26rem, calc(100% - 2rem));
+  transform: translateX(-50%);
+}
+
+.home-sign-in .account-panel {
+  width: 100%;
+  background: transparent;
+  border: none;
+  box-shadow: none;
+}
+
+.home-picker {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.home .home-arrow {
+  width: 2.4rem;
+  height: 2.4rem;
+  padding: 0;
+  font-size: 1.5rem;
+  line-height: 1;
+  border-radius: 50%;
+}
+
+.home-hero-details {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  min-width: 0;
+  text-align: center;
+}
+
+.home-hero-details strong {
+  overflow: hidden;
+  font-size: 1.35rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: #ffe2b0;
+}
+
+.home-hero-meta {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+}
+
+.home-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+}
+
+.home-actions > .label {
+  margin: 0;
+  font-size: 0.85rem;
+}
+
+.home .home-play {
+  padding: 0.75rem;
+  font-size: 1.1rem;
+  letter-spacing: 0.05em;
+}
+
+.home-refusal {
+  margin: 0;
+  color: #ff9d8a;
+  font-size: 0.9rem;
+}
+
+.home .code-form-row {
+  display: flex;
+  gap: 0.4rem;
+}
+
+.home .code-form-row input {
+  color: var(--home-ink);
+  background: rgb(10 8 12 / 70%);
+  border: 1px solid var(--home-line);
+  flex: 1;
+  min-width: 0;
+  text-transform: uppercase;
+  letter-spacing: 0.15em;
+}
+
+.home .home-play .home-world {
+  display: block;
+  margin-top: 0.15rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  opacity: 0.75;
+}
+
+.home .home-new {
+  align-self: center;
+  background: transparent;
+  border-style: dashed;
+}
+
+.home-secondary {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.5rem;
+}
+
+.home .deposit-card {
+  width: min(56rem, 100%);
+}
+
+.deposit-card .shop-row {
+  background: rgb(255 255 255 / 6%);
+}
+
+.deposit-card .shop-row-text .label {
+  color: rgb(242 236 224 / 65%);
+}
+
+@media (max-width: 640px) {
+  .deposit-card .shop-body {
+    grid-template-columns: 1fr;
+  }
+}
+
+.home-create {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  overflow-y: auto;
+  padding: 1.5rem 1.5rem 3rem;
+  background: rgb(10 8 12 / 82%);
+  backdrop-filter: blur(4px);
+}
+
+.home-create-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  max-width: 64rem;
+  margin: 0 auto 1rem;
+}
+
+.home-create-head h2 {
+  margin: 0;
+  color: #ffe2b0;
+}
+
+.home-create .class-card {
+  background: rgb(24 20 28 / 92%);
+  color: var(--home-ink);
+}
+
+.home-played {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.3rem;
+}
+
+.home-badge {
+  padding: 0.05rem 0.5rem;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  border: 1px solid currentColor;
+  border-radius: 999px;
+  background: rgb(0 0 0 / 30%);
+}
+
+.home-badge.difficulty-normal {
+  color: #7fd492;
+}
+
+.home-badge.difficulty-hard {
+  color: #f0a04b;
+}
+
+.home-badge.difficulty-hardcore {
+  color: #ff7a6b;
+}
+
+.home-worlds {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow-y: auto;
+  padding: 1.5rem 1rem;
+  background: rgb(10 8 12 / 70%);
+  backdrop-filter: blur(3px);
+}
+
+.home .home-worlds-card {
+  position: relative;
+  width: min(40rem, 100%);
+  max-height: 100%;
+  overflow-y: auto;
+}
+
+.home-worlds-card .home-create-head {
+  margin: 0;
+}
+
+.home-world-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.home-world-row {
+  display: grid;
+  grid-template-columns: auto 1fr auto auto;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.55rem 0.7rem;
+  border: 1px solid var(--home-line);
+  border-radius: 12px;
+  background: rgb(0 0 0 / 25%);
+}
+
+.home-world-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.home-world-text strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.home-world-text .label {
+  font-size: 0.8rem;
+}
+
+.home .difficulty-picker {
+  width: 100%;
+}
+
+.home .difficulty-option {
+  color: var(--home-ink);
+  background: rgb(10 8 12 / 60%);
+  border-color: var(--home-line);
+}
+
+.home .difficulty-option span {
+  color: var(--home-muted);
+}
+
+@media (max-width: 760px) {
+  .home-top {
+    flex-direction: column;
+    align-items: center;
+    padding: 0.9rem 0.75rem;
+    gap: 0.5rem;
+  }
+
+  .home-tabs {
+    top: 7.4rem;
+  }
+
+  .home-hero {
+    left: 0.75rem;
+    right: 0.75rem;
+    bottom: 0.75rem;
+    width: auto;
+  }
+
+  .home-create {
+    padding: 1rem 0.75rem 2rem;
+  }
+
+  .home .difficulty-picker {
+    grid-template-columns: 1fr;
+  }
+
+  .home-world-row {
+    grid-template-columns: auto 1fr auto;
+  }
+
+  .home-world-row .primary {
+    grid-column: 1 / 3;
+  }
+}
+
+.deposit-actions {
+  display: flex;
+  gap: 0.35rem;
+}
+
+.deposit-body h3 + .shop-list + h3,
+.deposit-body .label + h3 {
+  margin-top: 0.9rem;
+}

@@ -1,0 +1,15 @@
+**/bin
+**/obj
+**/node_modules
+**/dist
+**/saves
+**/*.user
+**/*.PublishSettings
+**/appsettings.Development.json
+.git
+.github
+.vs
+.vscode
+docs
+tests
+tools

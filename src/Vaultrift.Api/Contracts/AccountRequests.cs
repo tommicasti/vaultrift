@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using Vaultrift.Engine.Gameplay;
 using Vaultrift.Infrastructure.Accounts;
 
 namespace Vaultrift.Api.Contracts;
@@ -47,4 +48,7 @@ public sealed record HeroSummaryResponse(
     bool IsLost,
     bool IsConquered,
     long PlaySeconds,
-    DateTimeOffset UpdatedAt);
+    DateTimeOffset UpdatedAt,
+    IReadOnlyList<HeroGearResponse> Gear);
+
+public sealed record HeroGearResponse(EquipmentSlot Slot, ItemResponse Item);

@@ -56,3 +56,25 @@ export function saveCameraMode(mode: CameraMode) {
     return
   }
 }
+
+export function detectLowPower(): boolean {
+  if (typeof window === 'undefined') return false
+  const coarse = window.matchMedia?.('(pointer: coarse)').matches ?? false
+  const cores = navigator.hardwareConcurrency ?? 8
+  return coarse || cores <= 4
+}
+
+export function supportsWebGL(): boolean {
+  if (typeof document === 'undefined') return true
+  try {
+    const canvas = document.createElement('canvas')
+    return Boolean(canvas.getContext('webgl2') ?? canvas.getContext('webgl'))
+  } catch {
+    return false
+  }
+}
+
+export function canMouseLook(): boolean {
+  if (typeof document === 'undefined') return false
+  return 'pointerLockElement' in document && (window.matchMedia?.('(pointer: fine)').matches ?? false)
+}

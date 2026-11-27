@@ -12,7 +12,7 @@ const SKL = `${KK}/KayKit-Character-Pack-Skeletons-1.0/addons/kaykit_character_p
 const DUN = `${KK}/KayKit-Dungeon-Remastered-1.0/addons/kaykit_dungeon_remastered/Assets/gltf`;
 fs.mkdirSync(OUT, { recursive: true });
 
-const heroClips = ['Idle','2H_Melee_Idle','Walking_A','1H_Melee_Attack_Chop','1H_Melee_Attack_Stab','2H_Melee_Attack_Slice','2H_Melee_Attack_Chop','2H_Melee_Attack_Stab','Unarmed_Idle','Unarmed_Melee_Attack_Punch_A','Dualwield_Melee_Attack_Stab','2H_Ranged_Shoot','1H_Ranged_Shoot','Spellcast_Shoot','Spellcast_Raise','Hit_A','Block_Hit','Death_A','Death_A_Pose','Cheer','Use_Item','PickUp','Interact'];
+const heroClips = ['Idle','2H_Melee_Idle','Walking_A','Running_A','1H_Melee_Attack_Chop','1H_Melee_Attack_Stab','2H_Melee_Attack_Slice','2H_Melee_Attack_Chop','2H_Melee_Attack_Stab','Unarmed_Idle','Unarmed_Melee_Attack_Punch_A','Dualwield_Melee_Attack_Stab','2H_Ranged_Shoot','1H_Ranged_Shoot','Spellcast_Shoot','Spellcast_Raise','Hit_A','Block_Hit','Death_A','Death_A_Pose','Cheer','Use_Item','PickUp','Interact'];
 const skeletonClips = ['Idle','Idle_Combat','Walking_D_Skeletons','Walking_A','1H_Melee_Attack_Chop','Unarmed_Melee_Attack_Punch_A','Spellcast_Shoot','Hit_A','Death_A','Death_A_Pose','Skeletons_Awaken_Standing','Skeleton_Inactive_Standing_Pose','Taunt','Spawn_Ground'];
 
 async function finish(doc, name) {

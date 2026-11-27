@@ -209,6 +209,34 @@ public sealed partial class Player : Creature
 
     public static bool IsBound(InventoryEntry entry) => entry.Item.Definition is EquipmentDefinition { IsBound: true };
 
+    public InventoryEntry? Withdraw(int entryId) => Inventory.Take(entryId);
+
+    public InventoryEntry? TakeOff(EquipmentSlot slot)
+    {
+        if (!_equipment.Remove(slot, out var entry))
+            return null;
+
+        ClampMana();
+        return entry;
+    }
+
+    public bool Receive(ItemInstance item, int quantity)
+    {
+        ArgumentNullException.ThrowIfNull(item);
+
+        if (quantity < 1 || !Inventory.CanAdd(item))
+            return false;
+
+        if (item.Definition is EquipmentDefinition { IsBound: true })
+            return Inventory.TryAddBound(item);
+
+        for (var added = 0; added < quantity; added++)
+            if (!Inventory.TryAdd(item))
+                return added > 0;
+
+        return true;
+    }
+
     public static int LevelAttackBonus(int level) => level / 2;
 
     public static int LevelCriticalBonus(int level) => level / 5;
@@ -479,6 +507,12 @@ public sealed partial class Player : Creature
     }
 
     internal void RestoreFullMana() => Mana = MaxMana;
+
+    public void Rest()
+    {
+        RestoreFullHealth();
+        RestoreFullMana();
+    }
 
     internal IReadOnlyList<ActiveBoost> AdvanceBoosts()
     {

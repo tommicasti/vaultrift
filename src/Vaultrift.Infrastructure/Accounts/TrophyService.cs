@@ -78,6 +78,45 @@ public sealed class TrophyService
         return Grant(accountId, unlocked, earned);
     }
 
+    public IReadOnlyList<TrophyDefinition> RecordLive(Guid accountId, LiveFeats feats)
+    {
+        ArgumentNullException.ThrowIfNull(feats);
+
+        var unlocked = Unlocked(accountId);
+        bool Wants(string id) => !unlocked.ContainsKey(id);
+        var earned = new List<string>();
+
+        if (feats.Slew && Wants(TrophyCatalog.FirstBlood))
+            earned.Add(TrophyCatalog.FirstBlood);
+
+        if (feats.SlewBoss && Wants(TrophyCatalog.KingSlayer))
+            earned.Add(TrophyCatalog.KingSlayer);
+
+        if (feats.FoundExotic && Wants(TrophyCatalog.Collector))
+            earned.Add(TrophyCatalog.Collector);
+
+        if (feats.CleanFloor && Wants(TrophyCatalog.Untouchable))
+            earned.Add(TrophyCatalog.Untouchable);
+
+        if (feats.FloorReached >= TrophyCatalog.UnbrokenFloor && feats.Falls == 0 && Wants(TrophyCatalog.Unbroken))
+            earned.Add(TrophyCatalog.Unbroken);
+
+        if (feats.Coins > 0 && Wants(TrophyCatalog.Rich) && _accounts.AddToCounter(accountId, TrophyCatalog.CoinsCounter, feats.Coins) >= TrophyCatalog.RichGoal)
+            earned.Add(TrophyCatalog.Rich);
+
+        if (feats.Conquered is { } difficulty)
+        {
+            earned.AddRange(CustodeTrophies(difficulty).Where(Wants));
+            _accounts.AddToCounter(accountId, TrophyCatalog.ConqueredPrefix + feats.ClassId, 1);
+
+            var counters = _accounts.CountersOf(accountId);
+            if (Wants(TrophyCatalog.WeaponMaster) && ClassCatalog.All.All(definition => counters.GetValueOrDefault(TrophyCatalog.ConqueredPrefix + definition.Class.Id) > 0))
+                earned.Add(TrophyCatalog.WeaponMaster);
+        }
+
+        return earned.Count == 0 ? [] : Grant(accountId, unlocked, earned);
+    }
+
     private List<TrophyDefinition> Grant(Guid accountId, ConcurrentDictionary<string, byte> unlocked, IEnumerable<string> earned)
     {
         var now = _clock();
