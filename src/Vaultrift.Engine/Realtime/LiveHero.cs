@@ -58,6 +58,8 @@ public sealed class LiveHero
 
     internal double RespawnAt { get; set; }
 
+    internal double ShieldedUntil { get; set; } = double.NegativeInfinity;
+
     internal double FullNoticeAt { get; set; }
 
     internal void TakeDamage(int amount)

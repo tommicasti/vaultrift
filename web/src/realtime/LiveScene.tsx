@@ -1,3 +1,4 @@
+import type { BurstKind } from './liveEffects'
 import { Html } from '@react-three/drei'
 import { Canvas, useFrame, useThree } from '@react-three/fiber'
 import { Suspense, useCallback, useEffect, useMemo, useRef, useState, type RefObject } from 'react'
@@ -53,7 +54,7 @@ export interface Blast {
   start: number
 }
 
-export type SparkKind = 'rubble' | 'crystal' | 'claw'
+export type SparkKind = BurstKind
 
 export interface Spark {
   key: number

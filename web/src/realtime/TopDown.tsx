@@ -338,7 +338,21 @@ function render(context: CanvasRenderingContext2D, props: TopDownProps, width: n
 const beaconMargin = 44
 const lungeMs = 180
 const sparkSeconds = 0.6
-const sparkColors: Record<Spark['kind'], string> = { rubble: '#b8a690', crystal: '#9ff0ff', claw: '#ff4a3a' }
+const sparkColors: Record<Spark['kind'], string> = {
+  rubble: '#b8a690',
+  crystal: '#9ff0ff',
+  claw: '#ff4a3a',
+  fire: '#ff7a2a',
+  ice: '#a8ecff',
+  lightning: '#fff27a',
+  wind: '#e8f4ff',
+  impact: '#ffffff',
+  fury: '#ff3a3a',
+  bulwark: '#7ab8ff',
+  smoke: '#9a9aa8',
+  spores: '#a8e05a',
+  overload: '#c07aff',
+}
 
 function lungeOffset(elapsed: number): number {
   if (elapsed < 0 || elapsed > lungeMs) return 0

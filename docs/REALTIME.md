@@ -632,3 +632,23 @@ Nella home un account custode ha il pulsante **Players**. Apre un resoconto di t
 Chi è custode lo decide la configurazione `Admin:Accounts` (in Azure la variabile `Admin__Accounts`): nomi utente separati da virgola. Per tutti gli altri l'endpoint `GET /api/admin/players` risponde 404, come se non esistesse.
 
 Il resoconto legge soltanto: usa `VaultService.Peek`, `PeekHero` e `PeekWorld`, che non convertono i vecchi salvataggi a turni. Così aprire la pagina non cambia gli account degli altri. Per elencare gli account c'è `IAccountRepository.All()`.
+
+## Pacchetto 5g — mostri meno appiccicosi, telefono ed effetti
+
+**Mostri (feedback dei primi giocatori: "sempre addosso", "ti inseguono anche dopo la morte", "si accumulano all'ingresso").**
+- **Inseguimento più corto:** un mostro insegue solo entro 10 caselle di percorso (`ChaseDistance`, prima 16) e mai a più di 12 caselle da casa (`LeashDistance`, i boss esclusi).
+- **Ti perde di vista:** se per 4 secondi non ti vede, perché c'è un muro in mezzo (`LoseSightSeconds`), rinuncia. Gli spettri che attraversano i muri non perdono la vista.
+- **Torna a casa davvero:** un mostro che rinuncia, o il cui bersaglio è caduto, torna a casa ignorando gli eroi. A casa si riaddormenta con la vita piena. Riprende a combattere solo se qualcuno lo colpisce.
+- **Rinascita protetta:** chi rinasce all'ingresso per 3 secondi non viene notato né attaccato (`RespawnShieldSeconds`).
+
+**Oggetti distruttibili.** Casse di legno e cristalli si rompevano solo con armi da mischia. Con arco o bastone l'attacco partiva lo stesso e l'ostacolo restava lì. Ora qualunque arma rompe l'ostacolo che hai davanti, come nel gioco a turni.
+
+**Effetti degli elementi.** I colpi con un elemento mostrano di nuovo il loro effetto (fuoco, ghiaccio, fulmine, vento) sul mostro o sull'eroe colpito, come nel gioco a turni. Prima l'elemento arrivava al client solo quando il bersaglio era debole o resistente. Anche le altre vecchie animazioni tornano: abilità, spore, fumo del mimic, schegge. La regola che stabilisce quale effetto mostrare per ogni evento sta in `liveEffects.ts`.
+
+**Telefono.**
+- La barra di stato sta in alto a sinistra, compatta e trasparente.
+- Il doppio tocco non ingrandisce più la pagina: `touch-action: manipulation` su tutto, più un blocco del secondo tocco ravvicinato fuori dai pulsanti e del pizzico su iOS.
+- La barra degli incantesimi e i pulsanti schermo intero e vibrazione sono anche nel tempo reale, e i pulsanti del telefono vibrano.
+- Su iPhone Safari non permette lo schermo intero alle pagine: il pulsante spiega come aggiungere Vaultrift alla schermata Home, da dove si apre a tutto schermo.
+
+**Home e deposito.** "All heroes" apre l'elenco dei propri eroi, con classe, livello, ore e difficoltà giocate. Deposito e zaino nella schermata Gear & deposit sono ordinati per rarità, poi per nome.

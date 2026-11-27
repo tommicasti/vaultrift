@@ -30,7 +30,7 @@
   box-sizing: border-box;
 }
 
-html {
+:where(html, body, body *) {
   touch-action: manipulation;
 }
 

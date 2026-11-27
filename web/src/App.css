@@ -2079,6 +2079,7 @@
 }
 
 .header-toggles {
+  position: relative;
   display: inline-flex;
   gap: 0.5rem;
 }
@@ -2977,4 +2978,20 @@
   text-transform: uppercase;
   color: #ffe27a;
   text-shadow: 0 0 6px rgb(255 190 40 / 90%), 0 2px 3px #000;
+}
+
+.install-tip {
+  position: absolute;
+  top: calc(100% + 0.4rem);
+  right: 0;
+  z-index: 30;
+  width: min(16rem, 80vw);
+  padding: 0.5rem 0.65rem;
+  border-radius: 10px;
+  background: rgb(20 22 30 / 94%);
+  color: #f2ece0;
+  font-size: 0.78rem;
+  line-height: 1.35;
+  text-align: left;
+  pointer-events: auto;
 }

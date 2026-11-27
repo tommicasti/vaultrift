@@ -1,6 +1,7 @@
 import { useRef, useState } from 'react'
 import type { AbilityInfo, QuickSlotInfo } from '../api/types'
 import { ItemIcon } from '../components/ItemIcon'
+import { tap } from '../game/haptics'
 import { quickSlotKeys } from '../game/items'
 import { joystickVector } from './input'
 
@@ -59,6 +60,7 @@ export function LiveTouchControls({ quickSlots, ability, onAbility, onMove, onAt
           aria-label="Attack"
           onPointerDown={event => {
             event.currentTarget.setPointerCapture(event.pointerId)
+            tap()
             onAttack(true)
           }}
           onPointerUp={() => onAttack(false)}
@@ -71,17 +73,39 @@ export function LiveTouchControls({ quickSlots, ability, onAbility, onMove, onAt
           className={sprinting ? 'live-slot live-sprint on' : 'live-slot live-sprint'}
           aria-label="Run"
           aria-pressed={sprinting}
-          onClick={() => onSprint(!sprinting)}
+          onClick={() => {
+            tap()
+            onSprint(!sprinting)
+          }}
         >
           »
         </button>
         {ability && (
-          <button type="button" className="live-slot live-ability" aria-label={ability.kind} disabled={ability.cooldown > 0} onClick={onAbility}>
+          <button
+            type="button"
+            className="live-slot live-ability"
+            aria-label={ability.kind}
+            disabled={ability.cooldown > 0}
+            onClick={() => {
+              tap()
+              onAbility()
+            }}
+          >
             {ability.cooldown > 0 ? ability.cooldown : 'E'}
           </button>
         )}
         {quickSlots.map((slot, index) => (
-          <button key={index} type="button" className="live-slot" aria-label={`Quick slot ${quickSlotKeys[index]}`} disabled={!slot.item} onClick={() => onQuickSlot(index)}>
+          <button
+            key={index}
+            type="button"
+            className="live-slot"
+            aria-label={`Quick slot ${quickSlotKeys[index]}`}
+            disabled={!slot.item}
+            onClick={() => {
+              tap()
+              onQuickSlot(index)
+            }}
+          >
             {slot.item ? <ItemIcon item={slot.item} /> : quickSlotKeys[index]}
             {slot.item && slot.quantity > 1 && <span>{slot.quantity}</span>}
           </button>

@@ -5,6 +5,7 @@ import { useFullscreen } from '../game/useFullscreen'
 export function HeaderToggles() {
   const fullscreen = useFullscreen()
   const [vibration, setVibration] = useState(hapticsEnabled)
+  const [tipOpen, setTipOpen] = useState(false)
   const touch = typeof window !== 'undefined' && window.matchMedia('(pointer: coarse)').matches
 
   function toggleVibration() {
@@ -14,7 +15,7 @@ export function HeaderToggles() {
     if (next) tap()
   }
 
-  if (!fullscreen.supported && !(touch && hapticsSupported())) return null
+  if (!fullscreen.supported && !fullscreen.installHint && !(touch && hapticsSupported())) return null
 
   return (
     <span className="header-toggles">
@@ -28,6 +29,17 @@ export function HeaderToggles() {
           <span aria-hidden="true">{vibration ? '📳' : '📴'}</span>
           <span className="visually-hidden">Vibration</span>
         </button>
+      )}
+      {fullscreen.installHint && (
+        <button className="icon-toggle" aria-expanded={tipOpen} title="Full screen" onClick={() => setTipOpen(open => !open)}>
+          <span aria-hidden="true">⛶</span>
+          <span className="visually-hidden">Full screen</span>
+        </button>
+      )}
+      {tipOpen && (
+        <span className="install-tip" role="note" onClick={() => setTipOpen(false)}>
+          On iPhone, full screen comes from the home screen: tap Share, then Add to Home Screen, and open Vaultrift from the new icon.
+        </span>
       )}
       {fullscreen.supported && (
         <button

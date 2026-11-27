@@ -562,3 +562,41 @@
   color: var(--rarity, inherit);
   font-weight: 600;
 }
+
+.home-hero-count {
+  padding: 0.1rem 0.55rem;
+  border: 1px solid rgb(255 255 255 / 18%);
+  border-radius: 999px;
+  background: transparent;
+  color: rgb(242 236 224 / 75%);
+  font-size: 0.8rem;
+  cursor: pointer;
+}
+
+.home-hero-count:hover {
+  color: #f2ece0;
+  border-color: rgb(255 255 255 / 35%);
+}
+
+.hero-list {
+  max-height: 60vh;
+  overflow-y: auto;
+}
+
+.hero-list-row {
+  display: grid;
+  gap: 0.15rem;
+  width: 100%;
+  padding: 0.6rem 0.8rem;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  background: rgb(255 255 255 / 5%);
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.hero-list-row:hover,
+.hero-list-row.chosen {
+  border-color: rgb(255 210 120 / 45%);
+}
