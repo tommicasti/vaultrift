@@ -662,3 +662,10 @@ Il resoconto legge soltanto: usa `VaultService.Peek`, `PeekHero` e `PeekWorld`, 
   - il pulsante d'attacco colpisce davanti.
   
   Prima la prima persona richiedeva il blocco del mouse (pointer lock), che sui telefoni non esiste.
+
+**Prima persona al tocco: il pulsante d'attacco diventa un pad.** In prima persona sul telefono il pulsante ⚔ ha un bordo tratteggiato e fa tre cose:
+- **trascini:** giri lo sguardo; se mentre guardi c'è un nemico davanti e a portata, l'eroe attacca da solo (`enemyAhead` in `aim.ts`: portata dell'arma, cono dell'arco d'attacco, almeno 30°);
+- **tocchi:** attacca una volta nella direzione dello sguardo;
+- **tieni premuto fermo:** attacca di continuo.
+
+Resta anche il trascinamento sulla scena.
