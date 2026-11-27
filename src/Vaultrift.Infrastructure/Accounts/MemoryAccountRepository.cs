@@ -29,6 +29,12 @@ public sealed class MemoryAccountRepository : IAccountRepository
             return _byId.GetValueOrDefault(id);
     }
 
+    public IReadOnlyList<Account> All()
+    {
+        lock (_gate)
+            return _byId.Values.OrderBy(account => account.CreatedAt).ToList();
+    }
+
     public Account? FindByName(string userName)
     {
         lock (_gate)

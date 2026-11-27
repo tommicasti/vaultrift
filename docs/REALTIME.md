@@ -618,3 +618,17 @@ Il protocollo passa a 3: una pagina vecchia con un server nuovo, o il contrario,
 - **Spegnimento.** Con l'arresto le stanze si chiudono e i salvataggi in coda vengono scritti, nei 30 secondi che Container Apps concede.
 
 **Attenzione:** due server sullo stesso Cosmos (App Service e Container Apps) non sanno l'uno dell'altro. Un eroe aperto su entrambi verrebbe sovrascritto. Quando Container Apps è pronto, la Web App va fermata.
+
+## Pagina Players (solo per i custodi)
+
+Nella home un account custode ha il pulsante **Players**. Apre un resoconto di tutti gli account, già tradotto, senza id:
+- **account:** nome, data di iscrizione, ultima volta visto, se sta giocando adesso, ore di gioco totali;
+- **trofei** sbloccati, con descrizione e data al passaggio del mouse;
+- **eroi:** nome, classe, livello, monete, ore, cadute, se è in un mondo, equipaggiamento per slot con la rarità, oggetti nello zaino;
+- **mondi:** difficoltà, classe, piano attuale e più profondo, bioma, conquistato, aperto adesso, ore;
+- **deposito:** numero di oggetti, più l'elenco dei leggendari, esotici e platino;
+- **eroi a turni** rimasti dal vecchio gioco: livello, piano, turni, monete, morti, ore, perso o conquistato.
+
+Chi è custode lo decide la configurazione `Admin:Accounts` (in Azure la variabile `Admin__Accounts`): nomi utente separati da virgola. Per tutti gli altri l'endpoint `GET /api/admin/players` risponde 404, come se non esistesse.
+
+Il resoconto legge soltanto: usa `VaultService.Peek`, `PeekHero` e `PeekWorld`, che non convertono i vecchi salvataggi a turni. Così aprire la pagina non cambia gli account degli altri. Per elencare gli account c'è `IAccountRepository.All()`.
