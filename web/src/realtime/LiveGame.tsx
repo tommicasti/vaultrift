@@ -1,3 +1,4 @@
+import { enemyAhead } from './aim'
 import { burstFor } from './liveEffects'
 import { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react'
 import type { EquipmentSlot, ItemMark, StatPoint } from '../api/types'
@@ -193,7 +194,7 @@ export function LiveGame({ mode, heroId, onExit }: LiveGameProps) {
   const lastMonsters = useRef(new Map<number, LiveMonster>())
   const cueId = useRef(0)
   const pressed = useRef(new Set<string>())
-  const attacking = useRef({ key: false, mouse: false })
+  const attacking = useRef({ key: false, mouse: false, auto: false })
   const localSwingAt = useRef(-Infinity)
   const sent = useRef<MoveInput>({
     x: 0,
@@ -853,7 +854,7 @@ export function LiveGame({ mode, heroId, onExit }: LiveGameProps) {
 
   const releaseAll = useCallback(() => {
     pressed.current.clear()
-    attacking.current = { key: false, mouse: false }
+    attacking.current = { key: false, mouse: false, auto: false }
     sprintKey.current = false
   }, [])
 
@@ -871,7 +872,7 @@ export function LiveGame({ mode, heroId, onExit }: LiveGameProps) {
 
   const pushInput = useCallback(() => {
     const keys = moveVector(pressed.current)
-    const attack = attacking.current.key || attacking.current.mouse
+    const attack = attacking.current.key || attacking.current.mouse || attacking.current.auto
     const sprint = sprintKey.current || sprintTouchRef.current
     let input: MoveInput
     if (viewRef.current === 'first' && !flatRef.current) {
@@ -1319,8 +1320,22 @@ export function LiveGame({ mode, heroId, onExit }: LiveGameProps) {
         }}
         onAttack={down => {
           attacking.current.mouse = down
+          if (!down) attacking.current.auto = false
           pushInput()
         }}
+        onLook={
+          view === 'first' && !flat
+            ? (dx, dy) => {
+                look.current = {
+                  yaw: look.current.yaw - dx * touchYawPerPixel,
+                  pitch: Math.max(-maxPitch, Math.min(maxPitch, look.current.pitch - dy * touchPitchPerPixel)),
+                }
+                const mine = latestHeroes.current.find(hero => hero.id === welcome.heroId)
+                attacking.current.auto = mine !== undefined && !mine.dead && enemyAhead(mine, look.current.yaw, monsterBuffer.latest()?.items.values() ?? [])
+                pushInput()
+              }
+            : undefined
+        }
         onQuickSlot={slot => act(room => room.useQuickSlot(slot))}
         ability={player?.ability}
         onAbility={() => act(room => room.ability())}
