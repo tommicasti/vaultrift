@@ -14,7 +14,7 @@ import { StatusBar } from '../components/StatusBar'
 import { describeEvent } from '../game/describeEvent'
 import type { Cue } from '../scene3d/Actor'
 import { heroAttackClip } from '../scene3d/models'
-import { canMouseLook, loadCameraMode, saveCameraMode, type CameraMode } from '../scene3d/viewMode'
+import { canMouseLook, canTouchLook, loadCameraMode, saveCameraMode, type CameraMode } from '../scene3d/viewMode'
 import { headingVector, isMoveKey, moveVector, relativeMove, sameInput, sprintKeys, type MoveInput } from './input'
 import { FrameBuffer, renderDelaySeconds, type Placed } from './interpolation'
 import { levelUpSeconds } from '../scene3d/Effects3D'
@@ -103,9 +103,12 @@ const messageMs = 30000
 const logSize = 7
 const noNames: ReadonlyMap<number, string> = new Map()
 const mouseLook = canMouseLook()
+const touchLook = canTouchLook()
 const yawPerPixel = 0.0028
 const pitchPerPixel = 0.0022
 const maxPitch = 1.1
+const touchYawPerPixel = 0.006
+const touchPitchPerPixel = 0.004
 
 function strikeLine(attacker: string, target: string | undefined, event: LiveEvent, verb: string): string {
   const victim = target === undefined ? 'it' : target === 'you' ? 'you' : `the ${target}`
@@ -873,8 +876,9 @@ export function LiveGame({ mode, heroId, onExit }: LiveGameProps) {
     let input: MoveInput
     if (viewRef.current === 'first' && !flatRef.current) {
       const heading = headingVector(look.current.yaw)
+      const steer = keys.x !== 0 || keys.y !== 0 ? keys : touchMove.current
       input = {
-        ...relativeMove(keys, look.current.yaw),
+        ...relativeMove(steer, look.current.yaw),
         aimX: heading.x,
         aimY: heading.y,
         attack,
@@ -892,11 +896,11 @@ export function LiveGame({ mode, heroId, onExit }: LiveGameProps) {
 
   const changeView = useCallback(
     (next: CameraMode) => {
-      if (next === 'first' && !mouseLook) return
+      if (next === 'first' && !mouseLook && !touchLook) return
       const mine = latestHeroes.current.find(hero => hero.id === welcomeRef.current?.heroId)
       if (next === 'first') {
         look.current = { yaw: mine?.facing ?? Math.PI, pitch: 0 }
-        gameElement.current?.requestPointerLock()?.catch?.(() => undefined)
+        if (mouseLook) gameElement.current?.requestPointerLock()?.catch?.(() => undefined)
       } else if (document.pointerLockElement) document.exitPointerLock()
       viewRef.current = next
       saveCameraMode(next)
@@ -917,6 +921,39 @@ export function LiveGame({ mode, heroId, onExit }: LiveGameProps) {
     element.addEventListener('wheel', handleWheel, { passive: false })
     return () => element.removeEventListener('wheel', handleWheel)
   }, [changeView, phase.kind])
+
+  useEffect(() => {
+    const element = gameElement.current
+    if (!element || !touchLook) return
+    let finger: { id: number; x: number; y: number } | null = null
+    const handleDown = (event: PointerEvent) => {
+      if (event.pointerType !== 'touch' || viewRef.current !== 'first' || finger) return
+      if (!(event.target instanceof HTMLCanvasElement)) return
+      finger = { id: event.pointerId, x: event.clientX, y: event.clientY }
+    }
+    const handleMove = (event: PointerEvent) => {
+      if (!finger || event.pointerId !== finger.id) return
+      look.current = {
+        yaw: look.current.yaw - (event.clientX - finger.x) * touchYawPerPixel,
+        pitch: Math.max(-maxPitch, Math.min(maxPitch, look.current.pitch - (event.clientY - finger.y) * touchPitchPerPixel)),
+      }
+      finger = { id: finger.id, x: event.clientX, y: event.clientY }
+      pushInput()
+    }
+    const handleUp = (event: PointerEvent) => {
+      if (finger && event.pointerId === finger.id) finger = null
+    }
+    element.addEventListener('pointerdown', handleDown)
+    window.addEventListener('pointermove', handleMove)
+    window.addEventListener('pointerup', handleUp)
+    window.addEventListener('pointercancel', handleUp)
+    return () => {
+      element.removeEventListener('pointerdown', handleDown)
+      window.removeEventListener('pointermove', handleMove)
+      window.removeEventListener('pointerup', handleUp)
+      window.removeEventListener('pointercancel', handleUp)
+    }
+  }, [pushInput, phase.kind])
 
   useEffect(() => {
     const handleLook = (event: MouseEvent) => {

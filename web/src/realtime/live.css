@@ -366,7 +366,29 @@
   }
 
   .live-log {
-    bottom: 11rem;
+    top: calc(max(0.4rem, env(safe-area-inset-top)) + 5.6rem);
+    bottom: auto;
+    left: max(0.4rem, env(safe-area-inset-left));
+    max-width: min(16rem, 44vw);
+    gap: 0.12rem;
+  }
+
+  .live-log li {
+    padding: 0.08rem 0.4rem;
+    font-size: 0.66rem;
+    background: rgb(20 22 30 / 40%);
+  }
+
+  .live-log li:nth-child(n + 4) {
+    display: none;
+  }
+}
+
+@media (pointer: coarse) and (orientation: landscape) and (max-height: 520px) {
+  .live-game .scene3d-zoom {
+    left: calc(max(0.4rem, env(safe-area-inset-left)) + 10.5rem);
+    bottom: 0.8rem;
+    flex-direction: row;
   }
 }
 
