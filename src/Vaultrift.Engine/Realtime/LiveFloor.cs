@@ -17,8 +17,9 @@ public sealed partial class LiveFloor
     private readonly ILootTable? _loot;
     private int _nextItemId = 1;
 
-    public LiveFloor(DungeonMap map, Position start, IRandom random, string? biome = null, ILootTable? loot = null, int floorNumber = 1)
+    public LiveFloor(DungeonMap map, Position start, IRandom random, string? biome = null, ILootTable? loot = null, int floorNumber = 1, long startTick = 0)
     {
+        ArgumentOutOfRangeException.ThrowIfNegative(startTick);
         ArgumentNullException.ThrowIfNull(map);
         ArgumentNullException.ThrowIfNull(random);
         ArgumentOutOfRangeException.ThrowIfLessThan(floorNumber, 1);
@@ -30,6 +31,7 @@ public sealed partial class LiveFloor
         _damage = new DamageCalculator(random);
         _random = random;
         _loot = loot;
+        Tick = startTick;
     }
 
     public int FloorNumber { get; }
@@ -60,17 +62,17 @@ public sealed partial class LiveFloor
         ArgumentException.ThrowIfNullOrWhiteSpace(classId);
         ArgumentNullException.ThrowIfNull(stats);
 
-        return Join(id, new Player(Collision.TileOf(Start), stats, name), classId, speed);
+        return Join(id, new Player(Collision.TileOf(Start), stats, name), classId, speed, Guid.Empty);
     }
 
-    public LiveHero AddHero(int id, Player player)
+    public LiveHero AddHero(int id, Player player, Guid owner = default)
     {
         ArgumentNullException.ThrowIfNull(player);
 
-        return Join(id, player, player.Class?.Id ?? "hero", player.Class?.Speed ?? Speed.Normal);
+        return Join(id, player, player.Class?.Id ?? "hero", player.Class?.Speed ?? Speed.Normal, owner);
     }
 
-    private LiveHero Join(int id, Player player, string classId, Speed speed)
+    private LiveHero Join(int id, Player player, string classId, Speed speed, Guid owner)
     {
         if (_heroes.Any(hero => hero.Id == id))
             throw new ArgumentException($"A hero with id {id} is already on the floor.", nameof(id));
@@ -78,41 +80,55 @@ public sealed partial class LiveFloor
         if (_heroes.Count >= LiveRules.MaxHeroes)
             throw new InvalidOperationException($"A floor holds at most {LiveRules.MaxHeroes} heroes.");
 
-        var hero = new LiveHero(id, player, classId, speed, Start);
+        var hero = new LiveHero(id, player, classId, speed, Start, owner);
         _heroes.Add(hero);
+        ArriveQuietly(hero);
         Rescale();
         return hero;
     }
 
     public bool RemoveHero(int id)
     {
-        var removed = _heroes.RemoveAll(hero => hero.Id == id) > 0;
+        if (_heroes.FirstOrDefault(hero => hero.Id == id) is not { } hero)
+            return false;
+
+        _heroes.Remove(hero);
         _fields.Remove(id);
 
-        if (removed)
-            Rescale();
+        if (hero.IsDead)
+        {
+            hero.Player.RestoreFullHealth();
+            hero.Player.RestoreFullMana();
+        }
 
-        return removed;
+        Rescale();
+        return true;
     }
 
     public double PartyScale { get; private set; } = 1;
 
     private void Rescale()
     {
-        var scale = 1 + LiveRules.ExtraHeroHealth * Math.Max(0, _heroes.Count - 1);
+        var extra = Math.Max(0, _heroes.Count - 1);
+        PartyScale = 1 + LiveRules.ExtraHeroHealth * extra;
+        BossScale = 1 + LiveRules.ExtraHeroBossHealth * extra;
 
         foreach (var monster in _monsters)
-            monster.Rescale(scale);
-
-        PartyScale = scale;
+            monster.Rescale(ScaleFor(monster));
     }
+
+    public double BossScale { get; private set; } = 1;
+
+    public static int ReinforcementTier(int heroes) => Math.Max(0, heroes - 1) / LiveRules.HeroesPerReinforcement;
+
+    private double ScaleFor(LiveMonster monster) => monster.Kind.IsBoss ? BossScale : PartyScale;
 
     public LiveMonster AddMonster(Enemy enemy)
     {
         ArgumentNullException.ThrowIfNull(enemy);
 
         var monster = new LiveMonster(enemy);
-        monster.Rescale(PartyScale);
+        monster.Rescale(ScaleFor(monster));
         _monsters.Add(monster);
         return monster;
     }
@@ -121,8 +137,19 @@ public sealed partial class LiveFloor
     {
         ArgumentNullException.ThrowIfNull(input);
 
-        if (_heroes.FirstOrDefault(hero => hero.Id == heroId) is { } hero)
+        if (_heroes.FirstOrDefault(hero => hero.Id == heroId) is { IsAway: false } hero)
             hero.Input = input;
+    }
+
+    public void SetAway(int heroId, bool away)
+    {
+        if (_heroes.FirstOrDefault(hero => hero.Id == heroId) is not { } hero || hero.IsAway == away)
+            return;
+
+        hero.IsAway = away;
+        hero.Input = HeroInput.Idle;
+        hero.IsMoving = false;
+        hero.Touch();
     }
 
     public IReadOnlyList<LiveEvent> Step()
@@ -134,6 +161,7 @@ public sealed partial class LiveFloor
         foreach (var hero in _heroes)
             UpdateHero(hero, events);
 
+        DriftOnCurrents();
         MoveProjectiles(events);
 
         if (Tick % LiveRules.TicksPerSecond == 0)
@@ -145,6 +173,9 @@ public sealed partial class LiveFloor
             UpdateMonster(monster, events);
 
         SeparateMonsters();
+        WatchStairs(events);
+        WatchFixtures(events);
+        WatchBosses(events);
         return events;
     }
 
@@ -164,19 +195,23 @@ public sealed partial class LiveFloor
         if (!input.Aim.IsZero)
             hero.Facing = input.Aim;
 
+        var sprinting = input.Sprint && !input.Move.IsZero;
+
         if (!input.Move.IsZero)
         {
             if (input.Aim.IsZero)
                 hero.Facing = input.Move.Normalized();
 
-            var step = input.Move * (LiveRules.HeroSpeed(hero.Speed) * LiveRules.TickSeconds);
-            hero.Position = Collision.Slide(Map, from, step, LiveRules.HeroRadius, point => BlockedByMonster(from, point));
+            var speed = LiveRules.HeroSpeed(hero.Speed) * (sprinting ? LiveRules.SprintFactor : 1);
+            var step = input.Move * (speed * LiveRules.TickSeconds);
+            hero.Position = Collision.Slide(Map, from, step, LiveRules.HeroRadius, point => BlockedByMonster(from, point) || BlockedByFixture(from, point), roundsCorners: true);
         }
 
         hero.IsMoving = hero.Position != from;
+        hero.IsSprinting = sprinting && hero.IsMoving;
         PickUp(hero, events);
 
-        if (input.Attack && Time >= hero.AttackReadyAt)
+        if (input.Attack && !sprinting && Time >= hero.AttackReadyAt)
             Attack(hero, events);
     }
 
@@ -229,7 +264,9 @@ public sealed partial class LiveFloor
             if (Seconds % Game.HealthRegenInterval == 0)
                 player.Heal(Game.HealthRegenAmount);
 
-            if (player.EffectAmount(EffectKind.Regeneration) is > 0 and var regeneration)
+            var regeneration = player.EffectAmount(EffectKind.Regeneration) + (player.FuryTurns > 0 ? player.EffectAmount(EffectKind.FuryRegeneration) : 0);
+
+            if (regeneration > 0)
                 player.Heal(regeneration);
 
             if (Seconds % Progression.ManaRegenInterval == 0)
@@ -237,6 +274,12 @@ public sealed partial class LiveFloor
         }
 
         BurnMonsters(events);
+        SpreadVenom(events);
+        BurnMonstersOnLava(events);
+        BreatheSpores(events);
+        BurnHeroesOnLava(events);
+        CoolLava(events);
+        UseBossPowers(events);
     }
 
     private static void TickAbility(LiveHero hero, int turns, Action<int> set, ClassAbility ability, List<LiveEvent> events)
@@ -274,6 +317,15 @@ public sealed partial class LiveFloor
         slayer.Touch();
         events.Add(new HeroRewarded(slayer.Id, monster.Id, coins, experience, player.Level - levelBefore));
 
+        if (player.FuryTurns > 0)
+            player.FuryTurns += player.EffectAmount(EffectKind.FuryExtension);
+
+        if (Math.Min(player.EffectAmount(EffectKind.ManaSiphon), player.MaxMana - player.Mana) is > 0 and var siphoned)
+        {
+            player.RestoreMana(siphoned);
+            events.Add(new HeroManaSiphoned(slayer.Id, siphoned));
+        }
+
         if (_loot is null)
             return;
 
@@ -309,12 +361,6 @@ public sealed partial class LiveFloor
         return null;
     }
 
-    private LiveMonster? AutoAim(LiveHero hero) =>
-        _monsters
-            .Where(monster => !monster.IsDead && monster.Position.DistanceTo(hero.Position) <= LiveRules.HeroReach + monster.Radius)
-            .OrderBy(monster => monster.Position.DistanceTo(hero.Position))
-            .FirstOrDefault();
-
     private void Respawn(LiveHero hero, List<LiveEvent> events)
     {
         hero.Player.RestoreFullHealth();
@@ -323,6 +369,7 @@ public sealed partial class LiveFloor
         hero.Facing = new Vector(0, 1);
         hero.Input = HeroInput.Idle;
         hero.AttackReadyAt = Time;
+        ArriveQuietly(hero);
         events.Add(new HeroRespawned(hero.Id));
     }
 
@@ -344,14 +391,14 @@ public sealed partial class LiveFloor
         if (monster.Kind.IsStationary)
             return;
 
-        if (Time < monster.FrozenUntil)
+        if (Time < monster.FrozenUntil || Time < monster.StaggeredUntil)
         {
             monster.WindupEndsAt = null;
             return;
         }
 
         var target = _heroes
-            .Where(hero => !hero.IsDead && !hero.Player.IsInvisible)
+            .Where(hero => hero.IsTargetable)
             .OrderBy(hero => hero.Position.DistanceTo(monster.Position))
             .FirstOrDefault();
 
@@ -391,33 +438,50 @@ public sealed partial class LiveFloor
 
         if (distance <= reach)
         {
+            monster.Heading = Vector.Zero;
+
             if (Time >= monster.AttackReadyAt)
             {
                 monster.WindupEndsAt = Time + LiveRules.MonsterWindupSeconds;
                 events.Add(new MonsterWindup(monster.Id, target.Id));
+                GuardTheWall(monster, target, events);
             }
 
             return;
         }
 
-        var heading = HeadingToward(monster, target);
-        var travel = Math.Min(LiveRules.MonsterSpeed(monster.Kind.Speed) * LiveRules.TickSeconds, distance - reach + 0.01);
+        var heading = Steady(monster, HeadingToward(monster, target));
+        var travel = Math.Min(LiveRules.MonsterSpeed(monster.Speed) * LiveRules.TickSeconds, distance - reach + 0.01);
+        if (distance > reach + LiveRules.FaceTheWayDistance)
+            monster.Facing = heading;
+
         MoveMonster(monster, heading * travel);
     }
 
     private bool Notices(LiveMonster monster, LiveHero hero)
     {
-        if (hero.Player.IsInvisible)
+        if (!hero.IsTargetable)
             return false;
 
-        if (monster.Position.DistanceTo(hero.Position) > LiveRules.WakeDistance)
+        var wake = Math.Max(1, LiveRules.WakeDistance - hero.Player.EffectAmount(EffectKind.Stealth)) + (hero.IsSprinting ? LiveRules.SprintNoise : 0);
+
+        if (monster.Position.DistanceTo(hero.Position) > wake)
             return false;
 
         if (monster.Kind.PassesThroughWalls)
             return true;
 
         var path = _fields[hero.Id].DistanceFrom(Collision.TileOf(monster.Position));
-        return path <= LiveRules.WakeDistance + LiveRules.WakePathSlack;
+        return path <= wake + LiveRules.WakePathSlack;
+    }
+
+    private static Vector Steady(LiveMonster monster, Vector desired)
+    {
+        var previous = monster.Heading;
+        var blended = previous.IsZero ? desired : previous * LiveRules.HeadingInertia + desired * (1 - LiveRules.HeadingInertia);
+        var heading = blended.Length < 0.2 ? desired : blended.Normalized();
+        monster.Heading = heading;
+        return heading;
     }
 
     private Vector HeadingToward(LiveMonster monster, LiveHero hero)
@@ -439,7 +503,7 @@ public sealed partial class LiveFloor
     private void Strike(LiveMonster monster, LiveHero hero, bool inReach, List<LiveEvent> events)
     {
         monster.WindupEndsAt = null;
-        monster.AttackReadyAt = Time + LiveRules.MonsterAttackSeconds(monster.Kind.Speed);
+        monster.AttackReadyAt = Time + LiveRules.MonsterAttackSeconds(monster.Speed);
 
         if (!inReach || hero.IsDead)
             return;
@@ -450,15 +514,70 @@ public sealed partial class LiveFloor
             hero.TakeDamage(result.Damage);
 
         events.Add(new HeroHit(monster.Id, hero.Id, result, hero.Health));
+        SwearRevenge(hero, result);
 
-        if (!hero.IsDead)
+        if (hero.IsDead)
+        {
+            Fall(hero, events);
+            return;
+        }
+
+        var player = hero.Player;
+
+        if (result.IsBlocked && player.EffectAmount(EffectKind.BlockReflect) > 0)
+            Prick(hero, monster, DamageCalculator.BaseDamage(monster.Stats, hero.Stats), events);
+
+        if (!result.IsDodged && player.EffectAmount(EffectKind.Thorns) is > 0 and var thorns)
+            Prick(hero, monster, thorns, events);
+    }
+
+    private void Prick(LiveHero hero, LiveMonster monster, int damage, List<LiveEvent> events)
+    {
+        if (monster.IsDead || damage <= 0)
             return;
 
+        monster.TakeDamage(damage);
+        events.Add(new MonsterPricked(hero.Id, monster.Id, damage, monster.Health));
+
+        if (!monster.IsDead)
+            return;
+
+        events.Add(new MonsterSlain(hero.Id, monster.Id));
+        Reward(hero, monster, events);
+    }
+
+    private void Hurt(LiveHero hero, int damage, List<LiveEvent> events)
+    {
+        if (hero.IsDead || hero.IsAway || damage <= 0)
+            return;
+
+        hero.TakeDamage(damage);
+        hero.Touch();
+
+        if (hero.IsDead)
+            Fall(hero, events);
+    }
+
+    private void Fall(LiveHero hero, List<LiveEvent> events)
+    {
         hero.RespawnAt = Time + LiveRules.HeroRespawnSeconds;
         hero.IsMoving = false;
         hero.Deaths++;
         hero.Touch();
-        events.Add(new HeroFell(hero.Id));
+
+        var lost = 0;
+
+        if (Falls == FallRule.LoseCoins)
+        {
+            lost = hero.Player.Coins * Progression.CoinLossPercent / 100;
+            if (lost > 0)
+                hero.Player.TrySpendCoins(lost);
+        }
+
+        events.Add(new HeroFell(hero.Id, lost));
+
+        if (Falls == FallRule.DigGrave)
+            DigGrave(hero, events);
     }
 
     private static AttackResult Bulwark(LiveHero hero, AttackResult result)
@@ -485,14 +604,19 @@ public sealed partial class LiveFloor
 
         var heading = offset.Normalized();
         monster.Facing = heading;
-        MoveMonster(monster, heading * Math.Min(LiveRules.MonsterSpeed(monster.Kind.Speed) * LiveRules.TickSeconds, offset.Length));
+        MoveMonster(monster, heading * Math.Min(LiveRules.MonsterSpeed(monster.Speed) * LiveRules.TickSeconds, offset.Length));
     }
 
     private void MoveMonster(LiveMonster monster, Vector step)
     {
         var from = monster.Position;
-        monster.Position = Collision.Slide(Map, from, step, monster.Radius, passesThroughWalls: monster.Kind.PassesThroughWalls);
-        monster.IsMoving = monster.Position != from;
+        var next = Collision.Slide(Map, from, step, monster.Radius, passesThroughWalls: monster.Kind.PassesThroughWalls);
+
+        if (StepsIntoLava(monster, next))
+            return;
+
+        monster.Position = next;
+        monster.IsMoving |= monster.Position != from;
     }
 
     private void SeparateMonsters()
@@ -516,6 +640,8 @@ public sealed partial class LiveFloor
                 var push = distance < 1e-6 ? new Vector(share, 0) : offset * (share / distance);
                 b.Position = Collision.Slide(Map, b.Position, push, b.Radius, passesThroughWalls: b.Kind.PassesThroughWalls);
                 a.Position = Collision.Slide(Map, a.Position, push * -1, a.Radius, passesThroughWalls: a.Kind.PassesThroughWalls);
+                a.IsMoving |= share > LiveRules.ShuffleThreshold;
+                b.IsMoving |= share > LiveRules.ShuffleThreshold;
             }
         }
     }

@@ -40,6 +40,10 @@ public sealed class GameSession
 
     public Game Game { get; }
 
+    public int FloorCount => _floors.Count;
+
+    public Floor CreateFloor(int number) => _floors.Create(number);
+
     public DateTimeOffset LastUsed { get; private set; }
 
     public long PlaySeconds { get; private set; }

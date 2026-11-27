@@ -17,7 +17,7 @@ export interface HeroGear {
   outfit: Outfit
 }
 
-export function heroGear(equipment: EquippedItem[]): HeroGear {
+export function heroGear(equipment: readonly Pick<EquippedItem, 'slot' | 'item'>[]): HeroGear {
   const worn = (slot: string) => equipment.find(equipped => equipped.slot === slot)?.item
   const mainHand = worn('MainHand')
   const offHand = worn('OffHand')

@@ -52,7 +52,36 @@ public sealed class LiveMonster
 
     public bool IsBurning => BurnSecondsLeft > 0;
 
+    public BossPhase? Phase =>
+        Kind.Phases.Count == 0 ? null : Kind.Phases.LastOrDefault(phase => HealthPercent <= phase.FromHealthPercent) ?? Kind.Phases[0];
+
+    public int PhaseNumber => Phase is { } phase ? Kind.Phases.ToList().IndexOf(phase) + 1 : 0;
+
+    public Speed Speed => Phase?.Speed ?? Kind.Speed;
+
+    public BossPower Power => Phase?.Power ?? Kind.Power;
+
+    public int? SummonerId { get; internal set; }
+
+    internal int PowerCharge { get; set; }
+
+    internal int AnnouncedPhase { get; set; } = 1;
+
+    private int HealthPercent => MaxHealth == 0 ? 0 : (int)Math.Ceiling(Health * 100.0 / MaxHealth);
+
     internal double FrozenUntil { get; set; } = double.NegativeInfinity;
+
+    internal double StaggeredUntil { get; set; } = double.NegativeInfinity;
+
+    public bool IsMarked(double time) => time < MarkedUntil;
+
+    internal double MarkedUntil { get; set; } = double.NegativeInfinity;
+
+    public int VenomStacks { get; internal set; }
+
+    internal int VenomOwnerId { get; set; }
+
+    internal double LastWallStruckAt { get; set; } = double.NegativeInfinity;
 
     internal double FreezeImmuneUntil { get; set; } = double.NegativeInfinity;
 
@@ -68,6 +97,8 @@ public sealed class LiveMonster
 
     internal int? TargetId { get; set; }
 
+    internal Vector Heading { get; set; } = Vector.Zero;
+
     internal void TakeDamage(int amount) => Health = Math.Max(0, Health - amount);
 
     internal void Reset()
@@ -80,6 +111,9 @@ public sealed class LiveMonster
         Health = MaxHealth;
         BurnSecondsLeft = 0;
         FrozenUntil = double.NegativeInfinity;
+        StaggeredUntil = double.NegativeInfinity;
+        MarkedUntil = double.NegativeInfinity;
+        VenomStacks = 0;
     }
 
     internal void Rescale(double scale)

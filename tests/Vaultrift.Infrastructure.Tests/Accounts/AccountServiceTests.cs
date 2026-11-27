@@ -82,6 +82,9 @@ public class AccountServiceTests
         Assert.Equal(game.Code, hero.Code);
         Assert.Equal("Tommaso", hero.Name);
         Assert.Equal(Difficulty.Hard, hero.Difficulty);
+        Assert.Equal(
+            game.Game.Player.Equipment.ToDictionary(pair => pair.Key, pair => pair.Value.Item.Definition.Id),
+            hero.Gear!.ToDictionary(pair => pair.Key, pair => pair.Value.Id));
     }
 
     [Fact]

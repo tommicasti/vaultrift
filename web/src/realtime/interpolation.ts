@@ -9,8 +9,8 @@ export interface Placed {
   moving: boolean
 }
 
-export const renderDelaySeconds = 0.1
-export const maxExtrapolationSeconds = 0.12
+export const renderDelaySeconds = 0.12
+export const maxExtrapolationSeconds = 0.15
 const keptFrames = 12
 const keptGaps = 40
 const offsetEase = 0.05
@@ -53,8 +53,8 @@ export class FrameBuffer<T extends Placed> {
     return offset === null ? 0 : now / 1000 - offset - renderDelaySeconds
   }
 
-  sample(id: number, now: number): Placed | undefined {
-    return sampleFrames(this.frames, id, this.renderTime(now))
+  sample(id: number, now: number, leadSeconds = 0): Placed | undefined {
+    return sampleFrames(this.frames, id, this.renderTime(now) + leadSeconds)
   }
 }
 

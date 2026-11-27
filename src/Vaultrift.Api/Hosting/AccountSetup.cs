@@ -1,15 +1,19 @@
 using System.Security.Claims;
 using System.Threading.RateLimiting;
 using Microsoft.AspNetCore.Authentication.Cookies;
+using Microsoft.AspNetCore.DataProtection;
+using Microsoft.AspNetCore.DataProtection.KeyManagement;
 using Vaultrift.Infrastructure.Accounts;
 using Vaultrift.Infrastructure.Cosmos;
 using Vaultrift.Infrastructure.Persistence;
+using Vaultrift.Infrastructure.Vault;
 
 namespace Vaultrift.Api.Hosting;
 
 public static class AccountSetup
 {
     public const string SignInPolicy = "sign-in";
+    public const string ApplicationName = "Vaultrift";
 
     public static IServiceCollection AddAccounts(this IServiceCollection services, IConfiguration configuration, IHostEnvironment environment)
     {
@@ -26,6 +30,23 @@ public static class AccountSetup
         });
         services.AddSingleton(provider => new AccountService(provider.GetRequiredService<IAccountRepository>(), provider.GetRequiredService<ISaveRepository>()));
         services.AddSingleton(provider => new TrophyService(provider.GetRequiredService<IAccountRepository>(), provider.GetRequiredService<AccountService>()));
+        services.AddSingleton(provider =>
+        {
+            var logger = provider.GetRequiredService<ILoggerFactory>().CreateLogger("Vaultrift.Vault");
+            return new VaultService(
+                provider.GetRequiredService<IVaultRepository>(),
+                provider.GetRequiredService<IAccountRepository>(),
+                provider.GetRequiredService<ISaveRepository>(),
+                provider.GetService<TimeProvider>(),
+                (gameId, error) => logger.LogWarning(error, "Could not bring turn-based game {GameId} into the vault; it was skipped.", gameId));
+        });
+
+        services.AddDataProtection().SetApplicationName(ApplicationName);
+
+        if (provider == "Cosmos")
+            services
+                .AddOptions<KeyManagementOptions>()
+                .Configure<CosmosStore>((options, store) => options.XmlRepository = new KeyRingRepository(new CosmosKeyRing(store.Accounts)));
 
         services
             .AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)

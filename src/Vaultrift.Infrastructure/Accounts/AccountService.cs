@@ -1,5 +1,6 @@
 using System.Collections.Concurrent;
 using Vaultrift.Engine.Gameplay;
+using Vaultrift.Engine.Persistence;
 using Vaultrift.Infrastructure.Persistence;
 
 namespace Vaultrift.Infrastructure.Accounts;
@@ -26,7 +27,8 @@ public sealed record HeroSummary(
     bool IsLost,
     bool IsConquered,
     long PlaySeconds,
-    DateTimeOffset UpdatedAt);
+    DateTimeOffset UpdatedAt,
+    IReadOnlyDictionary<EquipmentSlot, ItemSnapshot>? Gear = null);
 
 public sealed class AccountService
 {
@@ -148,7 +150,8 @@ public sealed class AccountService
                 save.Game.IsLost,
                 save.Game.IsConquered,
                 save.PlaySeconds,
-                record.UpdatedAt);
+                record.UpdatedAt,
+                save.Game.Player.Equipment.ToDictionary(pair => pair.Key, pair => pair.Value.Item));
         }
         catch (Exception error) when (error is InvalidDataException or System.Text.Json.JsonException or ArgumentException)
         {

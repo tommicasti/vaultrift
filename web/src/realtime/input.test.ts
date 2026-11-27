@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { aimToward, joystickVector, moveVector, sameInput } from './input'
-import { ClockOffset, sampleFrames, type Frame, type Placed } from './interpolation'
+import { headingVector, joystickVector, moveVector, relativeMove, sameInput } from './input'
+import { ClockOffset, maxExtrapolationSeconds, sampleFrames, type Frame, type Placed } from './interpolation'
 
 describe('live input', () => {
   it('turns pressed keys into a direction', () => {
@@ -15,24 +15,42 @@ describe('live input', () => {
     expect(y).toBeLessThan(0)
   })
 
+  it('moves forward along the first person view', () => {
+    const north = relativeMove({ x: 0, y: -1 }, Math.PI)
+    expect(north.x).toBeCloseTo(0)
+    expect(north.y).toBeCloseTo(-1)
+    const east = relativeMove({ x: 0, y: -1 }, Math.PI / 2)
+    expect(east.x).toBeCloseTo(1)
+    expect(east.y).toBeCloseTo(0)
+  })
+
+  it('strafes to the right of the first person view', () => {
+    const facingNorth = relativeMove({ x: 1, y: 0 }, Math.PI)
+    expect(facingNorth.x).toBeCloseTo(1)
+    expect(facingNorth.y).toBeCloseTo(0)
+    const facingSouth = relativeMove({ x: 1, y: 0 }, 0)
+    expect(facingSouth.x).toBeCloseTo(-1)
+    expect(facingSouth.y).toBeCloseTo(0)
+    expect(relativeMove({ x: 0, y: 0 }, 1)).toEqual({ x: 0, y: 0 })
+  })
+
+  it('points the heading along the facing angle', () => {
+    const heading = headingVector(Math.PI / 2)
+    expect(heading.x).toBeCloseTo(1)
+    expect(heading.y).toBeCloseTo(0)
+  })
+
   it('cancels opposite keys', () => {
     expect(moveVector(new Set(['KeyA', 'KeyD']))).toEqual({ x: 0, y: 0 })
   })
 
   it('notices only real changes', () => {
-    const still = { x: 1, y: 0, attack: false, aimX: 0, aimY: 1 }
+    const still = { x: 1, y: 0, attack: false, aimX: 0, aimY: 1, sprint: false }
     expect(sameInput(still, { ...still })).toBe(true)
     expect(sameInput(still, { ...still, attack: true })).toBe(false)
+    expect(sameInput(still, { ...still, sprint: true })).toBe(false)
     expect(sameInput(still, { ...still, aimX: 0.02 })).toBe(true)
     expect(sameInput(still, { ...still, aimX: 0.5, aimY: 0.86 })).toBe(false)
-  })
-
-  it('aims from the hero toward the pointer', () => {
-    const { aimX, aimY } = aimToward({ x: 2, y: 2 }, { x: 5, y: 6 })
-    expect(aimX).toBeCloseTo(0.6)
-    expect(aimY).toBeCloseTo(0.8)
-    expect(aimToward({ x: 2, y: 2 }, null)).toEqual({ aimX: 0, aimY: 0 })
-    expect(aimToward({ x: 2, y: 2 }, { x: 2.05, y: 2 })).toEqual({ aimX: 0, aimY: 0 })
   })
 })
 
@@ -47,7 +65,7 @@ describe('interpolation', () => {
 
   it('keeps moving for a moment when a snapshot is late, then stops', () => {
     expect(sampleFrames([frame(1, 0), frame(1.05, 1)], 1, 1.1)?.x).toBeCloseTo(2)
-    expect(sampleFrames([frame(1, 0), frame(1.05, 1)], 1, 9)?.x).toBeCloseTo(1 + 0.12 / 0.05)
+    expect(sampleFrames([frame(1, 0), frame(1.05, 1)], 1, 9)?.x).toBeCloseTo(1 + maxExtrapolationSeconds / 0.05)
   })
 
   it('knows nothing about missing entities', () => {

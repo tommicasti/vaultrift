@@ -8,6 +8,15 @@ namespace Vaultrift.Engine.Tests.Realtime;
 
 public sealed class LivePartyTests
 {
+    private static readonly string[] Wide =
+    [
+        "##############################",
+        "#............................#",
+        "#............................#",
+        "#............................#",
+        "##############################"
+    ];
+
     private static readonly string[] Room =
     [
         "###########",
@@ -57,6 +66,33 @@ public sealed class LivePartyTests
     }
 
     [Fact]
+    public void AutoAimPrefersTheFoeInTheDirectionOfMovement()
+    {
+        var floor = new LiveFloor(DungeonMap.Parse(Wide), new Position(10, 2), new NeverLucky());
+        floor.AddHero(1, "Casti", "knight", HeroStats);
+        floor.AddMonster(new Enemy(10, new Position(9, 2), Rat));
+        floor.AddMonster(new Enemy(11, new Position(10, 3), Rat));
+
+        floor.SetInput(1, HeroInput.Of(0, 1, true));
+        var events = floor.Step();
+
+        Assert.Equal(11, events.OfType<MonsterHit>().First().MonsterId);
+    }
+
+    [Fact]
+    public void WithNobodyAheadAutoAimTakesTheNearestFoe()
+    {
+        var floor = new LiveFloor(DungeonMap.Parse(Wide), new Position(10, 2), new NeverLucky());
+        floor.AddHero(1, "Casti", "knight", HeroStats);
+        floor.AddMonster(new Enemy(10, new Position(9, 2), Rat));
+
+        floor.SetInput(1, HeroInput.Of(1, 0, true));
+        var events = floor.Step();
+
+        Assert.Equal(10, events.OfType<MonsterHit>().First().MonsterId);
+    }
+
+    [Fact]
     public void AnExplicitAimIsNeverOverridden()
     {
         var floor = Floor();
@@ -80,6 +116,42 @@ public sealed class LivePartyTests
 
         Assert.Equal((int)Math.Round(20 * (1 + 2 * LiveRules.ExtraHeroHealth)), rat.MaxHealth);
         Assert.Equal(rat.MaxHealth, rat.Health);
+    }
+
+    [Fact]
+    public void BossesGrowTougherThanTheirFollowers()
+    {
+        var floor = Floor();
+        var ogre = floor.AddMonster(new Enemy(11, new Position(8, 2), new EnemyKind("ogre", "Ogre", new Stats(maxHealth: 100, attack: 1, defense: 0, critical: 0), isBoss: true)));
+        floor.AddHero(1, "Casti", "knight", HeroStats);
+        floor.AddHero(2, "Elisa", "mage", HeroStats);
+
+        Assert.Equal((int)Math.Round(100 * (1 + LiveRules.ExtraHeroBossHealth)), ogre.MaxHealth);
+    }
+
+    [Theory]
+    [InlineData(1, 0)]
+    [InlineData(2, 0)]
+    [InlineData(3, 1)]
+    [InlineData(4, 1)]
+    [InlineData(5, 2)]
+    [InlineData(6, 2)]
+    public void ReinforcementsComeEveryTwoExtraHeroes(int heroes, int tier) =>
+        Assert.Equal(tier, LiveFloor.ReinforcementTier(heroes));
+
+    [Fact]
+    public void ABigPartyMeetsMoreMonstersOfTheSameKinds()
+    {
+        var floor = new LiveFloor(DungeonMap.Parse(Wide), new Position(1, 2), new NeverLucky());
+        for (var index = 0; index < 6; index++)
+            floor.AddMonster(new Enemy(20 + index, new Position(10 + index * 2, 2), Rat));
+
+        var added = floor.Reinforce(heroes: 5);
+
+        Assert.Equal((int)Math.Round(6 * LiveRules.ReinforcementShare * 2), added.Count);
+        Assert.All(added, monster => Assert.Equal(Rat, monster.Kind));
+        Assert.Equal(added.Count, added.Select(monster => monster.Id).Distinct().Count());
+        Assert.Empty(floor.Reinforce(heroes: 2));
     }
 
     [Fact]

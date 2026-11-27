@@ -19,7 +19,22 @@ public sealed record LiveWelcome(
     string RoomCode,
     bool IsHost,
     int MaxHeroes,
-    IReadOnlyList<LivePartyMember> Party);
+    IReadOnlyList<LivePartyMember> Party,
+    IReadOnlyList<LiveChestView> Chests,
+    LiveStairsView? Stairs,
+    Guid WorldId,
+    bool IsShared,
+    double HeroSpeed,
+    double HeroRadius,
+    string ResumeToken,
+    double SprintFactor,
+    double CurrentSpeed,
+    double FixtureRadius,
+    int Protocol);
+
+public sealed record LiveChestView(int Id, int X, int Y);
+
+public sealed record LiveStairsView(int X, int Y, bool IsOpen);
 
 public sealed record LivePartyMember(int HeroId, string Name, string ClassId, bool IsHost, IReadOnlyList<EquippedItemResponse> Equipment);
 
@@ -30,7 +45,15 @@ public sealed record LiveHeroState(
     int Floor,
     int FloorCount,
     Difficulty Difficulty,
-    int Deaths);
+    int Deaths,
+    int DeepestFloor,
+    bool IsConquered,
+    MerchantResponse? Merchant,
+    WaystoneResponse? Waystone,
+    TotemResponse? Totem,
+    IReadOnlyList<LiveGraveView> Graves);
+
+public sealed record LiveGraveView(int Id, int X, int Y, int Count, string OwnerName, bool IsMine);
 
 public sealed record LiveItemView(int Id, int X, int Y, ItemResponse Item);
 
@@ -43,7 +66,11 @@ public sealed record LiveSnapshot(
     IReadOnlyList<LiveProjectileView> Projectiles,
     LiveHeroState? Hero = null,
     IReadOnlyList<LiveItemView>? Items = null,
-    IReadOnlyList<LivePartyMember>? Party = null);
+    IReadOnlyList<LivePartyMember>? Party = null,
+    LiveWelcome? NewFloor = null,
+    IReadOnlyList<TrophyResponse>? Trophies = null,
+    bool Full = false,
+    IReadOnlyList<int>? Gone = null);
 
 public sealed record LiveHeroView(
     int Id,
@@ -63,7 +90,8 @@ public sealed record LiveHeroView(
     double ArcDegrees,
     bool Invisible,
     bool Bulwark,
-    bool Fury);
+    bool Fury,
+    bool Away);
 
 public sealed record LiveMonsterView(
     int Id,
@@ -101,6 +129,10 @@ public sealed record LiveEventView(
     Element? Element = null,
     double? X = null,
     double? Y = null,
-    double? Radius = null);
+    double? Radius = null,
+    int? ChestId = null,
+    IReadOnlyList<int[]>? Tiles = null,
+    string? Tile = null,
+    int? Phase = null);
 
 public sealed record LiveActionResponse(IReadOnlyList<EventResponse> Events, LiveHeroState Hero);

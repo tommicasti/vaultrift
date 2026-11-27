@@ -1795,6 +1795,22 @@
   flex-direction: column;
 }
 
+.offer-stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.1rem 0.6rem;
+  font-size: 0.75rem;
+  color: var(--muted);
+}
+
+.offer-stats .stat-change {
+  margin-left: 0;
+}
+
+.offer-stats.down {
+  color: var(--danger);
+}
+
 .shop-row-text .label {
   overflow: hidden;
   text-overflow: ellipsis;
@@ -1856,47 +1872,6 @@
 
 .on-board .element-badge {
   display: none;
-}
-
-.resume-panel {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 0.75rem;
-  width: min(26rem, 100%);
-}
-
-.resume-card {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  width: 100%;
-  padding: 0.75rem 1rem;
-  background: var(--surface);
-  border: 2px solid var(--accent);
-  border-radius: 10px;
-}
-
-.resume-portrait {
-  width: 3rem;
-  height: 3rem;
-  flex-shrink: 0;
-}
-
-.resume-details {
-  display: flex;
-  flex-direction: column;
-  flex: 1;
-  min-width: 0;
-  text-align: left;
-}
-
-.code-form {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 0.35rem;
-  width: 100%;
 }
 
 .code-form-row {
@@ -2154,54 +2129,6 @@
   top: -60%;
 }
 
-.heroes-title {
-  margin: 0;
-  font-size: 1.05rem;
-  align-self: flex-start;
-}
-
-.heroes-list {
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-  width: 100%;
-  max-height: 19rem;
-  margin: 0;
-  padding: 0;
-  overflow-y: auto;
-  list-style: none;
-}
-
-.heroes-list .resume-card {
-  padding: 0.5rem 0.75rem;
-  border-width: 1px;
-}
-
-.heroes-list .resume-card:first-child {
-  border-width: 2px;
-}
-
-.resume-card.lost {
-  border-color: var(--muted);
-  opacity: 0.75;
-}
-
-.resume-card.lost .resume-portrait {
-  filter: grayscale(1);
-}
-
-.resume-details strong {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.resume-actions {
-  display: flex;
-  align-items: center;
-  gap: 0.25rem;
-}
-
 .forget-button {
   min-width: 2rem;
   padding-inline: 0.4rem;
@@ -2216,10 +2143,6 @@
   font-size: 0.85em;
   font-weight: 700;
   border: 1px solid currentColor;
-}
-
-.resume-details .difficulty-badge {
-  margin-left: 0;
 }
 
 .difficulty-normal {

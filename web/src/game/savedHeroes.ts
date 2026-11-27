@@ -1,4 +1,4 @@
-import type { HeroSummary } from '../api/accountApi'
+import type { HeroGearItem, HeroSummary } from '../api/accountApi'
 import type { Difficulty } from '../api/types'
 
 const storageKey = 'vaultrift.heroes'
@@ -15,6 +15,7 @@ export interface SavedHero {
   isLost: boolean
   isConquered: boolean
   playedAt: number
+  gear: HeroGearItem[]
 }
 
 const difficulties: Difficulty[] = ['Normal', 'Hard', 'Hardcore']
@@ -36,6 +37,7 @@ function parse(value: unknown, fallbackTime: number): SavedHero | null {
     isLost: hero.isLost ?? false,
     isConquered: hero.isConquered ?? false,
     playedAt: hero.playedAt ?? fallbackTime,
+    gear: [],
   }
 }
 
@@ -76,5 +78,6 @@ export function heroFromSummary(summary: HeroSummary): SavedHero {
     isLost: summary.isLost,
     isConquered: summary.isConquered,
     playedAt: Date.parse(summary.updatedAt) || 0,
+    gear: summary.gear ?? [],
   }
 }

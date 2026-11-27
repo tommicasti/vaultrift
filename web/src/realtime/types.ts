@@ -1,4 +1,4 @@
-import type { Difficulty, Element, EquippedItem, GameEvent, InventoryEntryState, ItemInfo, PlayerState, Rarity } from '../api/types'
+import type { Difficulty, Element, EquippedItem, GameEvent, InventoryEntryState, ItemInfo, MerchantState, PlayerState, Rarity, TotemState, TrophyInfo, WaystoneState } from '../api/types'
 
 export interface LiveWelcome {
   heroId: number
@@ -16,6 +16,29 @@ export interface LiveWelcome {
   isHost: boolean
   maxHeroes: number
   party: LivePartyMember[]
+  chests: LiveChest[]
+  stairs?: LiveStairs | null
+  worldId: string
+  isShared: boolean
+  heroSpeed: number
+  heroRadius: number
+  resumeToken: string
+  sprintFactor: number
+  currentSpeed: number
+  fixtureRadius: number
+  protocol?: number
+}
+
+export interface LiveChest {
+  id: number
+  x: number
+  y: number
+}
+
+export interface LiveStairs {
+  x: number
+  y: number
+  isOpen: boolean
 }
 
 export interface LivePartyMember {
@@ -34,6 +57,21 @@ export interface LiveHeroState {
   floorCount: number
   difficulty: Difficulty
   deaths: number
+  deepestFloor: number
+  isConquered: boolean
+  merchant?: MerchantState | null
+  waystone?: WaystoneState | null
+  totem?: TotemState | null
+  graves: LiveGrave[]
+}
+
+export interface LiveGrave {
+  id: number
+  x: number
+  y: number
+  count: number
+  ownerName: string
+  isMine: boolean
 }
 
 export interface LiveItem {
@@ -67,6 +105,7 @@ export interface LiveHero {
   invisible: boolean
   bulwark: boolean
   fury: boolean
+  away: boolean
 }
 
 export type AttackStyle = 'Strike' | 'Stab' | 'Sweep' | 'Thrust' | 'Shoot' | 'Cast'
@@ -122,6 +161,41 @@ export type LiveEventType =
   | 'MonsterPushed'
   | 'SpellUnleashed'
   | 'ShotFired'
+  | 'ChestLooted'
+  | 'MimicSprang'
+  | 'StairsUnsealed'
+  | 'HeroAtStairs'
+  | 'MerchantGreeted'
+  | 'WaystoneTouched'
+  | 'GraveDug'
+  | 'GraveRecovered'
+  | 'GraveLost'
+  | 'TotemPrimed'
+  | 'TotemTooExpensive'
+  | 'TotemAwakened'
+  | 'BossPhaseChanged'
+  | 'TilesChanged'
+  | 'HeroPulled'
+  | 'HeroBlownAway'
+  | 'HeroShardHit'
+  | 'HeroScorched'
+  | 'MonsterSummoned'
+  | 'MonsterWithered'
+  | 'BossSlain'
+  | 'FloorCleared'
+  | 'VaultConquered'
+  | 'RewardGranted'
+  | 'CrystalBroken'
+  | 'ObstacleBroken'
+  | 'MonsterShardHit'
+  | 'MonsterBurnedByLava'
+  | 'MonsterPricked'
+  | 'MonsterEnvenomed'
+  | 'HeroPoisoned'
+  | 'HeroPoisonDamaged'
+  | 'HeroLifeDrained'
+  | 'HeroManaSiphoned'
+  | 'ExoticTriggered'
 
 export interface LiveEvent {
   type: LiveEventType
@@ -140,6 +214,10 @@ export interface LiveEvent {
   x?: number
   y?: number
   radius?: number
+  chestId?: number
+  tiles?: [number, number][]
+  tile?: string
+  phase?: number
 }
 
 export interface LiveSnapshot {
@@ -152,4 +230,8 @@ export interface LiveSnapshot {
   hero?: LiveHeroState | null
   items?: LiveItem[] | null
   party?: LivePartyMember[] | null
+  newFloor?: LiveWelcome | null
+  trophies?: TrophyInfo[] | null
+  full?: boolean
+  gone?: number[] | null
 }

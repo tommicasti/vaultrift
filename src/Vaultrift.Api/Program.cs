@@ -29,6 +29,7 @@ builder.Services.AddAccounts(builder.Configuration, builder.Environment);
 builder.Services.AddRealtime(builder.Configuration);
 builder.Services.AddProblemDetails();
 builder.Services.AddExceptionHandler<IncompatibleSaveHandler>();
+builder.Services.AddExceptionHandler<HeroInWorldHandler>();
 
 var app = builder.Build();
 

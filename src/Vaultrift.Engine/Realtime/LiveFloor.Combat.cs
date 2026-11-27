@@ -16,7 +16,10 @@ public sealed partial class LiveFloor
         bool Glancing = false,
         bool TriggersElement = true,
         int Multiplier = 1,
-        bool Ambush = false);
+        bool Ambush = false,
+        bool IgnoresDefense = false,
+        int Bonus = 0,
+        int DamagePercent = 100);
 
     public IReadOnlyList<LiveProjectile> Projectiles => _projectiles;
 
@@ -93,7 +96,7 @@ public sealed partial class LiveFloor
     private void Attack(LiveHero hero, List<LiveEvent> events)
     {
         var player = hero.Player;
-        var profile = AttackProfile.For(player);
+        var profile = ExoticReach(hero, AttackProfile.For(player));
 
         if (hero.Input.Aim.IsZero && AutoAim(hero, profile) is { } assisted)
             hero.Facing = (assisted.Position - hero.Position).Normalized();
@@ -101,15 +104,38 @@ public sealed partial class LiveFloor
         hero.AttackReadyAt = Time + profile.CooldownFor(hero.Speed);
         events.Add(new HeroSwung(hero.Id));
 
+        if (Totem is not null && AutoAim(hero, profile) is null && StrikeTotem(hero, events))
+            return;
+
+        if (AutoAim(hero, profile) is null && (OpenChest(hero, events) || Hail(hero, events)))
+            return;
+
+        if (profile.Style != AttackStyle.Shoot && AutoAim(hero, profile) is null && (TryShadowstep(hero, profile, events) || TryBreakTerrain(hero, events)))
+            return;
+
         var ambush = player.IsInvisible;
 
         switch (profile.Style)
         {
             case AttackStyle.Shoot:
-                Fire(hero, ProjectileKind.Arrow, LiveRules.ShotRange, weapon: player.Weapon, pierces: (player.Weapon?.Definition as WeaponDefinition)?.Pierces == true, ambush: ambush, events: events);
+                var pierces = (player.Weapon?.Definition as WeaponDefinition)?.Pierces == true || hero.Wields(ExoticPower.RiftNeedle);
+                Fire(hero, ProjectileKind.Arrow, LiveRules.ShotRange, weapon: player.Weapon, pierces: pierces, ambush: ambush, events: events);
+
+                if (player.EffectAmount(EffectKind.DoubleShot) is > 0 and var chance && _random.NextDouble() < chance / 100.0)
+                    Fire(hero, ProjectileKind.Arrow, LiveRules.ShotRange, weapon: player.Weapon, pierces: pierces, events: events, direction: hero.Facing.Rotated(LiveRules.DoubleShotSpread));
+
                 break;
             case AttackStyle.Cast when player.Mana >= player.SpellCost(player.ActiveSpell!):
                 Cast(hero, player.ActiveSpell!, player.Weapon?.Rarity ?? Rarity.Common, events);
+
+                if (hero.Wields(ExoticPower.Echo))
+                {
+                    events.Add(new LiveExoticTriggered(hero.Id, ExoticPower.Echo));
+                    _spellPercent = Game.EchoPowerPercent;
+                    Cast(hero, player.ActiveSpell!, player.Weapon?.Rarity ?? Rarity.Common, events, echo: true);
+                    _spellPercent = 100;
+                }
+
                 break;
             case AttackStyle.Cast:
                 Melee(hero, AttackProfile.Strike, new Blow(player.CombatStats, player.Weapon, Glancing: true, TriggersElement: false), events);
@@ -127,12 +153,25 @@ public sealed partial class LiveFloor
         }
     }
 
-    private LiveMonster? AutoAim(LiveHero hero, AttackProfile profile) =>
-        _monsters
+    private LiveMonster? AutoAim(LiveHero hero, AttackProfile profile)
+    {
+        var reachable = _monsters
             .Where(monster => !monster.IsDead && monster.Position.DistanceTo(hero.Position) <= profile.Reach + monster.Radius)
             .Where(monster => !profile.IsRanged || Collision.ClearPath(Map, hero.Position, monster.Position, 0.1))
             .OrderBy(monster => monster.Position.DistanceTo(hero.Position))
-            .FirstOrDefault();
+            .ToList();
+
+        var heading = hero.Input.Move.IsZero ? hero.Facing : hero.Input.Move.Normalized();
+
+        return reachable.FirstOrDefault(monster => InAimCone(hero, heading, monster)) ?? reachable.FirstOrDefault();
+    }
+
+    private static bool InAimCone(LiveHero hero, Vector heading, LiveMonster monster)
+    {
+        var offset = monster.Position - hero.Position;
+        var distance = offset.Length;
+        return distance < 1e-6 || heading.Dot(offset * (1 / distance)) >= LiveRules.AimConeCosine;
+    }
 
     private void Melee(LiveHero hero, AttackProfile profile, Blow blow, List<LiveEvent> events)
     {
@@ -161,6 +200,8 @@ public sealed partial class LiveFloor
 
         if (player.OffHandWeapon is { } offHand && !main.IsDead)
             HitMonster(hero, main, new Blow(player.OffHandStats, offHand, Glancing: true), events);
+
+        Stagger(hero, targets, events);
     }
 
     private static bool InArc(LiveHero hero, LiveMonster monster, AttackProfile profile)
@@ -174,16 +215,20 @@ public sealed partial class LiveFloor
         return distance < 1e-6 || hero.Facing.Dot(offset * (1 / distance)) >= profile.ArcCosine;
     }
 
-    private void Fire(LiveHero hero, ProjectileKind kind, double range, List<LiveEvent> events, ItemInstance? weapon = null, SpellDefinition? spell = null, Rarity rarity = Rarity.Common, int size = 0, bool pierces = false, int multiplier = 1, bool ambush = false)
+    private void Fire(LiveHero hero, ProjectileKind kind, double range, List<LiveEvent> events, ItemInstance? weapon = null, SpellDefinition? spell = null, Rarity rarity = Rarity.Common, int size = 0, bool pierces = false, int multiplier = 1, bool ambush = false, Vector? direction = null)
     {
-        var projectile = new LiveProjectile(_nextProjectileId++, hero.Id, kind, hero.Position + hero.Facing * LiveRules.HeroRadius, hero.Facing, kind == ProjectileKind.Arrow ? LiveRules.ArrowSpeed : LiveRules.SpellSpeed, range)
+        var heading = direction ?? hero.Facing;
+        var ambushMultiplier = AbilityRules.AmbushDamageMultiplier + (hero.Player.EffectAmount(EffectKind.Ambush) > 0 ? 1 : 0);
+        var projectile = new LiveProjectile(_nextProjectileId++, hero.Id, kind, hero.Position + heading * LiveRules.HeroRadius, heading, kind == ProjectileKind.Arrow ? LiveRules.ArrowSpeed : LiveRules.SpellSpeed, range)
         {
+            PowerPercent = _spellPercent,
+            PiercePercent = hero.Wields(ExoticPower.RiftNeedle) ? Game.RiftNeedlePiercePercent : LiveRules.PiercePercent,
             Weapon = weapon,
             Spell = spell,
             Rarity = spell is null ? weapon?.Rarity ?? Rarity.Common : rarity,
             Size = size,
             Pierces = pierces,
-            Multiplier = ambush ? multiplier * AbilityRules.AmbushDamageMultiplier : multiplier
+            Multiplier = ambush ? multiplier * ambushMultiplier : multiplier
         };
 
         _projectiles.Add(projectile);
@@ -214,6 +259,9 @@ public sealed partial class LiveFloor
 
                 if (Collision.HitsWall(Map, next, LiveRules.ProjectileRadius))
                 {
+                    if (projectile.Kind == ProjectileKind.Arrow && Map.IsCrystal(Collision.TileOf(next)))
+                        Shatter(owner, Collision.TileOf(next), events);
+
                     Land(owner, projectile, projectile.Position, null, events);
                     done = true;
                     break;
@@ -248,12 +296,18 @@ public sealed partial class LiveFloor
             return true;
         }
 
-        var pointBlank = projectile.Origin.DistanceTo(victim.Position) < LiveRules.PointBlankDistance;
+        var travelled = projectile.Origin.DistanceTo(victim.Position);
+        var pointBlank = travelled < LiveRules.PointBlankDistance;
         var stats = owner.Player.CombatStats;
+        var farShot = owner.Player.EffectAmount(EffectKind.FarShotCritical);
+
+        if (farShot > 0 && travelled >= Game.FarShotDistance)
+            stats = stats.WithCritical(stats.Critical + farShot);
+
         var blow = new Blow(stats, projectile.Weapon, Glancing: pointBlank, Multiplier: projectile.Multiplier);
 
         if (projectile.PierceCount > 0)
-            blow = blow with { Multiplier = 1, Stats = stats.WithAttack(stats.Attack * LiveRules.PiercePercent / 100) };
+            blow = blow with { Multiplier = 1, Stats = stats.WithAttack(stats.Attack * projectile.PiercePercent / 100) };
 
         HitMonster(owner, victim, blow, events);
         projectile.PierceCount++;
@@ -265,28 +319,32 @@ public sealed partial class LiveFloor
         if (projectile.Spell is not { } spell)
             return;
 
+        _spellPercent = projectile.PowerPercent;
+
         if (projectile.Size > 0)
-        {
             Explode(owner, spell, projectile.Rarity, at, projectile.Size + 0.5, events);
-            return;
+        else if (victim is not null)
+        {
+            SpellHit(owner, victim, spell, projectile.Rarity, events);
+
+            if (spell.Shape == SpellShape.Chain)
+                ChainFrom(owner, victim, spell, projectile.Rarity, Math.Max(1, spell.Size), events);
         }
 
-        if (victim is null)
-            return;
-
-        SpellHit(owner, victim, spell, projectile.Rarity, events);
-
-        if (spell.Shape == SpellShape.Chain)
-            ChainFrom(owner, victim, spell, projectile.Rarity, Math.Max(1, spell.Size), events);
+        _spellPercent = 100;
     }
 
-    private void Cast(LiveHero hero, SpellDefinition spell, Rarity rarity, List<LiveEvent> events)
+    private void Cast(LiveHero hero, SpellDefinition spell, Rarity rarity, List<LiveEvent> events, bool echo = false)
     {
         var player = hero.Player;
-        player.SpendMana(player.SpellCost(spell));
 
-        var overloaded = player.IsOverloaded;
-        player.IsOverloaded = false;
+        if (!echo)
+            player.SpendMana(player.SpellCost(spell));
+
+        var overloaded = !echo && player.IsOverloaded;
+
+        if (!echo)
+            player.IsOverloaded = false;
         var size = spell.Size + (overloaded ? AbilityRules.OverloadAreaBonus : 0);
         hero.Touch();
 
@@ -385,15 +443,16 @@ public sealed partial class LiveFloor
 
         var player = hero.Player;
         var stats = player.CombatStats.WithAttack(player.CombatStats.Attack + spell.Power);
-        var damage = DamageCalculator.BaseDamage(stats, target.Stats);
+        var damage = Math.Max(DamageCalculator.MinimumDamage, DamageCalculator.BaseDamage(stats, target.Stats) * _spellPercent / 100);
         var critical = _random.NextDouble() < Math.Min(stats.Critical, DamageCalculator.MaxCritical) / 100.0;
         var rolled = new AttackResult(critical ? damage * DamageCalculator.CriticalMultiplier : damage, critical);
-        var result = ElementRules.Apply(rolled, spell.Element, target.Kind.Weakness, target.Kind.Resistance, rarity);
+        var element = SpellElement(hero, spell, target);
+        var result = ChargeInWater(ElementRules.Apply(rolled, element, target.Kind.Weakness, target.Kind.Resistance, rarity), element, target);
 
         Wound(hero, target, result, events);
 
         if (!target.IsDead)
-            TriggerElement(hero, spell.Element, rarity, target, result.Damage, events, spell.AlwaysTriggers, player.EffectAmount(EffectKind.SpellMastery));
+            TriggerElement(hero, element, rarity, target, result.Damage, events, spell.AlwaysTriggers, player.EffectAmount(EffectKind.SpellMastery));
     }
 
     private void HitMonster(LiveHero hero, LiveMonster target, Blow blow, List<LiveEvent> events)
@@ -401,27 +460,55 @@ public sealed partial class LiveFloor
         if (target.IsDead)
             return;
 
+        blow = BeforeExoticHit(hero, target, blow, events);
+
+        if (target.IsMarked(Time))
+            blow = blow with { DamagePercent = blow.DamagePercent * (100 + Game.HuntressMarkBonusPercent) / 100 };
+
+        var defender = blow.IgnoresDefense ? target.Stats.WithDefense(0) : target.Stats;
+        var ambushMultiplier = DamageCalculator.CriticalMultiplier + (hero.Player.EffectAmount(EffectKind.Ambush) > 0 ? 1 : 0);
         var rolled = blow.Ambush
-            ? new AttackResult(DamageCalculator.BaseDamage(blow.Stats, target.Stats) * DamageCalculator.CriticalMultiplier, IsCritical: true)
-            : _damage.Calculate(blow.Stats, target.Stats);
+            ? new AttackResult(DamageCalculator.BaseDamage(blow.Stats, defender) * ambushMultiplier, IsCritical: true)
+            : _damage.Calculate(blow.Stats, defender);
 
         if (!rolled.Missed && blow.Multiplier > 1)
             rolled = rolled with { Damage = rolled.Damage * blow.Multiplier };
+
+        if (!rolled.Missed && (blow.Bonus > 0 || blow.DamagePercent != 100))
+            rolled = rolled with { Damage = (rolled.Damage + blow.Bonus) * blow.DamagePercent / 100 };
 
         if (!rolled.Missed && blow.Glancing)
             rolled = rolled with { Damage = Math.Max(DamageCalculator.MinimumDamage, rolled.Damage / Game.GlancingBlowDivisor) };
 
         var weapon = blow.Weapon;
-        var result = ElementRules.Apply(rolled, weapon?.Element, target.Kind.Weakness, target.Kind.Resistance, weapon?.Rarity ?? Rarity.Common);
+        var result = ChargeInWater(ElementRules.Apply(rolled, weapon?.Element, target.Kind.Weakness, target.Kind.Resistance, weapon?.Rarity ?? Rarity.Common), weapon?.Element, target);
 
         Wound(hero, target, result, events);
+        DrainLife(hero, result, events);
+        AfterExoticHit(hero, target, blow, result);
 
         if (!target.IsDead && !result.Missed && blow.TriggersElement && weapon?.Element is { } element)
             TriggerElement(hero, element, weapon.Rarity, target, result.Damage, events);
     }
 
+    private void DrainLife(LiveHero hero, AttackResult result, List<LiveEvent> events)
+    {
+        var player = hero.Player;
+        var percent = player.EffectAmount(EffectKind.LifeSteal) + (player.FuryTurns > 0 ? player.EffectAmount(EffectKind.FuryLifeSteal) : 0);
+
+        if (percent <= 0 || result.Missed || result.Damage <= 0 || hero.Health >= hero.MaxHealth)
+            return;
+
+        var amount = Math.Max(1, result.Damage * percent / 100);
+        player.Heal(amount);
+        hero.Touch();
+        events.Add(new HeroLifeDrained(hero.Id, amount));
+    }
+
     private void Wound(LiveHero hero, LiveMonster target, AttackResult result, List<LiveEvent> events)
     {
+        var wasMarked = target.IsMarked(Time);
+
         if (!result.Missed)
             target.TakeDamage(result.Damage);
 
@@ -438,6 +525,7 @@ public sealed partial class LiveFloor
 
         events.Add(new MonsterSlain(hero.Id, target.Id));
         Reward(hero, target, events);
+        AfterKill(hero, target, wasMarked, events);
     }
 
     private void TriggerElement(LiveHero hero, Element element, Rarity rarity, LiveMonster target, int damage, List<LiveEvent> events, bool guaranteed = false, int extraChance = 0)
@@ -499,12 +587,15 @@ public sealed partial class LiveFloor
                 return;
 
             struck.Add(victim.Id);
-            var result = ElementRules.Apply(
-                new AttackResult(Math.Max(DamageCalculator.MinimumDamage, (damage + 1) / 2), IsCritical: false),
+            var result = ChargeInWater(
+                ElementRules.Apply(
+                    new AttackResult(Math.Max(DamageCalculator.MinimumDamage, (damage + 1) / 2), IsCritical: false),
+                    Element.Lightning,
+                    victim.Kind.Weakness,
+                    victim.Kind.Resistance,
+                    rarity),
                 Element.Lightning,
-                victim.Kind.Weakness,
-                victim.Kind.Resistance,
-                rarity);
+                victim);
 
             Wound(hero, victim, result, events);
             from = victim;

@@ -74,4 +74,34 @@ public class StatsPreviewTests
 
         Assert.Equal(EquipResult.NotEquippable, preview.Result);
     }
+
+    [Fact]
+    public void PreviewItem_ShowsAnItemThatIsNotInTheBackpackAsIfWorn()
+    {
+        var player = NewPlayer();
+        player.Equip(Add(player, Helmet));
+
+        var preview = player.PreviewItem(Cap, null, Content);
+
+        Assert.Equal(EquipResult.Equipped, preview.Result);
+        Assert.Equal(3, preview.Defense);
+        Assert.Equal(6, preview.Evasion);
+        Assert.Equal(Helmet, Assert.Single(player.Equipment).Value.Item.Definition);
+        Assert.Empty(player.Inventory.Entries);
+    }
+
+    [Fact]
+    public void PreviewItem_WorksWithAFullBackpack()
+    {
+        var player = new Player(new Position(1, 1), new Stats(maxHealth: 30, attack: 5, defense: 2, evasion: 4));
+        player.Equip(Add(player, Cap));
+        while (!player.Inventory.IsFull)
+            player.Inventory.TryAdd(TestItems.Sword);
+
+        var preview = player.PreviewItem(Helmet, null, Content);
+
+        Assert.Equal(EquipResult.Equipped, preview.Result);
+        Assert.Equal(5, preview.Defense);
+        Assert.True(player.Inventory.IsFull);
+    }
 }

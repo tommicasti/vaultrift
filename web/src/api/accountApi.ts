@@ -1,4 +1,4 @@
-import type { Difficulty, TrophyInfo } from './types'
+import type { Difficulty, EquipmentSlot, ItemInfo, TrophyInfo } from './types'
 
 export interface HeroSummary {
   id: string
@@ -12,6 +12,12 @@ export interface HeroSummary {
   isConquered: boolean
   playSeconds: number
   updatedAt: string
+  gear?: HeroGearItem[]
+}
+
+export interface HeroGearItem {
+  slot: EquipmentSlot
+  item: ItemInfo
 }
 
 export interface AccountInfo {

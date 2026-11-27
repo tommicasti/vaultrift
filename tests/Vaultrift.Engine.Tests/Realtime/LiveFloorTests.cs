@@ -222,6 +222,24 @@ public sealed class LiveFloorTests
     }
 
     [Fact]
+    public void FallingCostsAQuarterOfTheCoins()
+    {
+        var floor = Floor(OpenRoom, startX: 2, startY: 2);
+        var hero = floor.AddHero(1, "Casti", "knight", new Stats(maxHealth: 1, attack: 1, defense: 0, critical: 0));
+        hero.Player.GainCoins(200);
+        floor.AddMonster(new Enemy(10, new Position(3, 2), Rat));
+
+        var events = new List<LiveEvent>();
+
+        while (!hero.IsDead)
+            events.AddRange(floor.Step());
+
+        var fell = Assert.Single(events.OfType<HeroFell>());
+        Assert.Equal(200 * Progression.CoinLossPercent / 100, fell.CoinsLost);
+        Assert.Equal(200 - fell.CoinsLost, hero.Player.Coins);
+    }
+
+    [Fact]
     public void FallenHeroesRiseAtTheStartAfterAWhile()
     {
         var floor = Floor(OpenRoom, startX: 2, startY: 2);
@@ -241,6 +259,23 @@ public sealed class LiveFloorTests
         Assert.Contains(events, e => e is HeroRespawned { HeroId: 1 });
         Assert.Equal(hero.Stats.MaxHealth, hero.Health);
         Assert.Equal(floor.Start, hero.Position);
+    }
+
+    [Fact]
+    public void AHeroWhoLeavesWhileFallenGoesHomeHealed()
+    {
+        var floor = Floor(OpenRoom, startX: 2, startY: 2);
+        var hero = floor.AddHero(1, "Casti", "knight", new Stats(maxHealth: 1, attack: 1, defense: 0, critical: 0));
+        floor.AddMonster(new Enemy(10, new Position(3, 2), Rat));
+
+        while (!hero.IsDead)
+            floor.Step();
+
+        Assert.True(floor.RemoveHero(1));
+
+        Assert.Equal(hero.Stats.MaxHealth, hero.Player.Health);
+        Assert.Empty(floor.Heroes);
+        Assert.False(floor.RemoveHero(1));
     }
 
     [Fact]
@@ -296,5 +331,66 @@ public sealed class LiveFloorTests
 
         Assert.True(Collision.ClearPath(map, new Vector(1, 1), new Vector(8, 1), LiveRules.MonsterRadius));
         Assert.False(Collision.ClearPath(map, new Vector(1, 1), new Vector(1, 3), LiveRules.MonsterRadius));
+    }
+
+    [Fact]
+    public void SprintingCoversMoreGround()
+    {
+        var walking = Floor(OpenRoom);
+        var walker = walking.AddHero(1, "Casti", "knight", HeroStats);
+        walking.SetInput(1, HeroInput.Of(1, 0, false));
+        Run(walking, 1);
+
+        var sprinting = Floor(OpenRoom);
+        var sprinter = sprinting.AddHero(1, "Casti", "knight", HeroStats);
+        sprinting.SetInput(1, HeroInput.Of(1, 0, false, sprint: true));
+        Run(sprinting, 1);
+
+        Assert.Equal((walker.Position.X - 1) * LiveRules.SprintFactor, sprinter.Position.X - 1, 2);
+        Assert.True(sprinter.IsSprinting);
+    }
+
+    [Fact]
+    public void ASprintingHeroCannotAttack()
+    {
+        var floor = Floor(OpenRoom);
+        floor.AddHero(1, "Casti", "knight", HeroStats);
+        floor.SetInput(1, HeroInput.Of(1, 0, true, sprint: true));
+
+        var events = Run(floor, 1);
+
+        Assert.DoesNotContain(events, e => e is HeroSwung);
+    }
+
+    [Fact]
+    public void SprintingWakesMonstersFromFurtherAway()
+    {
+        var quiet = Floor(OpenRoom);
+        quiet.AddHero(1, "Casti", "knight", HeroStats);
+        var calm = quiet.AddMonster(new Enemy(10, new Position(11, 1), Rat));
+        quiet.SetInput(1, HeroInput.Of(1, 0, false));
+        Run(quiet, 0.5);
+
+        var loud = Floor(OpenRoom);
+        loud.AddHero(1, "Casti", "knight", HeroStats);
+        var startled = loud.AddMonster(new Enemy(10, new Position(11, 1), Rat));
+        loud.SetInput(1, HeroInput.Of(1, 0, false, sprint: true));
+        Run(loud, 0.5);
+
+        Assert.False(calm.IsAwake);
+        Assert.True(startled.IsAwake);
+    }
+
+    [Fact]
+    public void HeroesSlipAroundTheCornerOfADoorway()
+    {
+        var floor = Floor(["#####", "#...#", "##.##", "#...#", "#####"]);
+        var hero = floor.AddHero(1, "Casti", "knight", HeroStats);
+        hero.Position = new Vector(2.35, 1);
+        floor.SetInput(1, HeroInput.Of(0, 1, false));
+
+        Run(floor, 1);
+
+        Assert.True(hero.Position.Y > 2);
     }
 }

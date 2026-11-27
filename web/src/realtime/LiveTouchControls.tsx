@@ -13,11 +13,13 @@ interface LiveTouchControlsProps {
   onQuickSlot: (slot: number) => void
   onBackpack: () => void
   onLeave: () => void
+  sprinting: boolean
+  onSprint: (on: boolean) => void
 }
 
 const stickRadius = 56
 
-export function LiveTouchControls({ quickSlots, ability, onAbility, onMove, onAttack, onQuickSlot, onBackpack, onLeave }: LiveTouchControlsProps) {
+export function LiveTouchControls({ quickSlots, ability, onAbility, onMove, onAttack, onQuickSlot, onBackpack, onLeave, sprinting, onSprint }: LiveTouchControlsProps) {
   const origin = useRef<{ id: number; x: number; y: number } | null>(null)
   const [knob, setKnob] = useState<{ x: number; y: number } | null>(null)
 
@@ -63,6 +65,15 @@ export function LiveTouchControls({ quickSlots, ability, onAbility, onMove, onAt
           onPointerCancel={() => onAttack(false)}
         >
           ⚔
+        </button>
+        <button
+          type="button"
+          className={sprinting ? 'live-slot live-sprint on' : 'live-slot live-sprint'}
+          aria-label="Run"
+          aria-pressed={sprinting}
+          onClick={() => onSprint(!sprinting)}
+        >
+          »
         </button>
         {ability && (
           <button type="button" className="live-slot live-ability" aria-label={ability.kind} disabled={ability.cooldown > 0} onClick={onAbility}>

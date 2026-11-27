@@ -48,7 +48,7 @@ public sealed class DungeonMap
             var row = new char[Width];
 
             for (var x = 0; x < Width; x++)
-                row[x] = Symbol(_tiles[y, x]);
+                row[x] = SymbolOf(_tiles[y, x]);
 
             rows.Add(new string(row));
         }
@@ -56,7 +56,7 @@ public sealed class DungeonMap
         return rows;
     }
 
-    private static char Symbol(TileType tile) => tile switch
+    public static char SymbolOf(TileType tile) => tile switch
     {
         TileType.Wall => '#',
         TileType.Floor => '.',

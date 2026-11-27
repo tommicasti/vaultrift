@@ -7,7 +7,7 @@ function blocksSight(map: string[], x: number, y: number): boolean {
   return symbol === undefined || symbol === '#'
 }
 
-function clearLine(map: string[], fromX: number, fromY: number, toX: number, toY: number): boolean {
+export function clearLine(map: string[], fromX: number, fromY: number, toX: number, toY: number): boolean {
   const steps = Math.max(Math.abs(toX - fromX), Math.abs(toY - fromY)) * 2
 
   for (let step = 1; step < steps; step++) {

@@ -21,6 +21,7 @@ interface ActorBaseProps {
   rotation: number
   idle: string
   walk?: string
+  walkPace?: number
   cue?: Cue
   tint?: string
   scale?: number
@@ -33,6 +34,7 @@ interface ActorBaseProps {
   hidden?: boolean
   procedural?: boolean
   track?: () => Tracked
+  posed?: (body: Object3D) => void
   children?: ReactNode
 }
 
@@ -40,6 +42,8 @@ export interface Tracked {
   x: number
   y: number
   moving: boolean
+  facing?: number
+  predicted?: boolean
 }
 
 export interface Outfit {
@@ -120,7 +124,7 @@ function findParts(body: Object3D): Parts {
   return parts
 }
 
-function animateParts(parts: Parts, name: string, t: number, progress: number) {
+function animateParts(parts: Parts, name: string, t: number, progress: number, gait: number) {
   parts.legs.forEach((leg, index) => {
     const base = leg.userData.yaw as number
     const lift = leg.getObjectByName('hip')
@@ -128,13 +132,12 @@ function animateParts(parts: Parts, name: string, t: number, progress: number) {
     let swing = Math.sin(t * 2 + index) * 0.03
     let raise = 0
 
-    if (name === 'Walk') {
-      swing = Math.sin(t * 16 + phase) * 0.3
-      raise = Math.max(0, Math.sin(t * 16 + phase)) * 0.35
+    if (name === 'Walk' || name === 'Idle' || name === 'Sleep' || !(name in proceduralSeconds)) {
+      swing = swing * (1 - gait) + Math.sin(t * 16 + phase) * 0.3 * gait
+      raise = Math.max(0, Math.sin(t * 16 + phase)) * 0.35 * gait + (name === 'Sleep' ? -0.25 * (1 - gait) : 0)
     } else if (name === 'Attack' && index < 2) raise = Math.sin(progress * Math.PI) * 0.6
     else if (name === 'Charge' && index < 2) raise = chargeLunge(progress) * 0.9 - chargeCoil(progress) * 0.3
     else if (name === 'Death') raise = -progress * 0.9
-    else if (name === 'Sleep') raise = -0.25
 
     leg.rotation.set(0, base + swing, 0)
     if (lift) lift.rotation.set(0, 0, (lift.userData.base as number) + raise)
@@ -154,7 +157,7 @@ function animateParts(parts: Parts, name: string, t: number, progress: number) {
     if (name === 'Attack') strike = Math.sin(progress * Math.PI) * 0.9
     else if (name === 'Charge') strike = chargeLunge(progress) * 1.2 - chargeCoil(progress) * 0.5
     else if (name === 'Death') strike = -progress * 0.8
-    if (parts.tail.userData.sway) parts.tail.rotation.set(0.35 + strike * 0.4, Math.sin(t * (name === 'Walk' ? 9 : 2.4)) * 0.45, 0)
+    if (parts.tail.userData.sway) parts.tail.rotation.set(0.35 + strike * 0.4, Math.sin(t * (2.4 + 6.6 * gait)) * 0.45, 0)
     else parts.tail.rotation.set(strike, 0, 0)
   }
 }
@@ -177,25 +180,33 @@ interface Motion {
   seconds?: number
 }
 
-function applyMotion(pose: Group, parts: Parts, motion: Motion, moving: boolean, size: number, now: number) {
+function applyMotion(pose: Group, parts: Parts, motion: Motion, gait: number, size: number, now: number) {
   const lid = parts.lid
-  const t = (now - motion.start) / 1000
-  const name = moving && !(motion.name in proceduralSeconds) ? 'Walk' : motion.name
-  const progress = Math.min(1, name === motion.name && motion.seconds ? t / motion.seconds : (t * clipSpeed(name)) / (proceduralSeconds[name] ?? 1))
+  const acting = motion.name in proceduralSeconds
+  const t = acting ? (now - motion.start) / 1000 : now / 1000
+  const name = acting ? motion.name : gait > 0.5 ? 'Walk' : motion.name
+  const progress = Math.min(1, acting && motion.seconds ? t / motion.seconds : (t * clipSpeed(name)) / (proceduralSeconds[name] ?? 1))
   pose.position.set(0, 0, 0)
   pose.rotation.set(0, 0, 0)
   pose.scale.set(1, 1, 1)
   if (lid) lid.rotation.x = -jawOpening(name, t, progress)
-  animateParts(parts, name, t, progress)
+  animateParts(parts, acting ? name : motion.name, t, progress, acting ? 0 : gait)
+
+  if (!acting) {
+    const rest = 1 - gait
+    const legged = parts.legs.length >= 4
+    pose.position.y = Math.abs(Math.sin(t * 14)) * (legged ? 0.02 : 0.08) * size * gait
+    pose.rotation.z = legged ? 0 : Math.sin(t * 14) * 0.08 * gait
+    if (motion.name === 'Sleep') {
+      if (!lid) pose.scale.set(1 + 0.04 * rest, 1 - (0.14 - Math.sin(t * 1.3) * 0.02) * rest, 1 + 0.04 * rest)
+      return
+    }
+    pose.scale.set(1 - Math.sin(t * 2.2) * 0.02 * rest, 1 + Math.sin(t * 2.2) * 0.04 * rest, 1 - Math.sin(t * 2.2) * 0.02 * rest)
+    pose.rotation.y = Math.sin(t * 0.9) * 0.06 * rest
+    return
+  }
 
   switch (name) {
-    case 'Sleep':
-      if (!lid) pose.scale.set(1.04, 0.86 + Math.sin(t * 1.3) * 0.02, 1.04)
-      break
-    case 'Walk':
-      pose.position.y = Math.abs(Math.sin(t * 14)) * 0.08 * size
-      pose.rotation.z = Math.sin(t * 14) * 0.08
-      break
     case 'Attack': {
       const lunge = progress < 0.4 ? Math.sin((progress / 0.4) * (Math.PI / 2)) : Math.cos(((progress - 0.4) / 0.6) * (Math.PI / 2))
       pose.position.z = lunge * 0.3 * size
@@ -206,15 +217,13 @@ function applyMotion(pose: Group, parts: Parts, motion: Motion, moving: boolean,
     case 'Charge': {
       const coil = chargeCoil(progress)
       const lunge = chargeLunge(progress)
-      const shake = progress < chargeStrike ? Math.sin(t * 70) * 0.03 * coil : 0
       pose.position.z = (lunge * 0.75 - coil * 0.3) * size
-      pose.position.x = shake * size
       pose.rotation.x = lunge * 0.45 - coil * 0.35
       pose.scale.set(1 + coil * 0.12 + lunge * 0.05, 1 - coil * 0.16 + lunge * 0.06, 1 + lunge * 0.18)
       break
     }
     case 'Hit':
-      pose.position.x = Math.sin(t * 60) * 0.05 * size * (1 - progress)
+      pose.position.z = -Math.sin(progress * Math.PI) * 0.12 * size
       pose.scale.set(1 + 0.08 * (1 - progress), 1 - 0.1 * (1 - progress), 1 + 0.08 * (1 - progress))
       break
     case 'Death':
@@ -227,9 +236,6 @@ function applyMotion(pose: Group, parts: Parts, motion: Motion, moving: boolean,
       pose.position.y = Math.sin(progress * Math.PI) * 0.3 * size
       if (name === 'Spawn') pose.scale.setScalar(0.4 + progress * 0.6)
       break
-    default:
-      pose.scale.set(1 - Math.sin(t * 2.2) * 0.02, 1 + Math.sin(t * 2.2) * 0.04, 1 - Math.sin(t * 2.2) * 0.02)
-      pose.rotation.y = Math.sin(t * 0.9) * 0.06
   }
 }
 
@@ -247,8 +253,15 @@ function clipSpeed(name: string): number {
 
 const stepSpeed = cell * 6.5
 const turnSpeed = 14
+const predictedTurnSpeed = 30
 const teleportDistance = cell * 9
 const maxFrameDelta = 1 / 20
+const walkHoldMs = 180
+const gaitEase = 7
+const paceSmoothing = 10
+const minPace = 0.8
+const stillSpeed = cell * 0.25
+const maxPace = 3
 const fadeSeconds = 0.18
 
 export function Actor({ url, build, ...rest }: ActorProps) {
@@ -268,7 +281,7 @@ function BuiltActor({ build, ...rest }: ActorBaseProps & { build: () => Object3D
   return <ActorBody source={source} clips={[]} {...rest} procedural />
 }
 
-function ActorBody({ source, clips: animations, x, y, rotation, idle, walk = 'Walking_A', cue, tint, scale = 1, mainHand, offHand, ghostly, hidden, procedural, outfit, alive = true, sinking = false, track, children }: ActorBodyProps) {
+function ActorBody({ source, clips: animations, x, y, rotation, idle, walk = 'Walking_A', walkPace, cue, tint, scale = 1, mainHand, offHand, ghostly, hidden, procedural, outfit, alive = true, sinking = false, track, posed, children }: ActorBodyProps) {
   const weapons = useKitObjects(modelUrls.weapons)
   const root = useRef<Group>(null)
   const pose = useRef<Group>(null)
@@ -282,6 +295,9 @@ function ActorBody({ source, clips: animations, x, y, rotation, idle, walk = 'Wa
     return map
   }, [animations, mixer])
   const state = useRef({ base: idle, current: null as AnimationAction | null, busyUntil: 0, held: false })
+  const lastMoving = useRef(-Infinity)
+  const gait = useRef(0)
+  const pace = useRef({ from: new Vector3(), speed: 0, known: false })
   const placed = useRef(false)
   const sinkStart = useRef(0)
   const target = useMemo(() => new Vector3(x * cell, 0, y * cell), [x, y])
@@ -396,12 +412,16 @@ function ActorBody({ source, clips: animations, x, y, rotation, idle, walk = 'Wa
     if (!group) return
 
     let moving: boolean
+    let wanted = rotation
+    let hold = walkHoldMs
 
     if (track) {
       const tracked = track()
       group.position.set(tracked.x * cell, 0, tracked.y * cell)
       placed.current = true
       moving = tracked.moving
+      if (tracked.facing !== undefined) wanted = tracked.facing
+      if (tracked.predicted) hold = 0
     } else {
       if (!placed.current) {
         group.position.copy(target)
@@ -415,12 +435,20 @@ function ActorBody({ source, clips: animations, x, y, rotation, idle, walk = 'Wa
       else if (moving) group.position.add(target.clone().sub(group.position).clampLength(0, stepSpeed * Math.max(1, distance / cell) * delta))
     }
 
-    let turn = rotation - group.rotation.y
+    const step = pace.current
+    if (step.known && delta > 0) step.speed += (group.position.distanceTo(step.from) / delta - step.speed) * Math.min(1, delta * paceSmoothing)
+    step.from.copy(group.position)
+    step.known = true
+    if (walkPace && step.speed < stillSpeed) moving = false
+
+    let turn = wanted - group.rotation.y
     turn = Math.atan2(Math.sin(turn), Math.cos(turn))
-    group.rotation.y += turn * Math.min(1, turnSpeed * delta)
+    group.rotation.y += turn * Math.min(1, (hold === 0 ? predictedTurnSpeed : turnSpeed) * delta)
 
     const now = performance.now()
     const current = state.current
+    if (moving) lastMoving.current = now
+    const walking = moving || now - lastMoving.current < hold
 
     if (sinking && sinkStart.current === 0) sinkStart.current = now + sinkDelayMs
     const sunk = sinking && now > sinkStart.current ? ((now - sinkStart.current) / 1000) * sinkSpeed * scale : 0
@@ -429,7 +457,8 @@ function ActorBody({ source, clips: animations, x, y, rotation, idle, walk = 'Wa
       if (!current.held && now > current.busyUntil && motion.current.name in proceduralSeconds)
         motion.current = { name: current.base, start: now }
       if (pose.current) {
-        applyMotion(pose.current, parts, motion.current, moving, scale, now)
+        gait.current += ((walking ? 1 : 0) - gait.current) * Math.min(1, delta * gaitEase)
+        applyMotion(pose.current, parts, motion.current, gait.current, scale, now)
         pose.current.position.y -= sunk
       }
       return
@@ -438,11 +467,13 @@ function ActorBody({ source, clips: animations, x, y, rotation, idle, walk = 'Wa
     if (pose.current) pose.current.position.y = -sunk
 
     if (!current.held && now > current.busyUntil) {
-      const wanted = moving ? walk : current.base
+      const wanted = walking ? walk : current.base
       if (current.current !== actions.get(wanted)) play(wanted, false)
+      if (walkPace && walking && current.current === actions.get(walk)) current.current.timeScale = Math.min(maxPace, Math.max(minPace, step.speed / walkPace))
     }
 
     mixer.update(delta)
+    posed?.(body)
   })
 
   return (

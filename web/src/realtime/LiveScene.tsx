@@ -1,19 +1,33 @@
 import { Html } from '@react-three/drei'
 import { Canvas, useFrame, useThree } from '@react-three/fiber'
-import { Suspense, useEffect, useMemo, useRef, useState } from 'react'
-import { DirectionalLight, Group, Mesh, MeshBasicMaterial, PCFShadowMap, Plane, Raycaster, Vector2, Vector3 } from 'three'
-import type { EquippedItem, ItemInfo } from '../api/types'
+import { Suspense, useCallback, useEffect, useMemo, useRef, useState, type RefObject } from 'react'
+import { DirectionalLight, Group, Mesh, MeshBasicMaterial, PCFShadowMap, PerspectiveCamera, Vector3 } from 'three'
+import type { EquippedItem, ItemInfo, MerchantState, TotemState, WaystoneState } from '../api/types'
 import { Actor, type Cue, type Tracked } from '../scene3d/Actor'
 import { Decor } from '../scene3d/Decor'
 import { DungeonMap } from '../scene3d/DungeonMap'
+import { FirstPersonHands } from '../scene3d/FirstPersonHands'
 import { heroGear, type HeroGear } from '../scene3d/heroLook'
-import { FloorItem } from '../scene3d/Scene3D'
+import { BossAura, BossCrown, Built, FloatingCrystal, FloorItem, Glow, LootBeam, Piece, RarityRing } from '../scene3d/Scene3D'
+import { buildStairs, buildTotem } from '../scene3d/creatures'
 import { useKit } from '../scene3d/kit'
-import { biomeLook, cell, heroIdleClip, heroUrl, modelUrls, monsterLook, rarityColors } from '../scene3d/models'
-import { loadZoom, saveZoom } from '../scene3d/viewMode'
-import type { FrameBuffer } from './interpolation'
+import { biomeLook, cell, heroIdleClip, heroUrl, merchantUrl, modelUrls, monsterLook, rarityColors, selfCrowned } from '../scene3d/models'
+import { canMouseLook, detectLowPower, loadZoom, saveZoom, type CameraMode } from '../scene3d/viewMode'
+import { renderDelaySeconds, type FrameBuffer } from './interpolation'
+import { Bursts, LevelUpAura } from '../scene3d/Effects3D'
+import { GridLines } from '../scene3d/Grid'
+import { Weather } from '../scene3d/Weather'
+import { ElementIcon } from '../components/ElementIcon'
+import { Sprite } from '../components/Sprite'
+import { crownSprite, rarityStars, sheets, starSprites } from '../game/sprites'
+import { Shroud } from '../scene3d/Shroud'
+import type { Vision } from './topDownLayout'
+import type { MoveInput } from './input'
+import { CompassTracker, PartyMarkers } from './PartyCompass'
+import { bossMarkerId } from './compass'
+import type { Predictor } from './prediction'
 import type { Element } from '../api/types'
-import type { LiveHero, LiveItem, LiveMonster, LiveProjectile, LiveWelcome } from './types'
+import type { LiveChest, LiveGrave, LiveHero, LiveItem, LiveMonster, LiveProjectile, LiveStairs, LiveWelcome } from './types'
 import './live.css'
 
 export interface Popup {
@@ -23,6 +37,7 @@ export interface Popup {
   text: string
   kind: 'damage' | 'critical' | 'miss' | 'hurt' | 'reward' | 'level' | 'burn' | 'frozen'
   until: number
+  levelUpHero?: number
 }
 
 export interface LiveCue extends Cue {
@@ -38,6 +53,22 @@ export interface Blast {
   start: number
 }
 
+export type SparkKind = 'rubble' | 'crystal' | 'claw'
+
+export interface Spark {
+  key: number
+  x: number
+  y: number
+  kind: SparkKind
+  start: number
+}
+
+export interface Lunge {
+  at: number
+  x: number
+  y: number
+}
+
 export type MovingProjectile = LiveProjectile & { moving: boolean }
 
 export interface Corpse {
@@ -45,24 +76,44 @@ export interface Corpse {
   until: number
 }
 
-export interface GroundPoint {
-  x: number
-  y: number
+export interface Look {
+  yaw: number
+  pitch: number
+}
+
+export interface Prediction {
+  predictor: Predictor
+  move: RefObject<MoveInput>
+  roundTrip: RefObject<number>
 }
 
 interface LiveSceneProps {
+  hidden?: boolean
   welcome: LiveWelcome
+  map: string[]
+  merchant: MerchantState | null
+  waystone: WaystoneState | null
+  totem: TotemState | null
+  graves: LiveGrave[]
   equipment: EquippedItem[]
   party: ReadonlyMap<number, EquippedItem[]>
-  pointer: { current: GroundPoint | null }
+  view: CameraMode
+  look: { current: Look }
+  onViewChange: (view: CameraMode) => void
   items: LiveItem[]
+  chests: LiveChest[]
+  stairs: LiveStairs | null
   projectiles: MovingProjectile[]
   projectileBuffer: FrameBuffer<MovingProjectile>
   blasts: Blast[]
+  sparks: Spark[]
   heroes: LiveHero[]
   monsters: LiveMonster[]
+  metBosses: ReadonlySet<number>
+  vision: Vision
   corpses: Corpse[]
   heroBuffer: FrameBuffer<LiveHero>
+  prediction: Prediction
   monsterBuffer: FrameBuffer<LiveMonster>
   heroCues: Map<number, Cue>
   monsterCues: Map<number, LiveCue>
@@ -70,14 +121,21 @@ interface LiveSceneProps {
 }
 
 const heroScale = 1.3
+const heroRunPace = 7
 const voidColor = '#000000'
-const cameraOffset = new Vector3(0, 12, 9)
+const cameraOffset = new Vector3(0, 9.5, 12.5)
+const overheadOffset = new Vector3(0, 14.6, 3.6)
 const lookAhead = new Vector3(0, 1.2, 0)
 const noBlocks: ReadonlySet<string> = new Set()
 
 const minZoom = 0.6
-const maxZoom = 2.2
+const maxZoom = 2.6
 const zoomStep = 1.15
+const lowPower = detectLowPower()
+const mouseLook = canMouseLook()
+const eyeHeight = 2.7
+const fallenEye = 0.7
+const maxPitch = 1.1
 
 function clampZoom(zoom: number): number {
   return Math.min(maxZoom, Math.max(minZoom, zoom))
@@ -85,7 +143,16 @@ function clampZoom(zoom: number): number {
 
 export function LiveScene(props: LiveSceneProps) {
   const container = useRef<HTMLDivElement>(null)
+  const markers = useRef(new Map<number, HTMLDivElement>())
+  const others = props.heroes.filter(hero => hero.id !== props.welcome.heroId)
+  const bosses = props.monsters.filter(monster => monster.isBoss && props.metBosses.has(monster.id))
   const [zoom, setZoomState] = useState(() => clampZoom(loadZoom(1)))
+  const { view, onViewChange } = props
+  const modes = useRef({ view, onViewChange, zoom })
+
+  useEffect(() => {
+    modes.current = { view, onViewChange, zoom }
+  }, [view, onViewChange, zoom])
 
   const setZoom = (next: number) => {
     const value = clampZoom(next)
@@ -99,60 +166,243 @@ export function LiveScene(props: LiveSceneProps) {
 
     const handleWheel = (event: WheelEvent) => {
       event.preventDefault()
-      setZoomState(current => {
-        const value = clampZoom(current * (event.deltaY < 0 ? 1 / 1.08 : 1.08))
-        saveZoom(value)
-        return value
-      })
+      const zoomingIn = event.deltaY < 0
+      const { view: current, onViewChange: change, zoom } = modes.current
+      if (current === 'first') {
+        if (!zoomingIn) change('third')
+        return
+      }
+      if (zoomingIn && zoom <= minZoom + 0.001 && mouseLook) {
+        change('first')
+        return
+      }
+      const value = clampZoom(zoom * (zoomingIn ? 1 / 1.08 : 1.08))
+      saveZoom(value)
+      setZoomState(value)
+    }
+
+    const touches = new Map<number, { x: number; y: number }>()
+    let pinch: { distance: number; zoom: number } | null = null
+    const spread = () => {
+      const [first, second] = [...touches.values()]
+      return Math.hypot(first.x - second.x, first.y - second.y)
+    }
+    const handleDown = (event: PointerEvent) => {
+      if (event.pointerType !== 'touch' || event.target !== element.querySelector('canvas')) return
+      touches.set(event.pointerId, { x: event.clientX, y: event.clientY })
+      if (touches.size === 2) pinch = { distance: spread(), zoom: modes.current.zoom }
+    }
+    const handleMove = (event: PointerEvent) => {
+      if (!touches.has(event.pointerId)) return
+      touches.set(event.pointerId, { x: event.clientX, y: event.clientY })
+      const start = pinch
+      if (touches.size !== 2 || !start || start.distance < 1) return
+      const value = clampZoom(start.zoom * (start.distance / Math.max(1, spread())))
+      saveZoom(value)
+      setZoomState(value)
+    }
+    const handleUp = (event: PointerEvent) => {
+      touches.delete(event.pointerId)
+      if (touches.size < 2) pinch = null
     }
 
     element.addEventListener('wheel', handleWheel, { passive: false })
-    return () => element.removeEventListener('wheel', handleWheel)
+    element.addEventListener('pointerdown', handleDown)
+    window.addEventListener('pointermove', handleMove)
+    window.addEventListener('pointerup', handleUp)
+    window.addEventListener('pointercancel', handleUp)
+    return () => {
+      element.removeEventListener('wheel', handleWheel)
+      element.removeEventListener('pointerdown', handleDown)
+      window.removeEventListener('pointermove', handleMove)
+      window.removeEventListener('pointerup', handleUp)
+      window.removeEventListener('pointercancel', handleUp)
+    }
   }, [])
 
+  const firstPerson = view === 'first'
+
   return (
-    <div ref={container} className="scene3d live-scene">
-      <Canvas shadows={{ type: PCFShadowMap }} dpr={[1, 2]} camera={{ fov: 42, near: 0.5, far: 260, position: [0, 30, 30] }}>
+    <div ref={container} className="scene3d live-scene" hidden={props.hidden}>
+      <Canvas frameloop={props.hidden ? 'never' : 'always'} shadows={lowPower ? false : { type: PCFShadowMap }} dpr={lowPower ? [1, 1.5] : [1, 2]} camera={{ fov: 42, near: 0.5, far: 260, position: [0, 30, 30] }}>
         <color attach="background" args={[voidColor]} />
-        <fog attach="fog" args={[voidColor, 34 * zoom, 90 * zoom]} />
         <Suspense fallback={null}>
-          <LiveWorld {...props} zoom={zoom} />
+          <LiveWorld {...props} zoom={zoom} markers={markers} />
         </Suspense>
       </Canvas>
+      <PartyMarkers heroes={others} bosses={bosses} markers={markers} />
       <div className="scene3d-vignette" />
+      {firstPerson && <div className="live-crosshair" />}
       <div className="scene3d-zoom" onPointerDown={event => event.stopPropagation()}>
-        <button type="button" aria-label="Zoom in" disabled={zoom <= minZoom} onClick={() => setZoom(zoom / zoomStep)}>
-          +
-        </button>
-        <button type="button" aria-label="Zoom out" disabled={zoom >= maxZoom} onClick={() => setZoom(zoom * zoomStep)}>
-          −
-        </button>
+        {mouseLook && (
+          <button
+            type="button"
+            className="live-view"
+            aria-label={firstPerson ? 'Third person' : 'First person'}
+            title="V"
+            onClick={() => onViewChange(firstPerson ? 'third' : 'first')}
+          >
+            {firstPerson ? '3P' : '1P'}
+          </button>
+        )}
+        {!firstPerson && (
+          <>
+            <button type="button" aria-label="Zoom in" disabled={zoom <= minZoom} onClick={() => setZoom(zoom / zoomStep)}>
+              +
+            </button>
+            <button type="button" aria-label="Zoom out" disabled={zoom >= maxZoom} onClick={() => setZoom(zoom * zoomStep)}>
+              −
+            </button>
+          </>
+        )}
       </div>
     </div>
   )
 }
 
-function LiveWorld({ welcome, equipment, party, pointer, items, projectiles, projectileBuffer, blasts, heroes, monsters, corpses, heroBuffer, monsterBuffer, heroCues, monsterCues, popups, zoom }: LiveSceneProps & { zoom: number }) {
+function LiveWorld({
+  welcome,
+  map,
+  merchant,
+  waystone,
+  totem,
+  graves,
+  equipment,
+  party,
+  view,
+  look: viewLook,
+  items,
+  chests,
+  stairs,
+  projectiles,
+  projectileBuffer,
+  blasts,
+  sparks,
+  heroes,
+  monsters,
+  metBosses,
+  vision,
+  corpses,
+  heroBuffer,
+  monsterBuffer,
+  prediction,
+  heroCues,
+  monsterCues,
+  popups,
+  zoom,
+  markers,
+}: LiveSceneProps & { zoom: number; markers: RefObject<Map<number, HTMLDivElement>> }) {
   const kit = useKit(modelUrls.dungeon)
   const look = biomeLook(welcome.biome)
   const gear = useMemo(() => heroGear(equipment), [equipment])
   const me = heroes.find(hero => hero.id === welcome.heroId)
-  const focusY = welcome.map.length + 2
+  const focusY = map.length + 2
+  const firstPerson = view === 'first'
+  const columns = useMemo(() => Math.max(0, ...map.map(row => row.length)), [map])
+  const lit = useCallback((x: number, y: number) => map[y]?.[x] !== '#' && vision.explored.has(`${x},${y}`), [map, vision.explored])
+  const myWeapon = equipment.find(equipped => equipped.slot === 'MainHand')?.item
 
-  const follow = () => heroBuffer.sample(welcome.heroId, performance.now()) ?? { x: me?.x ?? 0, y: me?.y ?? 0, moving: false }
+  const sampled = () =>
+    heroBuffer.sample(welcome.heroId, performance.now()) ?? {
+      x: me?.x ?? 0,
+      y: me?.y ?? 0,
+      moving: false,
+    }
+
+  const follow = () => {
+    const { predictor, move } = prediction
+    if (!predictor.isReady || me?.dead) return sampled()
+    const input = move.current
+    const moving = input.x !== 0 || input.y !== 0
+    const aiming = input.aimX !== 0 || input.aimY !== 0
+    const facing = aiming ? Math.atan2(input.aimX, input.aimY) : moving ? Math.atan2(input.x, input.y) : undefined
+    return { x: predictor.x, y: predictor.y, moving, facing, predicted: true }
+  }
+
+  const { size } = useThree()
+  const reach = zoom * portraitFactor(size.width / Math.max(1, size.height))
 
   return (
     <>
+      <fog attach="fog" args={firstPerson ? [voidColor, 20, 56] : [voidColor, 34 * reach, 90 * reach]} />
       <hemisphereLight args={[look.ambient, '#000000', 1]} />
-      <FollowCamera follow={follow} light={look.light} zoom={zoom} />
-      <DungeonMap map={welcome.map} focusY={focusY} biome={welcome.biome} kit={kit} blocked={noBlocks} />
-      <Decor map={welcome.map} biome={welcome.biome} blocked={noBlocks} />
-      <PointerTracker pointer={pointer} />
-      {me && !me.dead && (
+      <CompassTracker
+        markers={markers}
+        me={follow}
+        targets={[
+          ...heroes
+            .filter(hero => hero.id !== welcome.heroId)
+            .map(hero => ({ id: hero.id, track: () => heroBuffer.sample(hero.id, performance.now()) ?? { x: hero.x, y: hero.y, moving: false } })),
+          ...monsters
+            .filter(monster => monster.isBoss && metBosses.has(monster.id))
+            .map(monster => ({
+              id: bossMarkerId(monster),
+              track: () => monsterBuffer.sample(monster.id, performance.now()) ?? { x: monster.x, y: monster.y, moving: false },
+            })),
+        ]}
+      />
+      <FollowCamera follow={follow} light={look.light} zoom={zoom} firstPerson={firstPerson} alive={!(me?.dead ?? false)} look={viewLook} />
+      {firstPerson && (
+        <FirstPersonHands
+          mainHand={gear.mainHandModel}
+          offHand={gear.offHandModel}
+          twoHanded={(myWeapon?.twoHanded ?? false) && !myWeapon?.isTwin}
+          cue={heroCues.get(welcome.heroId)}
+          alive={!(me?.dead ?? false)}
+          sleeve={gear.outfit.body ? '#7d828c' : '#6b4f3a'}
+        />
+      )}
+      <DungeonMap map={map} focusY={focusY} cutaway={!firstPerson} biome={welcome.biome} kit={kit} hole={stairs ?? undefined} blocked={noBlocks} />
+      {chests.map(chest => (
+        <Piece key={chest.id} piece={kit.chest} x={chest.x} y={chest.y} scale={1.25} />
+      ))}
+      {stairs && (
+        <>
+          <Built build={buildStairs} x={stairs.x} y={stairs.y} />
+          {!stairs.isOpen && <Piece piece={kit['stairs-sealed']} x={stairs.x} y={stairs.y} lift={0.04} />}
+          <Glow x={stairs.x} y={stairs.y} color={stairs.isOpen ? '#7affb0' : '#ff6a4a'} height={stairs.isOpen ? -1.2 : 0.4} />
+        </>
+      )}
+      <Decor map={map} biome={welcome.biome} blocked={noBlocks} />
+      <GridLines columns={columns} rows={map.length} lit={lit} />
+      <Shroud map={map} explored={vision.explored} color={voidColor} focusY={firstPerson ? Infinity : focusY} />
+      <Weather biome={welcome.biome} x={Math.round(me?.x ?? 0)} y={Math.round(me?.y ?? 0)} lit={lit} />
+      {merchant && (
+        <Suspense fallback={null}>
+          <Actor url={merchantUrl} x={merchant.x} y={merchant.y} rotation={0} idle="Idle" tint="#e8c87a" scale={heroScale} />
+        </Suspense>
+      )}
+      {waystone && (
+        <group>
+          <Piece piece={kit.waystone} x={waystone.x} y={waystone.y} scale={0.7} />
+          <FloatingCrystal x={waystone.x} y={waystone.y} color="#5ae0ff" height={3.5} />
+        </group>
+      )}
+      {totem && (
+        <group>
+          <Built build={buildTotem} x={totem.x} y={totem.y} />
+          <FloatingCrystal x={totem.x} y={totem.y} color="#ff4a6a" height={4} />
+        </group>
+      )}
+      {graves.map(grave => (
+        <group key={grave.id}>
+          <Piece piece={kit.grave} x={grave.x} y={grave.y} scale={0.9} />
+          <Glow x={grave.x} y={grave.y} color={grave.isMine ? '#ff3a3a' : '#9a8aa0'} height={0.4} />
+          {grave.isMine && (
+            <group position={[grave.x * cell, 0, grave.y * cell]}>
+              <RarityRing color="#ff2a2a" size={1.35} />
+              <LootBeam color="#ff3a3a" pulse />
+            </group>
+          )}
+          <Html position={[grave.x * cell, 3, grave.y * cell]} center zIndexRange={[20, 0]}>
+            <div className="live-name">{grave.isMine ? 'Your grave' : `${grave.ownerName}'s grave`}</div>
+          </Html>
+        </group>
+      ))}
+      {me && !me.dead && !firstPerson && (
         <AimArc
           follow={follow}
           facing={me.facing}
-          pointer={pointer}
           reach={me.reach}
           arcDegrees={me.arcDegrees}
           ranged={me.attack === 'Shoot' || me.attack === 'Cast'}
@@ -160,25 +410,43 @@ function LiveWorld({ welcome, equipment, party, pointer, items, projectiles, pro
           monsterBuffer={monsterBuffer}
         />
       )}
-      {heroes.map(hero => (
-        <HeroActor
-          key={hero.id}
-          hero={hero}
-          label={hero.id === welcome.heroId ? undefined : hero.name}
-          mainHand={(hero.id === welcome.heroId ? equipment : party.get(hero.id))?.find(equipped => equipped.slot === 'MainHand')?.item}
-          gear={hero.id === welcome.heroId ? gear : heroGear(party.get(hero.id) ?? [])}
-          cue={heroCues.get(hero.id)}
-          track={() => heroBuffer.sample(hero.id, performance.now()) ?? { x: hero.x, y: hero.y, moving: false }}
-        />
-      ))}
-      {monsters.map(monster => (
+      {heroes
+        .filter(hero => !firstPerson || hero.id !== welcome.heroId)
+        .map(hero => (
+          <HeroActor
+            key={hero.id}
+            hero={hero}
+            label={hero.id === welcome.heroId ? undefined : hero.away ? `${hero.name} · reconnecting` : hero.name}
+            mainHand={(hero.id === welcome.heroId ? equipment : party.get(hero.id))?.find(equipped => equipped.slot === 'MainHand')?.item}
+            gear={hero.id === welcome.heroId ? gear : heroGear(party.get(hero.id) ?? [])}
+            cue={heroCues.get(hero.id)}
+            track={
+              hero.id === welcome.heroId
+                ? follow
+                : () =>
+                    heroBuffer.sample(hero.id, performance.now()) ?? {
+                      x: hero.x,
+                      y: hero.y,
+                      moving: false,
+                    }
+            }
+          />
+        ))}
+      {monsters.filter(monster => vision.sight(Math.round(monster.x), Math.round(monster.y))).map(monster => (
         <Suspense key={monster.id} fallback={null}>
           <MonsterActor
             monster={monster}
             cue={monsterCues.get(monster.id)}
             strikeReach={welcome.monsterStrikeReach}
             dying={false}
-            track={() => monsterBuffer.sample(monster.id, performance.now()) ?? { x: monster.x, y: monster.y, moving: false }}
+            met={metBosses.has(monster.id)}
+            track={() =>
+              monsterBuffer.sample(monster.id, performance.now()) ?? {
+                x: monster.x,
+                y: monster.y,
+                moving: false,
+              }
+            }
           />
         </Suspense>
       ))}
@@ -189,19 +457,35 @@ function LiveWorld({ welcome, equipment, party, pointer, items, projectiles, pro
             cue={monsterCues.get(corpse.monster.id)}
             strikeReach={welcome.monsterStrikeReach}
             dying
-            track={() => ({ x: corpse.monster.x, y: corpse.monster.y, moving: false })}
+            met={false}
+            track={() => ({
+              x: corpse.monster.x,
+              y: corpse.monster.y,
+              moving: false,
+            })}
           />
         </Suspense>
       ))}
       {projectiles.map(projectile => (
-        <Projectile key={projectile.id} projectile={projectile} track={() => projectileBuffer.sample(projectile.id, performance.now()) ?? projectile} />
+        <Projectile
+          key={projectile.id}
+          projectile={projectile}
+          track={() => projectileBuffer.sample(projectile.id, performance.now(), projectile.ownerId === welcome.heroId ? renderDelaySeconds : 0) ?? projectile}
+        />
       ))}
       {blasts.map(blast => (
         <BlastRing key={blast.key} blast={blast} />
       ))}
+      <Bursts bursts={sparks.map(spark => ({ key: `spark-${spark.key}`, x: spark.x, y: spark.y, kind: spark.kind, delayMs: 0 }))} />
       {items.map(item => (
         <FloorItem key={item.id} x={item.x} y={item.y} item={item.item} />
       ))}
+      {popups
+        .filter(popup => popup.levelUpHero !== undefined)
+        .map(popup => {
+          const hero = heroes.find(candidate => candidate.id === popup.levelUpHero)
+          return hero ? <LevelUpAura key={`aura-${popup.key}`} burst={{ key: `aura-${popup.key}`, x: hero.x, y: hero.y, kind: 'levelup', delayMs: 0 }} x={hero.x} y={hero.y} /> : null
+        })}
       {popups.map(popup => (
         <Html key={popup.key} position={[popup.x * cell, 3.4, popup.y * cell]} center zIndexRange={[30, 0]}>
           <div className={`live-popup live-popup-${popup.kind}`}>{popup.text}</div>
@@ -228,13 +512,15 @@ function HeroActor({ hero, label, mainHand, gear, cue, track }: HeroActorProps) 
       y={hero.y}
       rotation={hero.facing}
       idle={heroIdleClip(mainHand)}
+      walk="Running_A"
+      walkPace={heroRunPace}
       cue={cue}
       scale={heroScale}
       alive={!hero.dead}
       mainHand={gear.mainHandModel}
       offHand={gear.offHandModel}
       outfit={gear.outfit}
-      ghostly={hero.invisible}
+      ghostly={hero.invisible || hero.away}
       track={track}
     >
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.06, 0]}>
@@ -261,18 +547,26 @@ interface MonsterActorProps {
   cue: LiveCue | undefined
   strikeReach: number
   dying: boolean
+  met: boolean
   track: () => Tracked
 }
 
-function MonsterActor({ monster, cue, strikeReach, dying, track }: MonsterActorProps) {
+function MonsterActor({ monster, cue, strikeReach, dying, met, track }: MonsterActorProps) {
   const look = useMemo(() => monsterLook(monster.kind), [monster.kind])
   const modelCue = useMemo(() => {
     if (!cue) return undefined
-    if (cue.clip === 'Windup') return { ...cue, clip: look.procedural ? 'Charge' : look.clips.Attack, durationMs: look.procedural ? cue.durationMs : (cue.durationMs ?? 0) / gltfStrikeAt }
-    return { ...cue, clip: look.clips[cue.clip as keyof typeof look.clips] ?? cue.clip }
+    if (cue.clip === 'Windup')
+      return {
+        ...cue,
+        clip: look.procedural ? 'Charge' : look.clips.Attack,
+        durationMs: look.procedural ? cue.durationMs : (cue.durationMs ?? 0) / gltfStrikeAt,
+      }
+    return {
+      ...cue,
+      clip: look.clips[cue.clip as keyof typeof look.clips] ?? cue.clip,
+    }
   }, [cue, look])
   const windup = cue?.clip === 'Windup' && cue.durationMs ? { start: cue.at, ms: cue.durationMs } : undefined
-  const wounded = monster.health < monster.maxHealth
   const size = look.height / 2.7
 
   return (
@@ -296,19 +590,25 @@ function MonsterActor({ monster, cue, strikeReach, dying, track }: MonsterActorP
     >
       {!dying && (monster.burning || monster.frozen) && <StatusRing color={monster.frozen ? '#9fe3ff' : '#ff8a2a'} size={size} flicker={monster.burning} />}
       {!dying && windup && <WindupRing key={cue?.id} start={windup.start} ms={windup.ms} radius={(monster.radius + strikeReach) * cell} />}
-      {!dying && monster.rarity !== 'Common' && (
-        <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.05, 0]}>
-          <ringGeometry args={[1.1 * size, 1.35 * size, 32]} />
-          <meshBasicMaterial color={rarityColors[monster.rarity] ?? '#ffffff'} transparent opacity={0.6} />
-        </mesh>
-      )}
-      {!dying && (wounded || monster.isBoss) && (
-        <Html position={[0, look.height + (monster.isBoss ? 1.2 : 0.5), 0]} center zIndexRange={[20, 0]}>
-          <div className={`live-bar${monster.isBoss ? ' boss' : ''}`}>
-            {monster.isBoss && <span className="live-bar-name">{monster.name}</span>}
-            <div className="live-bar-track">
-              <div className="live-bar-fill" style={{ width: `${(monster.health / monster.maxHealth) * 100}%` }} />
-            </div>
+      {!dying && windup && <WindupMark key={`mark-${cue?.id}`} start={windup.start} ms={windup.ms} height={look.height} />}
+      {!dying && monster.isBoss && !selfCrowned.has(monster.kind) && <BossCrown height={look.height} size={size} />}
+      {!dying && (monster.isBoss ? <BossAura scale={size} /> : monster.rarity !== 'Common' && <RarityRing color={rarityColors[monster.rarity] ?? '#ffffff'} size={size} />)}
+      {!dying && (!monster.isBoss || met) && (
+        <Html position={[0, look.height + (monster.isBoss ? 1.5 : 0.5), 0]} center zIndexRange={[20, 0]} className="scene3d-label-anchor">
+          <div className={`scene3d-label rarity-${monster.rarity.toLowerCase()}${monster.isBoss ? ' boss' : ''}`}>
+            <span className="scene3d-name">
+              {monster.isBoss && <Sprite sheet={sheets.items} index={crownSprite} className="scene3d-mark" />}
+              {!monster.isBoss &&
+                Array.from({ length: rarityStars[monster.rarity] }, (_, index) => (
+                  <Sprite key={index} sheet={sheets.items} index={starSprites[monster.rarity]} className="scene3d-mark" />
+                ))}
+              {monster.name} <small>Lv{monster.level}</small>
+              {monster.burning && <ElementIcon element="Fire" className="scene3d-mark" />}
+              {monster.frozen && <ElementIcon element="Ice" className="scene3d-mark" />}
+            </span>
+            <span className="scene3d-health">
+              <span style={{ width: `${Math.max(0, (monster.health / monster.maxHealth) * 100)}%` }} />
+            </span>
           </div>
         </Html>
       )}
@@ -318,7 +618,12 @@ function MonsterActor({ monster, cue, strikeReach, dying, track }: MonsterActorP
 
 const gltfStrikeAt = 0.5
 const blastMs = 550
-const elementColors: Record<Element, string> = { Fire: '#ff7a2a', Ice: '#8fe0ff', Lightning: '#ffe45a', Wind: '#b6ffcf' }
+const elementColors: Record<Element, string> = {
+  Fire: '#ff7a2a',
+  Ice: '#8fe0ff',
+  Lightning: '#ffe45a',
+  Wind: '#b6ffcf',
+}
 
 function StatusRing({ color, size, flicker }: { color: string; size: number; flicker: boolean }) {
   const ring = useRef<Mesh>(null)
@@ -392,43 +697,9 @@ function BlastRing({ blast }: { blast: Blast }) {
     </mesh>
   )
 }
-const groundPlane = new Plane(new Vector3(0, 1, 0), 0)
-
-function PointerTracker({ pointer }: { pointer: { current: GroundPoint | null } }) {
-  const { camera, gl } = useThree()
-
-  useEffect(() => {
-    const element = gl.domElement
-    const raycaster = new Raycaster()
-    const screen = new Vector2()
-    const hit = new Vector3()
-
-    const handleMove = (event: PointerEvent) => {
-      if (event.pointerType !== 'mouse') return
-      const bounds = element.getBoundingClientRect()
-      screen.set(((event.clientX - bounds.left) / bounds.width) * 2 - 1, -((event.clientY - bounds.top) / bounds.height) * 2 + 1)
-      raycaster.setFromCamera(screen, camera)
-      if (raycaster.ray.intersectPlane(groundPlane, hit)) pointer.current = { x: hit.x / cell, y: hit.z / cell }
-    }
-    const handleLeave = () => {
-      pointer.current = null
-    }
-
-    element.addEventListener('pointermove', handleMove)
-    element.addEventListener('pointerleave', handleLeave)
-    return () => {
-      element.removeEventListener('pointermove', handleMove)
-      element.removeEventListener('pointerleave', handleLeave)
-    }
-  }, [camera, gl, pointer])
-
-  return null
-}
-
 interface AimArcProps {
   follow: () => Tracked
   facing: number
-  pointer: { current: GroundPoint | null }
   reach: number
   arcDegrees: number
   ranged: boolean
@@ -436,7 +707,7 @@ interface AimArcProps {
   monsterBuffer: FrameBuffer<LiveMonster>
 }
 
-function AimArc({ follow, facing, pointer, reach, arcDegrees, ranged, monsters, monsterBuffer }: AimArcProps) {
+function AimArc({ follow, facing, reach, arcDegrees, ranged, monsters, monsterBuffer }: AimArcProps) {
   const arc = useRef<Group>(null)
   const mark = useRef<Group>(null)
   const half = (arcDegrees / 2) * (Math.PI / 180)
@@ -444,30 +715,20 @@ function AimArc({ follow, facing, pointer, reach, arcDegrees, ranged, monsters, 
 
   useFrame(() => {
     const spot = follow()
-    const target = pointer.current
-    const angle = target && Math.hypot(target.x - spot.x, target.y - spot.y) > 0.2 ? Math.atan2(target.x - spot.x, target.y - spot.y) : facing
-
-    if (arc.current) {
-      arc.current.position.set(spot.x * cell, 0.07, spot.y * cell)
-      arc.current.rotation.set(0, angle, 0)
-    }
-
     const now = performance.now()
     let best: { x: number; y: number; distance: number } | null = null
     for (const monster of monsters) {
       const place = monsterBuffer.sample(monster.id, now) ?? monster
-      const dx = place.x - spot.x
-      const dy = place.y - spot.y
-      const distance = Math.hypot(dx, dy)
+      const distance = Math.hypot(place.x - spot.x, place.y - spot.y)
       if (distance > reach + monster.radius) continue
-      if (ranged) {
-        const across = Math.abs(dx * Math.cos(angle) - dy * Math.sin(angle))
-        const along = dx * Math.sin(angle) + dy * Math.cos(angle)
-        if (along < 0 || across > monster.radius + 0.15) continue
-      }
-      const offset = Math.abs(Math.atan2(Math.sin(Math.atan2(dx, dy) - angle), Math.cos(Math.atan2(dx, dy) - angle)))
-      if (!ranged && distance > 1e-3 && offset > half) continue
       if (!best || distance < best.distance) best = { x: place.x, y: place.y, distance }
+    }
+
+    const angle = best && best.distance > 1e-3 ? Math.atan2(best.x - spot.x, best.y - spot.y) : facing
+
+    if (arc.current) {
+      arc.current.position.set(spot.x * cell, 0.07, spot.y * cell)
+      arc.current.rotation.set(0, angle, 0)
     }
 
     if (mark.current) {
@@ -498,6 +759,27 @@ function AimArc({ follow, facing, pointer, reach, arcDegrees, ranged, monsters, 
         </mesh>
       </group>
     </>
+  )
+}
+
+function WindupMark({ start, ms, height }: { start: number; ms: number; height: number }) {
+  const [shown, setShown] = useState(false)
+
+  useEffect(() => {
+    const wait = Math.max(0, start - performance.now())
+    const showing = window.setTimeout(() => setShown(true), wait)
+    const hiding = window.setTimeout(() => setShown(false), wait + ms)
+    return () => {
+      window.clearTimeout(showing)
+      window.clearTimeout(hiding)
+    }
+  }, [start, ms])
+
+  if (!shown) return null
+  return (
+    <Html position={[0, height + 1.2, 0]} center zIndexRange={[25, 0]}>
+      <div className="live-windup">!</div>
+    </Html>
   )
 }
 
@@ -532,20 +814,49 @@ function WindupRing({ start, ms, radius }: { start: number; ms: number; radius: 
   )
 }
 
-function FollowCamera({ follow, light, zoom }: { follow: () => Tracked; light: string; zoom: number }) {
-  const { camera } = useThree()
+interface FollowCameraProps {
+  follow: () => Tracked
+  light: string
+  zoom: number
+  firstPerson: boolean
+  alive: boolean
+  look: { current: Look }
+}
+
+function FollowCamera({ follow, light, zoom, firstPerson, alive, look }: FollowCameraProps) {
+  const { camera, size } = useThree()
   const sun = useRef<DirectionalLight>(null)
   const glow = useRef<Group>(null)
   const focus = useRef<Vector3 | null>(null)
+  const eye = useRef(eyeHeight)
+
+  useFrame(state => {
+    const view = state.camera
+    const fov = firstPerson ? 82 : 42
+    if (!(view instanceof PerspectiveCamera) || view.fov === fov) return
+    view.fov = fov
+    view.near = firstPerson ? 0.05 : 0.5
+    view.updateProjectionMatrix()
+  })
 
   useFrame((_, delta) => {
     const spot = follow()
     const target = new Vector3(spot.x * cell, 0, spot.y * cell)
-    if (!focus.current || focus.current.distanceTo(target) > cell * 9) focus.current = target.clone()
+    if (firstPerson) focus.current = target.clone()
+    else if (!focus.current || focus.current.distanceTo(target) > cell * 9) focus.current = target.clone()
     else focus.current.lerp(target, Math.min(1, delta * 10))
 
-    camera.position.copy(focus.current).addScaledVector(cameraOffset, zoom)
-    camera.lookAt(focus.current.clone().add(lookAhead))
+    if (firstPerson) {
+      eye.current += ((alive ? eyeHeight : fallenEye) - eye.current) * Math.min(1, delta * 3)
+      const { yaw } = look.current
+      const pitch = Math.max(-maxPitch, Math.min(maxPitch, look.current.pitch)) - 0.08
+      camera.position.copy(focus.current).setY(eye.current)
+      camera.lookAt(camera.position.clone().add(new Vector3(Math.sin(yaw) * Math.cos(pitch), Math.sin(pitch), Math.cos(yaw) * Math.cos(pitch))))
+    } else {
+      const aspect = size.width / Math.max(1, size.height)
+      camera.position.copy(focus.current).addScaledVector(offsetFor(aspect), zoom * portraitFactor(aspect))
+      camera.lookAt(focus.current.clone().add(lookAhead))
+    }
 
     if (sun.current) {
       sun.current.position.copy(focus.current).add(new Vector3(-8, 22, 10))
@@ -562,7 +873,7 @@ function FollowCamera({ follow, light, zoom }: { follow: () => Tracked; light: s
         ref={sun}
         intensity={0.7}
         color={light}
-        castShadow
+        castShadow={!lowPower}
         shadow-mapSize={[1024, 1024]}
         shadow-camera-left={-30}
         shadow-camera-right={30}
@@ -576,3 +887,13 @@ function FollowCamera({ follow, light, zoom }: { follow: () => Tracked; light: s
     </>
   )
 }
+
+function portraitFactor(aspect: number): number {
+  return Math.min(2.4, Math.max(1, 1.25 / aspect))
+}
+
+function offsetFor(aspect: number): Vector3 {
+  const overhead = Math.min(1, Math.max(0, (1.25 / aspect - 1) / 1.2))
+  return cameraOffset.clone().lerp(overheadOffset, overhead)
+}
+

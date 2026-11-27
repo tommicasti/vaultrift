@@ -5,7 +5,12 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
 using Vaultrift.Api.Contracts;
 using Vaultrift.Api.Hosting;
+using Vaultrift.Api.Mapping;
+using Vaultrift.Engine.Gameplay;
+using Vaultrift.Engine.Items;
+using Vaultrift.Engine.Persistence;
 using Vaultrift.Infrastructure.Accounts;
+using Vaultrift.Infrastructure.Persistence;
 
 namespace Vaultrift.Api.Controllers;
 
@@ -102,6 +107,26 @@ public sealed class AccountController : ControllerBase
     private int Claim(Account account, IReadOnlyList<string>? codes) =>
         codes is null || codes.Count == 0 ? 0 : _accounts.Claim(account.Id, codes);
 
+    private static List<HeroGearResponse> GearOf(HeroSummary hero) => GearOf(hero.Gear ?? new Dictionary<EquipmentSlot, ItemSnapshot>());
+
+    internal static List<HeroGearResponse> GearOf(IReadOnlyDictionary<EquipmentSlot, ItemSnapshot> gear) =>
+        gear
+            .Select(pair => Known(pair.Value) is { } item ? new HeroGearResponse(pair.Key, GameMapper.ToItemResponse(item)) : null)
+            .OfType<HeroGearResponse>()
+            .ToList();
+
+    private static ItemInstance? Known(ItemSnapshot snapshot)
+    {
+        try
+        {
+            return new ItemInstance(VaultContent.Instance.Item(snapshot.Id), snapshot.Element);
+        }
+        catch (KeyNotFoundException)
+        {
+            return null;
+        }
+    }
+
     private AccountResponse Describe(Account account, int claimed = 0)
     {
         var heroes = _accounts.HeroesOf(account.Id);
@@ -122,7 +147,8 @@ public sealed class AccountController : ControllerBase
                     hero.IsLost,
                     hero.IsConquered,
                     hero.PlaySeconds,
-                    hero.UpdatedAt))
+                    hero.UpdatedAt,
+                    GearOf(hero)))
                 .ToList(),
             _trophies
                 .StatusOf(account.Id)

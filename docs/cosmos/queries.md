@@ -108,3 +108,81 @@ SELECT c.accountId, c["value"] AS MoneteRaccolte
 FROM c
 WHERE c.type = 'counter' AND c.name = 'coins'
 ```
+
+## Eroi e mondi del tempo reale
+
+Container `vault`. Tutti gli eroi e i mondi di un account stanno nella sua partizione, quindi la lettura costa poco:
+
+```sql
+SELECT c.kind, c.entryId, c.updatedAt FROM c WHERE c.pk = "<Id dell'account>" ORDER BY c.updatedAt DESC
+```
+
+Quanti eroi e quanti mondi ci sono in tutto:
+
+```sql
+SELECT c.kind, COUNT(1) AS quanti FROM c GROUP BY c.kind
+```
+
+## Account con il loro Id (`accounts`)
+
+```sql
+SELECT c.pk AS accountId, c.userName AS Account, c.email AS Email, c.createdAt AS Registrato
+FROM c WHERE c.type = 'account'
+ORDER BY c.createdAt DESC
+```
+
+## Partite con ore di gioco, dalla più recente (`games`)
+
+```sql
+SELECT c.id AS gameId, c.heroName AS Eroe, c.classId AS Classe, c.level AS Livello, c.floor AS Piano,
+       FLOOR(c.stats.playSeconds / 3600) AS Ore, FLOOR((c.stats.playSeconds % 3600) / 60) AS Minuti,
+       c.stats.deaths AS Morti, c.stats.coins AS Monete, c.stats.conquered AS Conquistato,
+       c.updatedAt AS UltimaVolta
+FROM c WHERE c.type = 'game'
+ORDER BY c.updatedAt DESC
+```
+
+Per un solo account aggiungi `AND c.id IN ('gameId1', 'gameId2')` con i `gameId` presi dai documenti `owner` del container `accounts`.
+
+## Una partita completa (`games`)
+
+Il salvataggio è testo nel campo `data`: `StringToObject` lo trasforma in oggetto.
+
+```sql
+SELECT c.heroName, c.classId, c.stats,
+       StringToObject(c.data).Game.Difficulty AS Difficolta,
+       StringToObject(c.data).Game.DeepestFloor AS PianoMassimo,
+       StringToObject(c.data).Game.Player.Coins AS Monete,
+       StringToObject(c.data).Game.Player.SpentPoints AS PuntiSpesi,
+       StringToObject(c.data).Game.Player.Equipment AS Equipaggiamento,
+       StringToObject(c.data).Game.Player.Inventory.Entries AS Zaino
+FROM c WHERE c.id = '<gameId>'
+```
+
+Tutto il salvataggio: `SELECT StringToObject(c.data) AS Partita FROM c WHERE c.id = '<gameId>'`.
+
+## Ore totali di un account (`games`)
+
+```sql
+SELECT SUM(c.stats.playSeconds) / 3600 AS OreTotali, COUNT(1) AS Partite
+FROM c WHERE c.type = 'game' AND c.id IN ('gameId1', 'gameId2')
+```
+
+## Eroi e mondi del tempo reale, con i dettagli (`vault`)
+
+```sql
+SELECT c.pk AS accountId, StringToObject(c.data).Player.Name AS Eroe,
+       StringToObject(c.data).Player.ClassId AS Classe, StringToObject(c.data).Player.Level AS Livello,
+       FLOOR(StringToObject(c.data).PlaySeconds / 3600) AS Ore, StringToObject(c.data).Played AS Difficolta,
+       c.updatedAt
+FROM c WHERE c.kind = 'hero' ORDER BY c.updatedAt DESC
+```
+
+```sql
+SELECT c.pk AS accountId, StringToObject(c.data).Difficulty AS Difficolta, StringToObject(c.data).Floor AS Piano,
+       StringToObject(c.data).DeepestFloor AS Massimo, StringToObject(c.data).IsConquered AS Conquistato,
+       FLOOR(StringToObject(c.data).PlaySeconds / 3600) AS Ore, c.updatedAt
+FROM c WHERE c.kind = 'world' ORDER BY c.updatedAt DESC
+```
+
+`StringToObject` legge tutto il testo e costa qualche RU in più: con pochi giocatori è irrilevante.

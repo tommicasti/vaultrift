@@ -31,7 +31,14 @@ public static class Collision
         return false;
     }
 
-    public static Vector Slide(DungeonMap map, Vector from, Vector step, double radius, Func<Vector, bool>? occupied = null, bool passesThroughWalls = false)
+    public static Vector Slide(
+        DungeonMap map,
+        Vector from,
+        Vector step,
+        double radius,
+        Func<Vector, bool>? occupied = null,
+        bool passesThroughWalls = false,
+        bool roundsCorners = false)
     {
         bool Blocked(Vector point) => HitsWall(map, point, radius, passesThroughWalls) || (occupied?.Invoke(point) ?? false);
 
@@ -40,13 +47,35 @@ public static class Collision
 
         if (step.X != 0 && !Blocked(alongX))
             position = alongX;
+        else if (roundsCorners && step.X != 0 && step.Y == 0)
+            position = RoundCorner(map, position, Math.Sign(step.X), 0, Math.Abs(step.X), Blocked);
 
         var alongY = position with { Y = position.Y + step.Y };
 
         if (step.Y != 0 && !Blocked(alongY))
             position = alongY;
+        else if (roundsCorners && step.Y != 0 && step.X == 0)
+            position = RoundCorner(map, position, 0, Math.Sign(step.Y), Math.Abs(step.Y), Blocked);
 
         return position;
+    }
+
+    private static Vector RoundCorner(DungeonMap map, Vector position, int dx, int dy, double distance, Func<Vector, bool> blocked)
+    {
+        var tile = TileOf(position);
+
+        if (!map.IsWalkable(new Position(tile.X + dx, tile.Y + dy)))
+            return position;
+
+        var offset = dx != 0 ? tile.Y - position.Y : tile.X - position.X;
+
+        if (Math.Abs(offset) < 1e-6)
+            return position;
+
+        var shift = Math.Sign(offset) * Math.Min(distance, Math.Abs(offset));
+        var nudged = dx != 0 ? position with { Y = position.Y + shift } : position with { X = position.X + shift };
+
+        return blocked(nudged) ? position : nudged;
     }
 
     public static bool ClearPath(DungeonMap map, Vector from, Vector to, double radius, double spacing = 0.2)

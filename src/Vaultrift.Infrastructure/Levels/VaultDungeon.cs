@@ -24,10 +24,16 @@ public static class VaultDungeon
         ArgumentNullException.ThrowIfNull(floors);
         ArgumentNullException.ThrowIfNull(playerClass);
 
+        return new Game(CreateHero(playerClass, playerName), floors, random, new VaultLoot(random)) { Difficulty = floors.Difficulty };
+    }
+
+    public static Player CreateHero(ClassDefinition playerClass, string? playerName = null)
+    {
+        ArgumentNullException.ThrowIfNull(playerClass);
+
         var player = new Player(new Position(0, 0), playerClass.Class, playerName);
         GiveStartingKit(player, playerClass.StartingItemIds);
-
-        return new Game(player, floors, random, new VaultLoot(random)) { Difficulty = floors.Difficulty };
+        return player;
     }
 
     public static Game RestoreGame(GameSnapshot snapshot, IRandom random, VaultFloors floors)

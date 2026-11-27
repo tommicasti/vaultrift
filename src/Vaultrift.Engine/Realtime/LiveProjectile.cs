@@ -55,4 +55,8 @@ public sealed class LiveProjectile
     internal int PierceCount { get; set; }
 
     internal HashSet<int> Struck { get; } = [];
+
+    public int PowerPercent { get; init; } = 100;
+
+    public int PiercePercent { get; init; } = LiveRules.PiercePercent;
 }

@@ -1,5 +1,6 @@
 using Vaultrift.Infrastructure.Cosmos;
 using Vaultrift.Infrastructure.Persistence;
+using Vaultrift.Infrastructure.Vault;
 
 namespace Vaultrift.Api.Hosting;
 
@@ -36,6 +37,21 @@ public static class StorageSetup
                 (error, record) => logger.LogError(error, "Could not save game {GameId} ({Code}); retrying.", record.Id, record.Code));
         });
         services.AddSingleton<IGameStore, CachedGameStore>();
+        services.AddSingleton<IVaultRepository>(serviceProvider =>
+        {
+            IVaultRepository repository = provider switch
+            {
+                "Cosmos" => new CosmosVaultRepository(serviceProvider.GetRequiredService<CosmosStore>().Vault),
+                "SqlServer" => new SqlVaultRepository(configuration.GetConnectionString(ConnectionName)!),
+                "File" => new FileVaultRepository(Path.Combine(environment.ContentRootPath, configuration["Storage:Folder"] ?? "saves")),
+                _ => new MemoryVaultRepository()
+            };
+
+            var logger = serviceProvider.GetRequiredService<ILoggerFactory>().CreateLogger("Vaultrift.Vault");
+            return new WriteBehindVaultRepository(
+                repository,
+                (error, kind, id) => logger.LogError(error, "Could not save {Kind} {Id}; retrying.", kind, id));
+        });
         return services;
     }
 

@@ -1,6 +1,6 @@
 import { useFrame } from '@react-three/fiber'
 import { useLayoutEffect, useMemo, useRef } from 'react'
-import { Color, DoubleSide, InstancedMesh, Matrix4, MeshStandardMaterial, Object3D, Quaternion, ShaderMaterial, Shape, ShapeGeometry, Vector3, type Material } from 'three'
+import { AdditiveBlending, Color, DoubleSide, InstancedBufferAttribute, InstancedMesh, Matrix4, MeshStandardMaterial, Object3D, PlaneGeometry, Quaternion, ShaderMaterial, Shape, ShapeGeometry, Vector3, type Material } from 'three'
 import type { KitPiece } from './kit'
 import { biomeLook, cell } from './models'
 
@@ -24,6 +24,7 @@ interface Placement {
 }
 
 const wallCutaway = 0.28
+const baseTorchChance = 0.12
 
 const furniturePieces: [string, number][] = [
   ['crates', 0.8],
@@ -62,6 +63,8 @@ function isWall(map: string[], x: number, y: number): boolean {
 
 export function DungeonMap({ map, focusY, cutaway = true, biome, kit, hole, blocked }: DungeonMapProps) {
   const look = biomeLook(biome)
+  const torchChance = look.torches ?? baseTorchChance
+  const sideTorches = look.torches !== undefined
   const holeX = hole?.x
   const holeY = hole?.y
 
@@ -97,17 +100,17 @@ export function DungeonMap({ map, focusY, cutaway = true, biome, kit, hole, bloc
 
         if (symbol === 'L') lava.push(spot)
         else if (symbol === '~') water.push(spot)
-        else if (!isHole && roll < 0.12) rocks.push(spot)
+        else if (!isHole && symbol === '.' && roll < 0.12) rocks.push(spot)
         else if (!isHole) floors.push(spot)
 
         if (symbol === 'S') spores.push({ ...spot, rotation: roll * Math.PI * 2 })
         if (symbol === 'C') crystals.push({ ...spot, rotation: roll * Math.PI * 2, scale: 0.8 + roll * 0.4 })
-        if (symbol === 'o') (roll < 0.5 ? barrels : rubble).push({ ...spot, rotation: Math.floor(roll * 4) * (Math.PI / 2), scale: roll < 0.5 ? 1.25 : 0.6 })
+        if (symbol === 'o') (roll < 0.5 ? barrels : rubble).push({ ...spot, rotation: Math.floor(roll * 4) * (Math.PI / 2), scale: roll < 0.5 ? 1.25 : 1.05 })
         if (symbol === '.' && !isHole && !blocked?.has(`${x},${y}`) && hash(x * 7, y * 3) < 0.13) {
           const side = furnitureSides.find(({ dx, dy }) => isWall(map, x + dx, y + dy) && !isWall(map, x + dy, y + dx) && !isWall(map, x - dy, y - dx))
           if (side) {
             const [name, scale] = furniturePieces[Math.floor(hash(x * 11, y * 17) * furniturePieces.length)]
-            furniture[name].push({ x: (x + side.dx * 0.3) * cell, z: (y + side.dy * 0.3) * cell, rotation: side.rotation, scale })
+            furniture[name].push({ x: (x + side.dx * 0.4) * cell, z: (y + side.dy * 0.4) * cell, rotation: side.rotation, scale })
           }
         }
         if ('^v<>'.includes(symbol)) currents.push({ ...spot, rotation: { '^': Math.PI, v: 0, '<': -Math.PI / 2, '>': Math.PI / 2 }[symbol] })
@@ -123,13 +126,15 @@ export function DungeonMap({ map, focusY, cutaway = true, biome, kit, hole, bloc
             scaleY: towardCamera ? wallCutaway : 1,
           }
           const variant = hash(x * 3 + dx, y * 7 + dy)
-          const hasTorch = dy === -1 && hash(x, y * 13) < 0.12
+          const hasTorch = dy === -1 && hash(x, y * 13) < torchChance
+          const sideTorch = sideTorches && dx !== 0 && hash(x * 5 + dx, y * 3) < torchChance * 0.5
           if (dy === -1 && !hasTorch && variant < 0.1) shelves.push(placement)
           else if (dy === -1 && !hasTorch && variant < 0.17) windows.push(placement)
           else if (dy === -1 && !hasTorch && variant < 0.22) arches.push(placement)
           else (variant < 0.37 ? cracked : walls).push(placement)
 
           if (hasTorch) torches.push({ x: x * cell, z: (y - 0.5) * cell + 0.5, rotation: 0, lift: 2.4 })
+          else if (sideTorch) torches.push({ x: (x + dx / 2) * cell - dx * 0.5, z: y * cell, rotation: dx === -1 ? Math.PI / 2 : -Math.PI / 2, lift: 2.4 })
           else if (dy === -1 && variant >= 0.22 && hash(x * 5, y * 11) < 0.12) banners.push({ ...placement })
 
           const ends =
@@ -146,7 +151,7 @@ export function DungeonMap({ map, focusY, cutaway = true, biome, kit, hole, bloc
     })
 
     return { floors, rocks, lava, water, spores, crystals, currents, barrels, rubble, walls, cracked, torches, shelves, windows, arches, banners, furniture, pillars: [...corners.values()] }
-  }, [map, holeX, holeY, blocked, cutaway])
+  }, [map, holeX, holeY, blocked, cutaway, torchChance, sideTorches])
 
   const cut = useMemo(() => {
     const edge = cutaway ? (focusY + 0.6) * cell : Infinity
@@ -203,9 +208,9 @@ export function DungeonMap({ map, focusY, cutaway = true, biome, kit, hole, bloc
       ))}
       <Instances piece={kit.torch} placements={cut.torches} />
       <Flames placements={cut.torches} />
-      <Liquid placements={layout.lava} dark="#7a1000" bright="#ffc23a" speed={0.9} depth={0.35} />
+      <Liquid placements={layout.lava} kind="lava" depth={0.35} />
       <Embers placements={layout.lava} />
-      <Liquid placements={layout.water} dark="#0a2f6a" bright="#5ac0ff" opacity={0.85} speed={0.6} depth={0.25} />
+      <Liquid placements={layout.water} kind="water" depth={0.25} />
       <Crystals placements={layout.crystals} />
       <Spores placements={layout.spores} />
       <Currents placements={layout.currents} />
@@ -258,17 +263,19 @@ function Instances({ piece, material, placements, castShadow, receiveShadow }: I
 
 interface LiquidProps {
   placements: Placement[]
-  dark: string
-  bright: string
-  opacity?: number
-  speed: number
+  kind: 'lava' | 'water'
   depth: number
 }
 
 const liquidVertex = `
+  attribute vec4 banks;
   varying vec3 vWorld;
+  varying vec2 vLocal;
+  varying vec4 vBanks;
   void main() {
     vec4 local = vec4(position, 1.0);
+    vLocal = position.xz / ${cell.toFixed(1)};
+    vBanks = banks;
     #ifdef USE_INSTANCING
       local = instanceMatrix * local;
     #endif
@@ -278,48 +285,132 @@ const liquidVertex = `
   }
 `
 
-const liquidFragment = `
+const liquidCommon = `
   uniform float time;
-  uniform float speed;
-  uniform vec3 dark;
-  uniform vec3 bright;
-  uniform float opacity;
   varying vec3 vWorld;
-  void main() {
-    vec2 p = vWorld.xz * 0.55;
-    float t = time * speed;
-    float n = sin(p.x * 1.7 + t) * sin(p.y * 1.3 - t * 0.8);
-    n += 0.5 * sin((p.x + p.y) * 3.1 + t * 1.9);
-    n += 0.25 * sin((p.x - p.y) * 6.3 - t * 2.7);
-    n += 0.35 * sin(p.x * 2.3 - p.y * 4.1 + t * 0.6 + sin(p.y * 1.1));
-    float glow = smoothstep(-0.9, 1.2, n);
-    vec3 color = mix(dark, bright, glow);
-    gl_FragColor = vec4(color, opacity);
+  varying vec2 vLocal;
+  varying vec4 vBanks;
+  vec2 hash2(vec2 p) {
+    p = vec2(dot(p, vec2(127.1, 311.7)), dot(p, vec2(269.5, 183.3)));
+    return fract(sin(p) * 43758.5453);
+  }
+  float noise(vec2 p) {
+    vec2 i = floor(p);
+    vec2 f = fract(p);
+    f = f * f * (3.0 - 2.0 * f);
+    float a = hash2(i).x;
+    float b = hash2(i + vec2(1.0, 0.0)).x;
+    float c = hash2(i + vec2(0.0, 1.0)).x;
+    float d = hash2(i + vec2(1.0, 1.0)).x;
+    return mix(mix(a, b, f.x), mix(c, d, f.x), f.y);
+  }
+  float fbm(vec2 p) {
+    return 0.5 * noise(p) + 0.3 * noise(p * 2.1 + 1.7) + 0.2 * noise(p * 4.3 + 3.1);
+  }
+  vec2 cells(vec2 p, float t) {
+    vec2 i = floor(p);
+    vec2 f = fract(p);
+    float near = 8.0;
+    float next = 8.0;
+    for (int y = -1; y <= 1; y++) {
+      for (int x = -1; x <= 1; x++) {
+        vec2 g = vec2(float(x), float(y));
+        vec2 o = 0.5 + 0.42 * sin(t + 6.2831 * hash2(i + g));
+        float d = length(g + o - f);
+        if (d < near) { next = near; near = d; }
+        else if (d < next) next = d;
+      }
+    }
+    return vec2(near, next);
+  }
+  float bank() {
+    float edge = 1.0;
+    if (vBanks.x > 0.5) edge = min(edge, vLocal.y + 0.5);
+    if (vBanks.y > 0.5) edge = min(edge, 0.5 - vLocal.y);
+    if (vBanks.z > 0.5) edge = min(edge, vLocal.x + 0.5);
+    if (vBanks.w > 0.5) edge = min(edge, 0.5 - vLocal.x);
+    return edge;
   }
 `
 
-function Liquid({ placements, dark, bright, opacity = 1, speed, depth }: LiquidProps) {
+const lavaFragment = `
+  ${liquidCommon}
+  void main() {
+    float t = time;
+    vec2 p = vWorld.xz * 0.32 + vec2(t * 0.05, t * 0.035);
+    vec2 crust = cells(p, t * 0.35);
+    float seam = 1.0 - smoothstep(0.015, 0.14, crust.y - crust.x);
+    float swell = fbm(vWorld.xz * 0.18 + vec2(t * 0.12, -t * 0.07));
+    float molten = smoothstep(0.52, 0.78, swell);
+    float pulse = 0.78 + 0.22 * sin(t * 2.4 + swell * 9.0);
+    float heat = clamp(max(seam, molten) * pulse, 0.0, 1.0);
+    vec3 cold = mix(vec3(0.09, 0.025, 0.02), vec3(0.28, 0.06, 0.02), crust.x);
+    vec3 glow = mix(vec3(0.95, 0.22, 0.02), vec3(1.0, 0.86, 0.34), heat * heat);
+    vec3 color = mix(cold, glow, heat);
+    float bubble = smoothstep(0.93, 1.0, noise(vWorld.xz * 1.4 + floor(t * 1.5) * 3.7)) * (0.5 + 0.5 * sin(t * 9.0));
+    color += vec3(1.0, 0.75, 0.3) * bubble * 0.8;
+    float edge = bank();
+    color = mix(vec3(0.06, 0.04, 0.035), color, smoothstep(0.02, 0.1, edge));
+    color = mix(color, vec3(1.0, 0.45, 0.08), (1.0 - smoothstep(0.1, 0.2, edge)) * smoothstep(0.02, 0.1, edge) * 0.6);
+    gl_FragColor = vec4(color, 1.0);
+  }
+`
+
+const waterFragment = `
+  ${liquidCommon}
+  void main() {
+    float t = time;
+    float edge = bank();
+    vec2 drift = vec2(t * 0.09, t * 0.06);
+    vec2 bend = vec2(fbm(vWorld.xz * 0.12 + drift), fbm(vWorld.xz * 0.12 - drift + 5.0)) * 2.4;
+    vec2 q = vWorld.xz + bend;
+    float swell = sin(q.x * 0.9 + q.y * 0.6 - t * 1.6) * 0.5 + 0.5;
+    float chop = sin(q.x * 1.9 - q.y * 1.3 - t * 2.3) * 0.5 + 0.5;
+    vec2 ripple = cells(vWorld.xz * 0.3 + bend * 0.5 + drift, t * 0.7);
+    float caustic = 1.0 - smoothstep(0.0, 0.3, ripple.y - ripple.x);
+    float deep = smoothstep(0.05, 0.5, edge);
+    vec3 shallow = vec3(0.16, 0.58, 0.7);
+    vec3 abyss = vec3(0.03, 0.18, 0.38);
+    vec3 color = mix(shallow, abyss, deep);
+    color = mix(color, color * 1.35, swell * 0.5 + chop * 0.25);
+    color += vec3(0.45, 0.8, 0.95) * caustic * 0.22;
+    float shine = pow(max(0.0, sin(q.x * 1.1 + q.y * 1.1 - t * 2.0)), 18.0) * smoothstep(0.4, 0.9, chop);
+    color += vec3(0.9, 0.97, 1.0) * shine * 0.6;
+    float lap = 0.07 + 0.04 * sin(t * 2.4 + (vWorld.x + vWorld.z) * 1.3);
+    float foam = (1.0 - smoothstep(lap * 0.35, lap, edge)) * (0.75 + 0.25 * noise(vWorld.xz * 3.0 + t));
+    color = mix(color, vec3(0.88, 0.97, 1.0), foam * 0.85);
+    gl_FragColor = vec4(color, 0.86 + foam * 0.14);
+  }
+`
+
+function Liquid({ placements, kind, depth }: LiquidProps) {
   const ref = useRef<InstancedMesh>(null)
   const material = useMemo(
     () =>
       new ShaderMaterial({
-        uniforms: {
-          time: { value: 0 },
-          speed: { value: speed },
-          dark: { value: new Color(dark) },
-          bright: { value: new Color(bright) },
-          opacity: { value: opacity },
-        },
+        uniforms: { time: { value: 0 } },
         vertexShader: liquidVertex,
-        fragmentShader: liquidFragment,
-        transparent: opacity < 1,
+        fragmentShader: kind === 'lava' ? lavaFragment : waterFragment,
+        transparent: kind === 'water',
       }),
-    [dark, bright, opacity, speed],
+    [kind],
   )
+  const surface = useMemo(() => new PlaneGeometry(cell, cell).rotateX(-Math.PI / 2), [])
+  const banks = useMemo(() => {
+    const filled = new Set(placements.map(spot => `${spot.x},${spot.z}`))
+    const open = (x: number, z: number) => (filled.has(`${x},${z}`) ? 0 : 1)
+    return new InstancedBufferAttribute(
+      new Float32Array(placements.flatMap(spot => [open(spot.x, spot.z - cell), open(spot.x, spot.z + cell), open(spot.x - cell, spot.z), open(spot.x + cell, spot.z)])),
+      4,
+    )
+  }, [placements])
 
   useLayoutEffect(() => {
-    if (ref.current) applyPlacements(ref.current, placements, -depth)
-  }, [placements, depth])
+    const mesh = ref.current
+    if (!mesh) return
+    surface.setAttribute('banks', banks)
+    applyPlacements(mesh, placements, 0.1 - depth)
+  }, [placements, depth, banks, surface])
 
   useFrame(({ clock }) => {
     const mesh = ref.current
@@ -329,9 +420,7 @@ function Liquid({ placements, dark, bright, opacity = 1, speed, depth }: LiquidP
   if (placements.length === 0) return null
 
   return (
-    <instancedMesh key={`${placements.length}-${material.uuid}`} ref={ref} args={[undefined, material, placements.length]}>
-      <boxGeometry args={[cell, 0.2, cell]} />
-    </instancedMesh>
+    <instancedMesh key={`${placements.length}-${material.uuid}`} ref={ref} args={[surface, material, placements.length]} />
   )
 }
 
@@ -477,28 +566,41 @@ function Currents({ placements }: { placements: Placement[] }) {
 
 function Flames({ placements }: { placements: Placement[] }) {
   const ref = useRef<InstancedMesh>(null)
+  const halo = useRef<InstancedMesh>(null)
 
   useFrame(({ clock }) => {
     const mesh = ref.current
-    if (!mesh) return
+    const glow = halo.current
+    if (!mesh || !glow) return
 
     placements.forEach((placement, index) => {
       const flicker = 0.85 + Math.sin(clock.elapsedTime * 11 + placement.x) * 0.15
-      dummy.position.set(placement.x, 3.1, placement.z + 0.45)
+      const facing = placement.rotation ?? 0
+      dummy.position.set(placement.x + Math.sin(facing) * 0.45, 3.1, placement.z + Math.cos(facing) * 0.45)
       dummy.rotation.set(0, 0, 0)
       dummy.scale.set(flicker, flicker * 1.3, flicker)
       dummy.updateMatrix()
       mesh.setMatrixAt(index, dummy.matrix)
+      dummy.scale.setScalar(flicker * 4.5)
+      dummy.updateMatrix()
+      glow.setMatrixAt(index, dummy.matrix)
     })
     mesh.instanceMatrix.needsUpdate = true
+    glow.instanceMatrix.needsUpdate = true
   })
 
   if (placements.length === 0) return null
 
   return (
-    <instancedMesh key={placements.length} ref={ref} args={[undefined, undefined, placements.length]} frustumCulled={false}>
-      <sphereGeometry args={[0.22, 8, 8]} />
-      <meshBasicMaterial color="#ffb040" />
-    </instancedMesh>
+    <>
+      <instancedMesh key={placements.length} ref={ref} args={[undefined, undefined, placements.length]} frustumCulled={false}>
+        <sphereGeometry args={[0.22, 8, 8]} />
+        <meshBasicMaterial color="#ffb040" />
+      </instancedMesh>
+      <instancedMesh key={`halo-${placements.length}`} ref={halo} args={[undefined, undefined, placements.length]} frustumCulled={false}>
+        <sphereGeometry args={[0.22, 10, 10]} />
+        <meshBasicMaterial color="#ff9a30" transparent opacity={0.16} depthWrite={false} blending={AdditiveBlending} />
+      </instancedMesh>
+    </>
   )
 }
